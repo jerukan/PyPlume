@@ -23,5 +23,6 @@ More details are found in the notebooks, but the overall way to run these notebo
 
 ### Step 3: run parcels simulation
 
-4. Configure `parcels_regions` to choose which netcdf files to use for the OceanParcels simulation. This notebook creates a sequence of pictures of particle movement to stitch together into a gif.
+4. Set up config files in `parcels_configs/`.
+5. Choose config files in the `parcels_regions` notebook for the OceanParcels simulation. This notebook outputs a new netcdf file with particle simulation data and creates a sequence of snapshots of particle movement to stitch together into a gif.
 	- the notebook uses [ImageMagick](https://imagemagick.org/index.php) to stitch images into a gif

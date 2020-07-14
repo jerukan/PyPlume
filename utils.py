@@ -1,7 +1,7 @@
 import json
 import numpy as np
 import xarray as xr
-from parcels import FieldSet
+from parcels import FieldSet, ParticleSet, JITParticle
 
 DATA_6KM = 6
 DATA_2KM = 2
@@ -12,6 +12,27 @@ filename_dict = {
     DATA_2KM: "west_coast_2km_hourly",
     DATA_1KM: "west_coast_1km_hourly"
 }
+
+
+def xr_dataset_to_fieldset(xrds, copy=True, mesh="spherical"):
+    """
+    Creates a parcels FieldSet with an ocean current xarray Dataset.
+
+    Args:
+        xrds (xr.Dataset)
+        copy (bool)
+        mesh (str): spherical or flat
+    """
+    if copy:
+        ds = xrds.copy(deep=True)
+    else:
+        ds = xrds
+    return FieldSet.from_xarray_dataset(
+            ds,
+            dict(U="u", V="v"),
+            dict(lat="lat", lon="lon", time="time"),
+            mesh=mesh
+        )
 
 
 def get_file_info(name, path, res, parcels_cfg=None):
@@ -29,18 +50,9 @@ def get_file_info(name, path, res, parcels_cfg=None):
     """
     xrds = xr.open_dataset(path)
     # spherical mesh
-    fs = FieldSet.from_xarray_dataset(
-            xrds.copy(deep=True),
-            dict(U="u", V="v"),
-            dict(lat="lat", lon="lon", time="time")
-        )
+    fs = xr_dataset_to_fieldset(xrds)
     # flat mesh
-    fs_flat = FieldSet.from_xarray_dataset(
-            xrds.copy(deep=True),
-            dict(U="u", V="v"),
-            dict(lat="lat", lon="lon", time="time"),
-            mesh="flat"
-        )
+    fs_flat = xr_dataset_to_fieldset(xrds, mesh="flat")
     xrds.close()
     lat = xrds["lat"].values
     lon = xrds["lon"].values
@@ -63,6 +75,19 @@ def get_file_info(name, path, res, parcels_cfg=None):
         },  # mainly for use with showing a FieldSet and restricting domain
         cfg=parcels_cfg
     )
+
+
+def show_particles(fs, lats, lons):
+    """
+    Quick and dirty way to graph a collection of particles using ParticleSet.show()
+
+    Args:
+        fs (parcels.FieldSet)
+        lats (array-like): 1-d array of particle latitude values
+        lons (array-like): 1-d array of particle longitude values
+    """
+    pset = ParticleSet(fs, pclass=JITParticle, lon=lons, lat=lats)
+    pset.show()
 
 
 def load_config(path):

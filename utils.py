@@ -17,6 +17,7 @@ filename_dict = {
 def xr_dataset_to_fieldset(xrds, copy=True, mesh="spherical"):
     """
     Creates a parcels FieldSet with an ocean current xarray Dataset.
+    copy is true by default since Parcels has a habit of turning nan values into 0s.
 
     Args:
         xrds (xr.Dataset)
@@ -86,6 +87,9 @@ def show_particles(fs, lats, lons):
         lats (array-like): 1-d array of particle latitude values
         lons (array-like): 1-d array of particle longitude values
     """
+    if len(lats) == 0 or len(lons) == 0:
+        print("Empty lat and lon lists given")
+        return
     pset = ParticleSet(fs, pclass=JITParticle, lon=lons, lat=lats)
     pset.show()
 

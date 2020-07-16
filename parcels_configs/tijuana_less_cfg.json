@@ -1,0 +1,16 @@
+{
+	"name": "tijuana_less",
+	"netcdf_path": "west_coast_1km_hourly_netcdfs/west_coast_1km_hourly_region_tijuana_river_lin.nc",
+	"resolution": 1,
+	"parcels_config": {
+		"repeat_dt": 28800,
+		"particles_per_dt": 5,
+		"max_variation": 0.0015,
+		"spawn_points": [
+			[32.551707, -117.138]
+		],
+		"simulation_dt": 1800,
+		"snapshot_interval": 21600,
+		"save_snapshots": false
+	}
+}

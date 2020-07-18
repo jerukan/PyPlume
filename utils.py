@@ -1,7 +1,12 @@
 import json
+
+import cartopy
+import cartopy.crs as ccrs
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from parcels import FieldSet, ParticleSet, JITParticle
+import parcels
+from parcels import FieldSet, ParticleSet, JITParticle, plotting
 
 DATA_6KM = 6
 DATA_2KM = 2
@@ -36,7 +41,7 @@ def xr_dataset_to_fieldset(xrds, copy=True, mesh="spherical"):
         )
 
 
-def get_file_info(name, path, res, parcels_cfg=None):
+def get_file_info(path, res, name=None, parcels_cfg=None):
     """
     Reads from a netcdf file containing ocean current data.
 
@@ -49,6 +54,8 @@ def get_file_info(name, path, res, parcels_cfg=None):
     Returns:
         dict: contains almost all useful information related to the data.
     """
+    if name is None:
+        name = path
     xrds = xr.open_dataset(path)
     # spherical mesh
     fs = xr_dataset_to_fieldset(xrds)
@@ -92,6 +99,63 @@ def show_particles(fs, lats, lons):
         return
     pset = ParticleSet(fs, pclass=JITParticle, lon=lons, lat=lats)
     pset.show()
+
+
+def show_particles_age(ps, domain, show_time=None, field=None, savefile=None, vmax=None):
+    """
+    TODO add option to show vector field.
+    Just use existing Parcels methods for this.
+
+    A scuffed version of ParticleSet.show().
+    Colors particles to visualize the particle ages.
+    The arguments for this method are essentially the same as ParticleSet.show().
+
+    Args:
+        ps (parcels.ParticleSet)
+    """
+    show_time = ps[0].time if show_time is None else show_time
+    ext = [domain["W"], domain["E"], domain["S"], domain["N"]]
+    p_size = len(ps)
+    lats = np.zeros(p_size)
+    lons = np.zeros(p_size)
+    ages = np.zeros(p_size)
+
+    for i in range(p_size):
+        p = ps[i]
+        lats[i] = p.lat
+        lons[i] = p.lon
+        ages[i] = p.lifetime
+
+    ages /= 86400  # seconds in a day
+
+    if field is None:
+        ax = plt.axes(projection=ccrs.PlateCarree())
+        ax.set_extent(ext)
+        ax.add_feature(cartopy.feature.COASTLINE)
+
+        gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True)
+        gl.top_labels, gl.right_labels = (False, False)
+        gl.xformatter = cartopy.mpl.gridliner.LONGITUDE_FORMATTER
+        gl.yformatter = cartopy.mpl.gridliner.LATITUDE_FORMATTER
+
+        time_str = plotting.parsetimestr(ps.fieldset.U.grid.time_origin, show_time)
+        plt.title(f"Particle ages (days){time_str}")
+
+        plt.scatter(lons, lats, c=ages, edgecolors="k", vmin=0, vmax=vmax)
+        plt.colorbar()
+    else:
+        raise NotImplementedError("This method's field plotting is scuffed. Don't use it.")
+        # if field == "vector":
+        #     field = ps.fieldset.UV
+        # plt, fig, ax, _ = plotting.plotfield(field=field, show_time=show_time,
+        #                                      domain=domain,
+        #                                      titlestr="Particle ages (days) and ")
+
+    if savefile is None:
+        plt.show()
+    else:
+        plt.savefig(savefile)
+        plt.close()
 
 
 def load_config(path):

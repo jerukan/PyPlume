@@ -1,4 +1,5 @@
 import json
+import sys
 
 import cartopy
 import cartopy.crs as ccrs
@@ -101,7 +102,7 @@ def show_particles(fs, lats, lons):
     pset.show()
 
 
-def show_particles_age(ps, domain, show_time=None, field=None, savefile=None, vmax=None):
+def show_particles_age(ps, domain, show_time=None, field=None, savefile=None, vmax=None, field_vmax=None):
     """
     TODO add option to show vector field.
     Just use existing Parcels methods for this.
@@ -133,7 +134,8 @@ def show_particles_age(ps, domain, show_time=None, field=None, savefile=None, vm
         ax.set_extent(ext)
         ax.add_feature(cartopy.feature.COASTLINE)
 
-        gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True)
+        center_lon = (domain["W"] + domain["E"]) / 2
+        gl = ax.gridlines(crs=ccrs.PlateCarree(central_longitude=center_lon), draw_labels=True)
         gl.top_labels, gl.right_labels = (False, False)
         gl.xformatter = cartopy.mpl.gridliner.LONGITUDE_FORMATTER
         gl.yformatter = cartopy.mpl.gridliner.LATITUDE_FORMATTER
@@ -144,12 +146,14 @@ def show_particles_age(ps, domain, show_time=None, field=None, savefile=None, vm
         plt.scatter(lons, lats, c=ages, edgecolors="k", vmin=0, vmax=vmax)
         plt.colorbar()
     else:
-        raise NotImplementedError("This method's field plotting is scuffed. Don't use it.")
-        # if field == "vector":
-        #     field = ps.fieldset.UV
-        # plt, fig, ax, _ = plotting.plotfield(field=field, show_time=show_time,
-        #                                      domain=domain,
-        #                                      titlestr="Particle ages (days) and ")
+        print("Particle age display cannot be used with fields. Showing field only.", file=sys.stderr)
+        if field == "vector":
+            field = ps.fieldset.UV
+        # vector values will always be above 0
+        _, fig, ax, _ = plotting.plotfield(field=field, show_time=show_time,
+                                           domain=domain, vmin=0, vmax=field_vmax,
+                                           titlestr="Particles and ")
+        ax.scatter(lons, lats)
 
     if savefile is None:
         plt.show()

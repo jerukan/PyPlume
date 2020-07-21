@@ -37,6 +37,7 @@ def plot_trajectories(paths, domain):
         for i in range(len(p_ds["lat"])):
             ax.scatter(p_ds["lon"][i], p_ds["lat"][i])
             ax.plot(p_ds["lon"][i], p_ds["lat"][i])
+    plt.title("Particle trajectories")
     plt.show()
 
 

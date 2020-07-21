@@ -1,6 +1,6 @@
 {
-	"name": "tijuana_simpterp",
-	"netcdf_path": "west_coast_1km_hourly_netcdfs/west_coast_1km_hourly_region_tijuana_river_simpterp.nc",
+	"name": "tijuana_lin",
+	"netcdf_path": "current_netcdfs/west_coast_1km_hourly/tijuana_river_lin.nc",
 	"resolution": 1,
 	"parcels_config": {
 		"repeat_dt": 14400,

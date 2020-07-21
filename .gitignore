@@ -1,9 +1,8 @@
 # ignore pickle files
 *.p
 
-# ignore the folders containing netcdf data and pictures
-*_netcdfs/
-snapshots*/
+# ignore the folders containing simulation snapshots
+snapshots/
 
 # ignore all netcdf files
 *.nc

@@ -11,6 +11,6 @@
 		],
 		"simulation_dt": 1800,
 		"snapshot_interval": 21600,
-		"save_snapshots": false
+		"save_snapshots": true
 	}
 }

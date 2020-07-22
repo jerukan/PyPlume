@@ -19,7 +19,13 @@ example layout:
 		],
 		"simulation_dt": 300,
 		"snapshot_interval": 10800,
-		"save_snapshots": true
+		"save_snapshots": true,
+		"shown_domain": {
+			"S": 32.5335,
+		    "N": 32.6,
+		    "W": -117.19,
+		    "E": -117.1174
+		}
 	}
 }
 ```
@@ -33,3 +39,4 @@ information about the variables:
 - `spawn_points`: list of [latitude, longitude] pairs to choose from as a spawn location
 - `simulation_dt`: the actual dt used by parcels for the simulation (in seconds)
 - `snapshot_interval`: time to wait between taking a snapshot of the simulation to save as an image in seconds
+- `shown_domain` (optional): basically a cropping option

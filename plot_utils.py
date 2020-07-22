@@ -35,8 +35,10 @@ def plot_trajectories(paths, domain):
         # now I'm not entirely sure how matplotlib deals with
         # nan values, so if any show up, damnit
         for i in range(len(p_ds["lat"])):
+            name = p.split("/")[-1].split(".")[0]
             ax.scatter(p_ds["lon"][i], p_ds["lat"][i])
-            ax.plot(p_ds["lon"][i], p_ds["lat"][i])
+            ax.plot(p_ds["lon"][i], p_ds["lat"][i], label=name)
+    ax.legend()
     plt.title("Particle trajectories")
     plt.show()
 

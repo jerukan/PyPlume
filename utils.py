@@ -2,6 +2,7 @@
 Just some useful methods.
 """
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -16,6 +17,24 @@ filename_dict = {
     DATA_2KM: "west_coast_2km_hourly",
     DATA_1KM: "west_coast_1km_hourly"
 }
+
+
+def euc_dist(vec1, vec2):
+    return np.sqrt(((vec1 - vec2) ** 2).sum())
+
+
+def haversine(lat1, lat2, lon1, lon2):
+    """
+    lol look at all this MATH
+    how does this even work
+    """
+    R = 6378.137  # Radius of earth in KM
+    dLat = lat2 * math.pi / 180 - lat1 * math.pi / 180
+    dLon = lon2 * math.pi / 180 - lon1 * math.pi / 180
+    a = math.sin(dLat / 2) * math.sin(dLat / 2) + math.cos(lat1 * math.pi / 180) * math.cos(lat2 * math.pi / 180) * math.sin(dLon / 2) * math.sin(dLon / 2)
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    d = R * c
+    return d * 1000  # meters
 
 
 def create_path(path_str):

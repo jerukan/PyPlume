@@ -11,6 +11,22 @@ from parcels import FieldSet, ParticleSet, JITParticle, plotting
 import xarray as xr
 
 
+def get_carree_axis(domain):
+    ext = [domain["W"], domain["E"], domain["S"], domain["N"]]
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax.set_extent(ext, crs=ccrs.PlateCarree())
+    ax.add_feature(cartopy.feature.COASTLINE)
+    return ax
+
+
+def get_carree_gl(ax):
+    gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True)
+    gl.top_labels, gl.right_labels = (False, False)
+    gl.xformatter = cartopy.mpl.gridliner.LONGITUDE_FORMATTER
+    gl.yformatter = cartopy.mpl.gridliner.LATITUDE_FORMATTER
+    return gl
+
+
 def plot_trajectories(paths, domain, legend=True, scatter=True):
     """
     Takes in Parcels ParticleFile netcdf file paths and creates plots of the
@@ -20,15 +36,8 @@ def plot_trajectories(paths, domain, legend=True, scatter=True):
         paths (array-like): array of paths to the netcdfs
         domain (dict)
     """
-    ext = [domain["W"], domain["E"], domain["S"], domain["N"]]
-    ax = plt.axes(projection=ccrs.PlateCarree())
-    ax.set_extent(ext, crs=ccrs.PlateCarree())
-    ax.add_feature(cartopy.feature.COASTLINE)
-
-    gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True)
-    gl.top_labels, gl.right_labels = (False, False)
-    gl.xformatter = cartopy.mpl.gridliner.LONGITUDE_FORMATTER
-    gl.yformatter = cartopy.mpl.gridliner.LATITUDE_FORMATTER
+    ax = get_carree_axis(domain)
+    gl = get_carree_gl(ax)
 
     for p in paths:
         p_ds = xr.open_dataset(p)
@@ -89,14 +98,8 @@ def plot_particles_age(ps, domain, show_time=None, field=None, savefile=None, vm
     ages /= 86400  # seconds in a day
 
     if field is None:
-        ax = plt.axes(projection=ccrs.PlateCarree())
-        ax.set_extent(ext, crs=ccrs.PlateCarree())
-        ax.add_feature(cartopy.feature.COASTLINE)
-
-        gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True)
-        gl.top_labels, gl.right_labels = (False, False)
-        gl.xformatter = cartopy.mpl.gridliner.LONGITUDE_FORMATTER
-        gl.yformatter = cartopy.mpl.gridliner.LATITUDE_FORMATTER
+        ax = get_carree_axis(domain)
+        gl = get_carree_gl(ax)
 
         time_str = plotting.parsetimestr(ps.fieldset.U.grid.time_origin, show_time)
         plt.title(f"Particle ages (days){time_str}")

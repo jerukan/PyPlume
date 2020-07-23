@@ -11,7 +11,7 @@ from parcels import FieldSet, ParticleSet, JITParticle, plotting
 import xarray as xr
 
 
-def plot_trajectories(paths, domain):
+def plot_trajectories(paths, domain, legend=True, scatter=True):
     """
     Takes in Parcels ParticleFile netcdf file paths and creates plots of the
     trajectories on the same plot.
@@ -36,9 +36,13 @@ def plot_trajectories(paths, domain):
         # nan values, so if any show up, damnit
         for i in range(len(p_ds["lat"])):
             name = p.split("/")[-1].split(".")[0]
-            ax.scatter(p_ds["lon"][i], p_ds["lat"][i])
+            if scatter:
+                ax.scatter(p_ds["lon"][i], p_ds["lat"][i])
             ax.plot(p_ds["lon"][i], p_ds["lat"][i], label=name)
-    ax.legend()
+            # plot starting point as a black X
+            ax.plot(p_ds["lon"][i][0], p_ds["lat"][i][0], 'kx')
+    if legend:
+        ax.legend()
     plt.title("Particle trajectories")
     plt.show()
 

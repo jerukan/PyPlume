@@ -79,3 +79,16 @@ def generate_mask(data):
             if not nan_vals.all():
                 mask.T[j][i][:] = np.where(nan_vals.flatten(), 1, 0)
     return mask
+
+
+def add_noise(arr, max_var, repeat=None):
+    if repeat is None:
+        var_arr = np.random.random(arr.shape)
+        var_arr = (var_arr * 2 - 1) * max_var
+        return arr + var_arr
+    shp = np.ones(len(arr.shape) + 1, dtype=int)
+    shp[0] = repeat
+    rep_arr = np.tile(arr, shp)
+    var_arr = np.random.random(rep_arr.shape)
+    var_arr = (var_arr * 2 - 1) * max_var
+    return rep_arr + var_arr

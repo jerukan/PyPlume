@@ -1,0 +1,18 @@
+{
+	"name": "tijuana_range",
+	"netcdf_path": "current_netcdfs/west_coast_1km_hourly/tijuana_river_now_interped.nc",
+	"resolution": 1,
+	"parcels_config": {
+		"time_range": ["2020-07-16T00", "END"],
+		"repeat_dt": 7200,
+		"particles_per_dt": 10,
+		"max_variation": 0.003,
+		"spawn_points": [
+			[32.551707, -117.138],
+			[32.557, -117.138]
+		],
+		"simulation_dt": 300,
+		"snapshot_interval": 7200,
+		"save_snapshots": true
+	}
+}

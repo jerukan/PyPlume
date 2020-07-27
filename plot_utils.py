@@ -56,7 +56,7 @@ def plot_trajectories(paths, domain, legend=True, scatter=True):
     plt.show()
 
 
-def plot_particles(fs, lats, lons):
+def plot_particles_ps(fs, lats, lons):
     """
     Quick and dirty way to graph a collection of particles using ParticleSet.show()
 
@@ -70,6 +70,20 @@ def plot_particles(fs, lats, lons):
         return
     pset = ParticleSet(fs, pclass=JITParticle, lon=lons, lat=lats)
     pset.show()
+
+
+def plot_particles(lats, lons, ages, domain, show=True):
+    ax = get_carree_axis(domain)
+    gl = get_carree_gl(ax)
+
+    if ages is None:
+        plt.scatter(lons, lats)
+    else:
+        plt.scatter(lons, lats, c=ages, edgecolors="k", vmin=0, vmax=vmax)
+        plt.colorbar()
+
+    if show:
+        plt.show()
 
 
 def plot_particles_age(ps, domain, show_time=None, field=None, savefile=None, vmax=None, field_vmax=None):
@@ -98,14 +112,9 @@ def plot_particles_age(ps, domain, show_time=None, field=None, savefile=None, vm
     ages /= 86400  # seconds in a day
 
     if field is None:
-        ax = get_carree_axis(domain)
-        gl = get_carree_gl(ax)
-
+        plot_particles(lats, lons, ages, domain, show=False)
         time_str = plotting.parsetimestr(ps.fieldset.U.grid.time_origin, show_time)
         plt.title(f"Particle ages (days){time_str}")
-
-        plt.scatter(lons, lats, c=ages, edgecolors="k", vmin=0, vmax=vmax)
-        plt.colorbar()
     else:
         print("Particle age display cannot be used with fields. Showing field only.", file=sys.stderr)
         if field == "vector":

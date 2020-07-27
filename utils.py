@@ -20,6 +20,16 @@ filename_dict = {
 
 
 def euc_dist(vec1, vec2):
+    """
+    Args:
+        vec1 (array-like)
+        vec2 (array-like)
+    """
+    # convert to np array if vectors aren't already
+    if not isinstance(vec1, np.ndarray):
+        vec1 = np.array(vec1)
+    if not isinstance(vec2, np.ndarray):
+        vec2 = np.array(vec2)
     return np.sqrt(((vec1 - vec2) ** 2).sum())
 
 

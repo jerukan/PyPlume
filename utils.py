@@ -101,12 +101,12 @@ def generate_mask_invalid(data):
     mask = np.zeros(data.shape, dtype=bool)
     for i in range(data.shape[1]):
         for j in range(data.shape[2]):
-            point = data.T[j][i]
+            point = data[:, i, j]
             nan_vals = np.isnan(point)
             # if the point at (lat, lon) contains real data and nan values
             # mark those points as invalid
             if not nan_vals.all():
-                mask.T[j][i][:] = np.where(nan_vals.flatten(), 1, 0)
+                mask[:, i, j] = np.where(nan_vals.flatten(), 1, 0)
     return mask
 
 
@@ -123,9 +123,9 @@ def generate_mask_none(data):
     mask = np.zeros(data.shape, dtype=bool)
     for i in range(data.shape[1]):
         for j in range(data.shape[2]):
-            point = data.T[j][i]
+            point = data[:, i, j]
             if np.isnan(point).all():
-                mask.T[j][i][:] = True
+                mask[:, i, j] = True
     return mask
 
 

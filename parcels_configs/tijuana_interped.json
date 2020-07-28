@@ -1,0 +1,17 @@
+{
+	"name": "tijuana_interped",
+	"netcdf_path": "current_netcdfs/west_coast_1km_hourly/tijuana_river_interped.nc",
+	"resolution": 1,
+	"parcels_config": {
+		"repeat_dt": 14400,
+		"particles_per_dt": 10,
+		"max_variation": 0.0015,
+		"spawn_points": [
+			[32.551707, -117.138],
+			[32.557, -117.138]
+		],
+		"simulation_dt": 300,
+		"snapshot_interval": 10800,
+		"save_snapshots": true
+	}
+}

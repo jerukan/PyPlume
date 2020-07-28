@@ -88,7 +88,7 @@ def conv_to_dataarray(arr, darr_ref):
     return xr.DataArray(arr, coords=darr_ref.coords, dims=darr_ref.dims, attrs=darr_ref.attrs)
 
 
-def generate_mask(data):
+def generate_mask_invalid(data):
     """
     Generates a boolean mask signifying which points in the data are invalid.
 

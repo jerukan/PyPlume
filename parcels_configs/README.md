@@ -40,6 +40,7 @@ information about the variables:
 	- `"END"` as the second time will use the last time of the data
 	- an integer as one of the elements will be treated as a timedelta (in hours)
 - `repeat_dt`: time to wait between releasing batches of particles (in seconds)
+	- if the value is 0 or less, only one batch of particles will be released at the starting time
 - `particles_per_dt`: number of particles to release after every interval of `repeat_dt`
 - `max_variation`: the max amount the longitude and latitude of a particle will be randomized by
 - `spawn_points`: list of [latitude, longitude] pairs to choose from as a spawn location

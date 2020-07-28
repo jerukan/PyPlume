@@ -26,3 +26,7 @@ More details are found in the notebooks, but the overall way to run these notebo
 4. Set up config files in `parcels_configs/`.
 5. Choose config files in the `parcels_regions` notebook for the OceanParcels simulation. This notebook outputs a new netcdf file with particle simulation data and creates a sequence of snapshots of particle movement to stitch together into a gif.
 	- the notebook uses [ImageMagick](https://imagemagick.org/index.php) to stitch images into a gif
+
+### Step 4?: trajectory analysis
+
+6. Choose the correct files in `trajectory_analyze` and run it to find out when and where particles "beached". Works only with the coastline near the Tijuana River.

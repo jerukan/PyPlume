@@ -11,11 +11,12 @@ from parcels import FieldSet, ParticleSet, JITParticle, plotting
 import xarray as xr
 
 
-def get_carree_axis(domain):
+def get_carree_axis(domain, land=True):
     ext = [domain["W"], domain["E"], domain["S"], domain["N"]]
     ax = plt.axes(projection=ccrs.PlateCarree())
     ax.set_extent(ext, crs=ccrs.PlateCarree())
-    ax.add_feature(cartopy.feature.COASTLINE)
+    if land:
+        ax.add_feature(cartopy.feature.COASTLINE)
     return ax
 
 
@@ -72,8 +73,8 @@ def plot_particles_ps(fs, lats, lons):
     pset.show()
 
 
-def plot_particles(lats, lons, ages, domain, show=True):
-    ax = get_carree_axis(domain)
+def plot_particles(lats, lons, ages, domain, land=True, show=True):
+    ax = get_carree_axis(domain, land)
     gl = get_carree_gl(ax)
 
     if ages is None:
@@ -86,7 +87,7 @@ def plot_particles(lats, lons, ages, domain, show=True):
         plt.show()
 
 
-def plot_particles_age(ps, domain, show_time=None, field=None, savefile=None, vmax=None, field_vmax=None):
+def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefile=None, vmax=None, field_vmax=None):
     """
     A scuffed version of ParticleSet.show().
     Colors particles to visualize the particle ages.
@@ -112,7 +113,7 @@ def plot_particles_age(ps, domain, show_time=None, field=None, savefile=None, vm
     ages /= 86400  # seconds in a day
 
     if field is None:
-        plot_particles(lats, lons, ages, domain, show=False)
+        plot_particles(lats, lons, ages, domain, land=land, show=False)
         time_str = plotting.parsetimestr(ps.fieldset.U.grid.time_origin, show_time)
         plt.title(f"Particle ages (days){time_str}")
     else:
@@ -121,7 +122,7 @@ def plot_particles_age(ps, domain, show_time=None, field=None, savefile=None, vm
             field = ps.fieldset.UV
         # vector values will always be above 0
         _, fig, ax, _ = plotting.plotfield(field=field, show_time=show_time,
-                                           domain=domain, vmin=0, vmax=field_vmax,
+                                           domain=domain, land=land, vmin=0, vmax=field_vmax,
                                            titlestr="Particles and ")
         ax.scatter(lons, lats)
 

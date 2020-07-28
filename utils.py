@@ -110,6 +110,25 @@ def generate_mask(data):
     return mask
 
 
+def generate_mask_none(data):
+    """
+    Generates a boolean mask signifying which points in the data don't have data.
+
+    Args:
+        data (np.ndarray): an array with the shape of (time, lat, lon).
+
+    Returns:
+        np.ndarray: boolean mask with the same shape as data.
+    """
+    mask = np.zeros(data.shape, dtype=bool)
+    for i in range(data.shape[1]):
+        for j in range(data.shape[2]):
+            point = data.T[j][i]
+            if np.isnan(point).all():
+                mask.T[j][i][:] = True
+    return mask
+
+
 def add_noise(arr, max_var, repeat=None):
     if repeat is None:
         var_arr = np.random.random(arr.shape)

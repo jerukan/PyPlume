@@ -3,7 +3,7 @@
 	"netcdf_path": "current_netcdfs/west_coast_1km_hourly/tijuana_river_now_interped.nc",
 	"resolution": 1,
 	"parcels_config": {
-		"time_range": ["2020-07-16T00", "END"],
+		"time_range": ["168", "END"],
 		"repeat_dt": 7200,
 		"particles_per_dt": 10,
 		"max_variation": 0.003,

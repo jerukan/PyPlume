@@ -73,18 +73,23 @@ def plot_particles_ps(fs, lats, lons):
     pset.show()
 
 
-def plot_particles(lats, lons, ages, domain, land=True, show=True):
+def plot_particles(lats, lons, ages, domain, land=True, show=True, savefile=None, part_size=4):
     ax = get_carree_axis(domain, land)
     gl = get_carree_gl(ax)
 
     if ages is None:
-        plt.scatter(lons, lats)
+        plt.scatter(lons, lats, s=part_size)
     else:
-        plt.scatter(lons, lats, c=ages, edgecolors="k", vmin=0, vmax=vmax)
+        plt.scatter(lons, lats, c=ages, edgecolors="k", vmin=0, vmax=vmax, s=part_size)
         plt.colorbar()
 
     if show:
         plt.show()
+
+    if savefile is not None:
+        plt.savefig(savefile)
+        print(f"Plot saved to {savefile}.png", file=sys.stderr)
+        plt.close()
 
 
 def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefile=None, vmax=None, field_vmax=None):

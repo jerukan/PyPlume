@@ -4,6 +4,7 @@ Just some useful methods.
 import json
 import math
 from pathlib import Path
+import subprocess
 
 import numpy as np
 import xarray as xr
@@ -140,3 +141,26 @@ def add_noise(arr, max_var, repeat=None):
     var_arr = np.random.random(rep_arr.shape)
     var_arr = (var_arr * 2 - 1) * max_var
     return rep_arr + var_arr
+
+
+def create_gif(delay, images_path, out_path):
+    magick_sp = subprocess.Popen(
+        [
+            "magick", "-delay", str(delay), images_path, out_path
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True
+    )
+    stdout, stderr = magick_sp.communicate()
+    print((stdout, stderr))
+
+
+def expand_coord_rng(coord_rng, ref_coords):
+    """
+    Args:
+        ref_coords: must be sorted ascending
+    """
+    index_min = np.where(ref_coords <= coord_rng[0])[0][-1]
+    index_max = np.where(ref_coords >= coord_rng[1])[0][0]
+    return ref_coords[index_min], ref_coords[index_max]

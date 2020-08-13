@@ -73,7 +73,7 @@ def plot_particles_ps(fs, lats, lons):
     pset.show()
 
 
-def plot_particles(lats, lons, ages, domain, land=True, show=True, savefile=None, part_size=4):
+def plot_particles(lats, lons, ages, domain, land=True, show=True, savefile=None, part_size=4, titlestr=None):
     ax = get_carree_axis(domain, land)
     gl = get_carree_gl(ax)
 
@@ -83,16 +83,22 @@ def plot_particles(lats, lons, ages, domain, land=True, show=True, savefile=None
         plt.scatter(lons, lats, c=ages, edgecolors="k", vmin=0, vmax=vmax, s=part_size)
         plt.colorbar()
 
+    plt.title(titlestr)
+
+    # savefig() must happen before show()
+    if savefile is not None:
+        plt.savefig(savefile)
+        print(f"Plot saved to {savefile}", file=sys.stderr)
+        if show:
+            plt.show()
+        plt.close()
+        return
+
     if show:
         plt.show()
 
-    if savefile is not None:
-        plt.savefig(savefile)
-        print(f"Plot saved to {savefile}.png", file=sys.stderr)
-        plt.close()
 
-
-def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefile=None, vmax=None, field_vmax=None):
+def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefile=None, vmax=None, field_vmax=None, part_size=4):
     """
     A scuffed version of ParticleSet.show().
     Colors particles to visualize the particle ages.
@@ -118,7 +124,7 @@ def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefi
     ages /= 86400  # seconds in a day
 
     if field is None:
-        plot_particles(lats, lons, ages, domain, land=land, show=False)
+        plot_particles(lats, lons, ages, domain, land=land, show=False, part_size=part_size)
         time_str = plotting.parsetimestr(ps.fieldset.U.grid.time_origin, show_time)
         plt.title(f"Particle ages (days){time_str}")
     else:
@@ -129,11 +135,11 @@ def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefi
         _, fig, ax, _ = plotting.plotfield(field=field, show_time=show_time,
                                            domain=domain, land=land, vmin=0, vmax=field_vmax,
                                            titlestr="Particles and ")
-        ax.scatter(lons, lats)
+        ax.scatter(lons, lats, s=part_size)
 
     if savefile is None:
         plt.show()
     else:
         plt.savefig(savefile)
-        print(f"Plot saved to {savefile}.png", file=sys.stderr)
+        print(f"Plot saved to {savefile}", file=sys.stderr)
         plt.close()

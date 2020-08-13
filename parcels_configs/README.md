@@ -18,6 +18,7 @@ example layout:
 			[32.551707, -117.138],
 			[32.557, -117.138]
 		],
+		"random_spawn": true,
 		"simulation_dt": 300,
 		"snapshot_interval": 10800,
 		"save_snapshots": true,
@@ -34,8 +35,7 @@ example layout:
 information about the variables:
 
 - `resolution`: for the data being used, 1, 2, or 6 km
-- `time_range` (optional): timeframe of the data to run the simulation on
-	- dates provided will round down to the nearest hour
+- `time_range`: timeframe of the data to run the simulation on
 	- `"START"` as the first time will use the first time of the data
 	- `"END"` as the second time will use the last time of the data
 	- an integer as one of the elements will be treated as a timedelta (in hours)
@@ -44,6 +44,7 @@ information about the variables:
 - `particles_per_dt`: number of particles to release after every interval of `repeat_dt`
 - `max_variation`: the max amount the longitude and latitude of a particle will be randomized by
 - `spawn_points`: list of [latitude, longitude] pairs to choose from as a spawn location
+- `random_spawn`: whether spawns are randomized and varied between defined spawn points
 - `simulation_dt`: the actual dt used by parcels for the simulation (in seconds)
 - `snapshot_interval`: time to wait between taking a snapshot of the simulation to save as an image in seconds
-- `shown_domain` (optional): basically a cropping option
+- `shown_domain`: basically a cropping option, set to null for default domain

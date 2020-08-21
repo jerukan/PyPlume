@@ -1,0 +1,22 @@
+{
+	"name": "plume_track_totsdlj",
+	"netcdf_path": "current_netcdfs/Tot_SDLJ_20200810.nc",
+	"resolution": 1,
+	"parcels_config": {
+		"time_range": ["2020-08-10T00:30", "2020-08-10T23:00"],
+		"repeat_dt": -1,
+		"particles_per_dt": -1,
+		"max_variation": 0,
+		"spawn_points": "mat/pts_20200810_0030.mat",
+		"random_spawn": false,
+		"simulation_dt": 300,
+		"snapshot_interval": 3600,
+		"save_snapshots": true,
+		"shown_domain": {
+			"S": 32.41,
+		    "N": 32.7,
+		    "W": -117.25,
+		    "E": -117
+		}
+	}
+}

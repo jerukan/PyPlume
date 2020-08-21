@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 
 import numpy as np
+import scipy.io
 import xarray as xr
 
 DATA_6KM = 6
@@ -131,6 +132,9 @@ def generate_mask_none(data):
 
 
 def add_noise(arr, max_var, repeat=None):
+    """
+    Randomly varies the values in an array.
+    """
     if repeat is None:
         var_arr = np.random.random(arr.shape)
         var_arr = (var_arr * 2 - 1) * max_var
@@ -158,9 +162,40 @@ def create_gif(delay, images_path, out_path):
 
 def expand_coord_rng(coord_rng, ref_coords):
     """
+    Takes a range of two numbers and expands the range to the
+    next biggest coordinates defined in ref_coords.
+
     Args:
         ref_coords: must be sorted ascending
+
+    Returns:
+        (float1, float2): where float1 <= coord_rng[0] and
+            float2 >= coord_rng[-1]
     """
     index_min = np.where(ref_coords <= coord_rng[0])[0][-1]
-    index_max = np.where(ref_coords >= coord_rng[1])[0][0]
+    index_max = np.where(ref_coords >= coord_rng[-1])[0][0]
     return ref_coords[index_min], ref_coords[index_max]
+
+
+def load_pts_mat(path, lat_ind, lon_ind):
+    """
+    Loads points from a pts mat from the TJ Plume Tracker.
+
+    Args:
+        path: path to mat file
+
+    Returns:
+        np.ndarray: [[lats], [lons]]
+    """
+    mat_data = scipy.io.loadmat(path)
+    xf = mat_data[lon_ind]
+    yf = mat_data[lat_ind]
+    # filter out nan values
+    xf = xf[np.where(~np.isnan(xf))].flatten()
+    yf = yf[np.where(~np.isnan(yf))].flatten()
+    assert len(xf) == len(yf)
+    points = np.empty((2, len(xf)))
+    # points are read as (lat, lon), so reverse order
+    points[0] = yf
+    points[1] = xf
+    return points

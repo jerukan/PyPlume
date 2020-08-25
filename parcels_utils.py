@@ -1,8 +1,39 @@
 """
 A collection of methods wrapping OceanParcels functionalities.
 """
-import xarray as xr
+import numpy as np
 from parcels import FieldSet
+import xarray as xr
+
+
+def arrays_to_particlefilenc(time, lat, lon):
+    """
+    Generates an xarray dataset in the same format ParticleFile saves as
+    given several lists.
+
+    Does not include data variable z or metadata.
+
+    Args:
+        times (np.ndarray[np.datetime64]): 2d array
+        lats (np.ndarray[float]): 2d array
+        lons (np.ndarray[float]): 2d array
+    """
+    lat = np.array(lat, dtype=np.float32)
+    lon = np.array(lon, dtype=np.float32)
+    trajectory = np.repeat(
+        np.arange(time.shape[0])[np.newaxis, :].T,
+        time.shape[1],
+        axis=1
+    )
+    ds = xr.Dataset(
+        {
+            "trajectory": (["traj", "obs"], trajectory),
+            "time": (["traj", "obs"], time),
+            "lat": (["traj", "obs"], lat),
+            "lon": (["traj", "obs"], lon),
+        }
+    )
+    return ds
 
 
 def xr_dataset_to_fieldset(xrds, copy=True, mesh="spherical"):

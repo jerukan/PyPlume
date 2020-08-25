@@ -28,29 +28,58 @@ def get_carree_gl(ax):
     return gl
 
 
-def plot_trajectories(paths, domain, legend=True, scatter=True):
+def plot_trajectories(paths, domain=None, legend=True, scatter=True):
     """
     Takes in Parcels ParticleFile netcdf file paths and creates plots of the
     trajectories on the same plot.
+
+    The automatic domain finder will probably break if points go from like
+    178 to -178 longitude or something.
 
     Args:
         paths (array-like): array of paths to the netcdfs
         domain (dict)
     """
+    # automatically generate domain if none is provided
+    if domain is None:
+        padding = 0.005
+        lat_min = 90
+        lat_max = -90
+        lon_min = 180
+        lon_max = -180
+        for p in paths:
+            with xr.open_dataset(p) as p_ds:
+                for i in range(p_ds.dims["traj"]):
+                    lat_rng = (p_ds["lat"][i].min(), p_ds["lat"][i].max())
+                    if lat_rng[0] < lat_min:
+                        lat_min = lat_rng[0]
+                    if lat_rng[1] > lat_max:
+                        lat_max = lat_rng[1]
+                    lon_rng = (p_ds["lon"][i].min(), p_ds["lon"][i].max())
+                    if lon_rng[0] < lon_min:
+                        lon_min = lon_rng[0]
+                    if lon_rng[1] > lon_max:
+                        lon_max = lon_rng[1]
+        domain = dict(
+            S=lat_min - padding,
+            N=lat_max + padding,
+            W=lon_min - padding,
+            E=lon_max + padding,
+        )
     ax = get_carree_axis(domain)
     gl = get_carree_gl(ax)
 
     for p in paths:
-        p_ds = xr.open_dataset(p)
-        # now I'm not entirely sure how matplotlib deals with
-        # nan values, so if any show up, damnit
-        for i in range(len(p_ds["lat"])):
-            name = p.split("/")[-1].split(".")[0]
-            if scatter:
-                ax.scatter(p_ds["lon"][i], p_ds["lat"][i])
-            ax.plot(p_ds["lon"][i], p_ds["lat"][i], label=name)
-            # plot starting point as a black X
-            ax.plot(p_ds["lon"][i][0], p_ds["lat"][i][0], 'kx')
+        with xr.open_dataset(p) as p_ds:
+            # now I'm not entirely sure how matplotlib deals with
+            # nan values, so if any show up, damnit
+            for i in range(p_ds.dims["traj"]):
+                name = p.split("/")[-1].split(".")[0]
+                if scatter:
+                    ax.scatter(p_ds["lon"][i], p_ds["lat"][i])
+                ax.plot(p_ds["lon"][i], p_ds["lat"][i], label=name)
+                # plot starting point as a black X
+                ax.plot(p_ds["lon"][i][0], p_ds["lat"][i][0], 'kx')
     if legend:
         ax.legend()
     plt.title("Particle trajectories")

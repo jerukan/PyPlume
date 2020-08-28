@@ -28,7 +28,7 @@ def get_carree_gl(ax):
     return gl
 
 
-def plot_trajectories(paths, domain=None, legend=True, scatter=True):
+def plot_trajectories(paths, domain=None, legend=True, scatter=True, savefile=None):
     """
     Takes in Parcels ParticleFile netcdf file paths and creates plots of the
     trajectories on the same plot.
@@ -81,9 +81,15 @@ def plot_trajectories(paths, domain=None, legend=True, scatter=True):
                 # plot starting point as a black X
                 ax.plot(p_ds["lon"][i][0], p_ds["lat"][i][0], 'kx')
     if legend:
-        ax.legend()
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05))
     plt.title("Particle trajectories")
-    plt.show()
+
+    if savefile is None:
+        plt.show()
+    else:
+        plt.savefig(savefile, bbox_inches="tight")
+        print(f"Plot saved to {savefile}", file=sys.stderr)
+        plt.close()
 
 
 def plot_particles_ps(fs, lats, lons):

@@ -4,8 +4,8 @@
 # ignore the folders containing simulation snapshots
 snapshots/
 
-# ignore folder containing MATLAB data
-mat/
+# ignore MATLAB saved data
+*.mat
 
 # ignore all netcdf files
 *.nc

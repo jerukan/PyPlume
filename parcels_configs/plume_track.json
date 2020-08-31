@@ -7,7 +7,7 @@
 		"repeat_dt": -1,
 		"particles_per_dt": -1,
 		"max_variation": 0,
-		"spawn_points": "mat/pts_20200810_0030.mat",
+		"spawn_points": "matlab/pts_20200810_0030.mat",
 		"random_spawn": false,
 		"simulation_dt": 300,
 		"snapshot_interval": 3600,

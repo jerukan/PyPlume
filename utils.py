@@ -20,6 +20,12 @@ filename_dict = {
     DATA_1KM: "west_coast_1km_hourly"
 }
 
+PARCELS_CONFIGS_DIR = Path("parcels_configs")
+CURRENT_NETCDF_DIR = Path("current_netcdfs")
+PARTICLE_NETCDF_DIR = Path("particledata")
+MATLAB_DIR = Path("matlab")
+PICUTRE_DIR = Path("snapshots")
+
 
 def euc_dist(vec1, vec2):
     """

@@ -11,10 +11,10 @@ datatype='RTV'
 %datatype='LTA'
 
 %% uncomment to display info on all netcdf variables
-%ncdisp(url)
+ncdisp(url)
 
 %% uncomment to display info on specific netcdf variable
-%ncdisp(url,'time')
+ncdisp(url,'time')
 
 % retrieve lat and lon variables
 lat=ncread(url,'lat');

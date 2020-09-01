@@ -100,3 +100,8 @@ def get_file_info(path, res, name=None, parcels_cfg=None):
         },  # mainly for use with showing a FieldSet and restricting domain
         cfg=parcels_cfg
     )
+
+
+def reload_file_fs(file_info):
+    file_info["fs"] = xr_dataset_to_fieldset(file_info["xrds"])
+    file_info["fs_flat"] = xr_dataset_to_fieldset(file_info["xrds"], mesh="flat")

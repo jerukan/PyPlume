@@ -108,7 +108,7 @@ def plot_particles_ps(fs, lats, lons):
     pset.show()
 
 
-def plot_particles(lats, lons, ages, domain, land=True, show=True, savefile=None, part_size=4, titlestr=None):
+def plot_particles(lats, lons, ages, domain, land=True, savefile=None, part_size=4, titlestr=None):
     ax = get_carree_axis(domain, land)
     gl = get_carree_gl(ax)
 
@@ -120,17 +120,13 @@ def plot_particles(lats, lons, ages, domain, land=True, show=True, savefile=None
 
     plt.title(titlestr)
 
+    plt.draw()
+
     # savefig() must happen before show()
     if savefile is not None:
         plt.savefig(savefile)
         print(f"Plot saved to {savefile}", file=sys.stderr)
-        if show:
-            plt.show()
         plt.close()
-        return
-
-    if show:
-        plt.show()
 
 
 def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefile=None, vmax=None, field_vmax=None, part_size=4):
@@ -159,7 +155,7 @@ def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefi
     ages /= 86400  # seconds in a day
 
     if field is None:
-        plot_particles(lats, lons, ages, domain, land=land, show=False, part_size=part_size)
+        plot_particles(lats, lons, ages, domain, land=land, part_size=part_size)
         time_str = plotting.parsetimestr(ps.fieldset.U.grid.time_origin, show_time)
         plt.title(f"Particle ages (days){time_str}")
     else:
@@ -172,9 +168,38 @@ def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefi
                                            titlestr="Particles and ")
         ax.scatter(lons, lats, s=part_size)
 
-    if savefile is None:
-        plt.show()
-    else:
+    plt.draw()
+
+    if savefile is not None:
         plt.savefig(savefile)
+        print(f"Plot saved to {savefile}", file=sys.stderr)
+        plt.close()
+
+
+def plot_particles_nc(nc, domain, label=None, show_time=None, land=True, savefile=None, vmax=None, field_vmax=None, part_size=4):
+    if "obs" in nc.dims:
+        raise Exception("netcdf file must have a single obs selected")
+    ext = [domain["W"], domain["E"], domain["S"], domain["N"]]
+    p_size = nc.dims["traj"]
+    lats = nc["lat"]
+    lons = nc["lon"]
+    ages = nc["lifetime"]
+
+    ages /= 86400  # seconds in a day
+
+    ax = get_carree_axis(domain, land)
+    gl = get_carree_gl(ax)
+
+    plt.scatter(lons, lats, s=part_size, label=label)
+
+    time = nc["time"][0].values
+    plt.title(f"Particle ages (days) {time}")
+
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05))
+
+    plt.draw()
+
+    if savefile is not None:
+        plt.savefig(savefile, bbox_inches="tight")
         print(f"Plot saved to {savefile}", file=sys.stderr)
         plt.close()

@@ -176,7 +176,7 @@ def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefi
         plt.close()
 
 
-def plot_particles_nc(nc, domain, label=None, show_time=None, land=True, savefile=None, vmax=None, field_vmax=None, part_size=4):
+def plot_particles_nc(nc, domain, time=None, label=None, show_time=None, land=True, savefile=None, vmax=None, field_vmax=None, part_size=4):
     if "obs" in nc.dims:
         raise Exception("netcdf file must have a single obs selected")
     ext = [domain["W"], domain["E"], domain["S"], domain["N"]]
@@ -192,7 +192,8 @@ def plot_particles_nc(nc, domain, label=None, show_time=None, land=True, savefil
 
     plt.scatter(lons, lats, s=part_size, label=label)
 
-    time = nc["time"][0].values
+    if time is None:
+        time = nc["time"][0].values
     plt.title(f"Particle ages (days) {time}")
 
     ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05))

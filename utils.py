@@ -55,15 +55,25 @@ def haversine(lat1, lat2, lon1, lon2):
     return d * 1000  # meters
 
 
-def create_path(path_str):
+def create_path(path_str, iterate=False):
     """
+    Returns a Path to a directory. A new directory is created if the
+    given path doesn't exist.
+
     Args:
         path_str (str)
+        iterate (bool): if true, create new folders of the same path with
+            numbers appended to the end if that path already exists.
 
     Returns:
         Path
     """
     path = Path(path_str)
+    path_base = str(path)
+    num = 0
+    while iterate and path.is_dir():
+        path = Path(path_base + f"-{num}")
+        num += 1
     path.mkdir(parents=True, exist_ok=True)
     return path
 

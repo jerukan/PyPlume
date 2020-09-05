@@ -3,11 +3,11 @@
 	"netcdf_path": "current_netcdfs/west_coast_1km_hourly/tj_plume_interped.nc",
 	"resolution": 1,
 	"parcels_config": {
-		"time_range": ["2020-08-01T01:00", "2020-08-09T01:00"],
+		"time_range": ["2020-08-09T01:00", "2020-08-14T13:00"],
 		"repeat_dt": -1,
 		"particles_per_dt": -1,
 		"max_variation": 0,
-		"spawn_points": "matlab/pts_20200810_0030.mat",
+		"spawn_points": "matlab/pts_20200810_0130.mat",
 		"random_spawn": false,
 		"simulation_dt": 300,
 		"snapshot_interval": 3600,

@@ -36,7 +36,7 @@ def arrays_to_particlefilenc(time, lat, lon):
     return ds
 
 
-def xr_dataset_to_fieldset(xrds, copy=True, mesh="spherical"):
+def xr_dataset_to_fieldset(xrds, copy=True, mesh="spherical", u_key="u", v_key="v"):
     """
     Creates a parcels FieldSet with an ocean current xarray Dataset.
     copy is true by default since Parcels has a habit of turning nan values into 0s.
@@ -52,7 +52,7 @@ def xr_dataset_to_fieldset(xrds, copy=True, mesh="spherical"):
         ds = xrds
     return FieldSet.from_xarray_dataset(
             ds,
-            dict(U="u", V="v"),
+            dict(U=u_key, V=v_key),
             dict(lat="lat", lon="lon", time="time"),
             mesh=mesh
         )

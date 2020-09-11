@@ -20,6 +20,14 @@ More details are found in the notebooks, but the overall way to run these notebo
 2. Choose config files in the `parcels_regions` notebook for the OceanParcels simulation. This notebook outputs a new netcdf file with particle simulation data and creates a sequence of snapshots of particle movement to stitch together into a gif.
 	- the notebook uses [ImageMagick](https://imagemagick.org/index.php) to stitch images into a gif
 
-### Step 4?: trajectory analysis
+### Step 4: analysis
 
-1. Choose the correct files in `trajectory_analyze` and run it to find out when and where particles "beached". Works only with the coastline near the Tijuana River.
+`trajectory_analyze`: Choose the correct files in `trajectory_analyze` and run it to find out when and where particles "beached". Works only with the coastline near the Tijuana River.
+
+`trajectory_compare`: compares particlefile outputs visually with gif generation and trajectory plotting
+
+`fieldset_compare`: compares two netcdf files containing ocean current data (requires other data from .mat files, which `plume_mat_fieldset_loader` uses to convert them into netcdf files)
+
+### notes
+
+any other dependencies (mostly extra netcdf and .mat files) can be downloaded from the Microsoft Teams Trajectories topic files (`parcels_westcoast`).

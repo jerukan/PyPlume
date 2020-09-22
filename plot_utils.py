@@ -108,7 +108,7 @@ def plot_particles_ps(fs, lats, lons):
     pset.show()
 
 
-def plot_particles(lats, lons, ages, domain, land=True, savefile=None, part_size=4, titlestr=None):
+def plot_particles(lats, lons, ages, domain, land=True, savefile=None, vmax=None, part_size=4, titlestr=None):
     ax = get_carree_axis(domain, land)
     gl = get_carree_gl(ax)
 
@@ -154,7 +154,7 @@ def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefi
     ages /= 86400  # seconds in a day
 
     if field is None:
-        plot_particles(lats, lons, ages, domain, land=land, part_size=part_size)
+        plot_particles(lats, lons, ages, domain, land=land, vmax=vmax, part_size=part_size)
         time_str = plotting.parsetimestr(ps.fieldset.U.grid.time_origin, show_time)
         plt.title(f"Particle ages (days){time_str}")
     else:

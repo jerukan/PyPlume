@@ -7,11 +7,11 @@
 		"repeat_dt": -1,
 		"particles_per_dt": -1,
 		"max_variation": 0,
-		"spawn_points": "matlab/pts_20200810_0130.mat",
+		"spawn_points": "matlab/support_data/TrackerOutput/sort/pts_20200810_0130.mat",
 		"random_spawn": false,
 		"simulation_dt": 300,
 		"snapshot_interval": 3600,
-		"save_snapshots": false,
+		"save_snapshots": true,
 		"shown_domain": {
 			"S": 32.41,
 		    "N": 32.7,

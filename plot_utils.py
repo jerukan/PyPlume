@@ -28,6 +28,33 @@ def get_carree_gl(ax):
     return gl
 
 
+def generate_domain(paths, padding=0.005):
+    padding = 0.005
+    lat_min = 90
+    lat_max = -90
+    lon_min = 180
+    lon_max = -180
+    for p in paths:
+        with xr.open_dataset(p) as p_ds:
+            for i in range(p_ds.dims["traj"]):
+                lat_rng = (p_ds["lat"][i].min(), p_ds["lat"][i].max())
+                if lat_rng[0] < lat_min:
+                    lat_min = lat_rng[0]
+                if lat_rng[1] > lat_max:
+                    lat_max = lat_rng[1]
+                lon_rng = (p_ds["lon"][i].min(), p_ds["lon"][i].max())
+                if lon_rng[0] < lon_min:
+                    lon_min = lon_rng[0]
+                if lon_rng[1] > lon_max:
+                    lon_max = lon_rng[1]
+    return dict(
+        S=lat_min - padding,
+        N=lat_max + padding,
+        W=lon_min - padding,
+        E=lon_max + padding,
+    )
+
+
 def plot_trajectories(paths, domain=None, legend=True, scatter=True, savefile=None, part_size=4):
     """
     Takes in Parcels ParticleFile netcdf file paths and creates plots of the
@@ -42,34 +69,12 @@ def plot_trajectories(paths, domain=None, legend=True, scatter=True, savefile=No
     """
     # automatically generate domain if none is provided
     if domain is None:
-        padding = 0.005
-        lat_min = 90
-        lat_max = -90
-        lon_min = 180
-        lon_max = -180
-        for p in paths:
-            with xr.open_dataset(p) as p_ds:
-                for i in range(p_ds.dims["traj"]):
-                    lat_rng = (p_ds["lat"][i].min(), p_ds["lat"][i].max())
-                    if lat_rng[0] < lat_min:
-                        lat_min = lat_rng[0]
-                    if lat_rng[1] > lat_max:
-                        lat_max = lat_rng[1]
-                    lon_rng = (p_ds["lon"][i].min(), p_ds["lon"][i].max())
-                    if lon_rng[0] < lon_min:
-                        lon_min = lon_rng[0]
-                    if lon_rng[1] > lon_max:
-                        lon_max = lon_rng[1]
-        domain = dict(
-            S=lat_min - padding,
-            N=lat_max + padding,
-            W=lon_min - padding,
-            E=lon_max + padding,
-        )
+        domain = generate_domain(paths)
     ax = get_carree_axis(domain)
     gl = get_carree_gl(ax)
 
     for p in paths:
+        p = str(p)
         with xr.open_dataset(p) as p_ds:
             # now I'm not entirely sure how matplotlib deals with
             # nan values, so if any show up, damnit

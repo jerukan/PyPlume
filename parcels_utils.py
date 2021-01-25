@@ -3,10 +3,11 @@ A collection of methods wrapping OceanParcels functionalities.
 """
 import numpy as np
 from parcels import FieldSet
+import pandas as pd
 import xarray as xr
 
 
-def arrays_to_particlefilenc(time, lat, lon):
+def arrays_to_particleds(time, lat, lon):
     """
     Generates an xarray dataset in the same format ParticleFile saves as
     given several lists.
@@ -17,6 +18,9 @@ def arrays_to_particlefilenc(time, lat, lon):
         times (np.ndarray[np.datetime64]): 2d array
         lats (np.ndarray[float]): 2d array
         lons (np.ndarray[float]): 2d array
+        
+    Returns:
+        xr.Dataset
     """
     lat = np.array(lat, dtype=np.float32)
     lon = np.array(lon, dtype=np.float32)
@@ -35,6 +39,33 @@ def arrays_to_particlefilenc(time, lat, lon):
     )
     return ds
 
+
+def buoycsv_to_particleds(csv_path):
+    """
+    Generates an xarray dataset in the same format ParticleFile saves as
+    given a path to a csv file containing wave buoy data.
+
+    Does not include data variable z or metadata.
+
+    Args:
+        path (path-like): path to csv file
+    
+    Returns:
+        xr.Dataset
+    """
+    data = pd.read_csv(csv_path)
+    # just in case for some reason it isn't already sorted by time
+    data = data.sort_values("timestamp")
+    times = np.empty((1, data.shape[0]), dtype="datetime64[s]")
+    lats = np.zeros((1, data.shape[0]), dtype=np.float32)
+    lons = np.zeros((1, data.shape[0]), dtype=np.float32)
+    for i in range(data.shape[0]):
+        row = data.iloc[i]
+        times[0, i] = np.datetime64(int(row["timestamp"]), "s")
+        lats[0, i] = row["latitude"]
+        lons[0, i] = row["longitude"]
+    return arrays_to_particleds(times, lats, lons)
+    
 
 def xr_dataset_to_fieldset(xrds, copy=True, mesh="spherical", u_key="u", v_key="v"):
     """

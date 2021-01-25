@@ -23,6 +23,7 @@ filename_dict = {
 PARCELS_CONFIGS_DIR = Path("parcels_configs")
 CURRENT_NETCDF_DIR = Path("current_netcdfs")
 PARTICLE_NETCDF_DIR = Path("particledata")
+WAVEBUOY_DATA_DIR = Path("buoy_data")
 MATLAB_DIR = Path("matlab")
 PICUTRE_DIR = Path("snapshots")
 
@@ -50,7 +51,7 @@ def haversine(lat1, lat2, lon1, lon2):
     dLat = lat2 * math.pi / 180 - lat1 * math.pi / 180
     dLon = lon2 * math.pi / 180 - lon1 * math.pi / 180
     a = math.sin(dLat / 2) * math.sin(dLat / 2) + math.cos(lat1 * math.pi / 180) * math.cos(lat2 * math.pi / 180) * math.sin(dLon / 2) * math.sin(dLon / 2)
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    c = 2 * math.atan2(a ** (1 / 2), (1 - a) ** (1 / 2))
     d = R * c
     return d * 1000  # meters
 

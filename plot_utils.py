@@ -172,6 +172,8 @@ def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefi
                                            titlestr="Particles and ")
         ax.scatter(lons, lats, s=part_size)
 
+    # plt.tight_layout()
+    plt.autoscale()
     plt.draw()
 
     if savefile is not None:

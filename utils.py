@@ -189,9 +189,17 @@ def expand_coord_rng(coord_rng, ref_coords):
         (float1, float2): where float1 <= coord_rng[0] and
             float2 >= coord_rng[-1]
     """
-    index_min = np.where(ref_coords <= coord_rng[0])[0][-1]
-    index_max = np.where(ref_coords >= coord_rng[-1])[0][0]
-    return ref_coords[index_min], ref_coords[index_max]
+    if ref_coords[0] > coord_rng[0]:
+        start = coord_rng[0]
+    else:
+        index_min = np.where(ref_coords <= coord_rng[0])[0][-1]
+        start = ref_coords[index_min]
+    if ref_coords[-1] < coord_rng[1]:
+        end = coord_rng[1]
+    else:
+        index_max = np.where(ref_coords >= coord_rng[-1])[0][0]
+        end = ref_coords[index_max]
+    return start, end
 
 
 def load_pts_mat(path, lat_ind, lon_ind):

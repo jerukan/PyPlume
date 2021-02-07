@@ -1,6 +1,8 @@
 """
 A collection of methods wrapping OceanParcels functionalities.
 """
+from pathlib import Path
+
 import numpy as np
 from parcels import FieldSet
 import pandas as pd
@@ -92,6 +94,7 @@ def xr_dataset_to_fieldset(xrds, copy=True, mesh="spherical", u_key="u", v_key="
 def get_file_info(path, res, name=None, parcels_cfg=None):
     """
     Reads from a netcdf file containing ocean current data.
+    Use HFRGrid instead of this.
 
     Args:
         name (str): whatever name the data should be labeled as.
@@ -136,3 +139,62 @@ def get_file_info(path, res, name=None, parcels_cfg=None):
 def reload_file_fs(file_info):
     file_info["fs"] = xr_dataset_to_fieldset(file_info["xrds"])
     file_info["fs_flat"] = xr_dataset_to_fieldset(file_info["xrds"], mesh="flat")
+
+
+class HFRGrid:
+    """
+    Wraps information relating to ocean current data given some dataset.
+    Replaces get_file_info
+    """
+
+    def __init__(self, dataset, resolution):
+        """
+        Reads from a netcdf file containing ocean current data.
+
+        Args:
+            dataset (path-like or xr.Dataset): represents the netcdf ocean current data.
+            resolution (int): resolution of the data (500m, 1km, 2km, or 6km)
+        """
+        self.resolution = resolution
+        if isinstance(dataset, (Path, str)):
+            self.path = dataset
+            with xr.open_dataset(dataset) as ds:
+                self.xrds = ds
+        elif isinstance(dataset, xr.Dataset):
+            self.path = None
+            self.xrds = dataset
+        else:
+            raise TypeError(f"dataset is not a path or xarray dataset")
+        # spherical mesh
+        self.fieldset = xr_dataset_to_fieldset(self.xrds)
+        self.fieldset.check_complete()
+        # flat mesh
+        self.fieldset_flat = xr_dataset_to_fieldset(self.xrds, mesh="flat")
+        self.fieldset_flat.check_complete()
+
+    def reload_fieldsets(self):
+        """
+        Updates the parcels fieldset if the ocean current dataset has been changed.
+        """
+        self.fieldset = xr_dataset_to_fieldset(self.xrds)
+        self.fieldset_flat = xr_dataset_to_fieldset(self.xrds, mesh="flat")
+
+    def get_coords(self):
+        """
+        Returns:
+            (times, latitudes, longitudes)
+        """
+        return self.xrds["time"].values, self.xrds["lat"].values, self.xrds["lon"].values
+
+    def get_domain(self):
+        """
+        Returns:
+            dict
+        """
+        _, lats, lons = self.get_coords()
+        return {
+            "S": lats.min(),
+            "N": lats.max(),
+            "W": lons.min(),
+            "E": lons.max(),
+        }  # mainly for use with showing a FieldSet and restricting domain

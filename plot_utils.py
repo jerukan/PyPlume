@@ -29,6 +29,11 @@ def get_carree_gl(ax):
 
 
 def generate_domain(paths, padding=0.005):
+    """
+    Given paths to particle netcdf files, generate a domain that encompasses every position
+    with some padding.
+    Will probably break if points go from like 178 to -178 longitude or something.
+    """
     padding = 0.005
     lat_min = 90
     lat_max = -90
@@ -55,13 +60,21 @@ def generate_domain(paths, padding=0.005):
     )
 
 
+def draw_plt(savefile=None, fit=True):
+    if fit:
+        plt.autoscale()
+    plt.draw()
+
+    if savefile is not None:
+        plt.savefig(savefile)
+        print(f"Plot saved to {savefile}", file=sys.stderr)
+        plt.close()
+
+
 def plot_trajectories(paths, domain=None, legend=True, scatter=True, savefile=None, part_size=4):
     """
     Takes in Parcels ParticleFile netcdf file paths and creates plots of the
     trajectories on the same plot.
-
-    The automatic domain finder will probably break if points go from like
-    178 to -178 longitude or something.
 
     Args:
         paths (array-like): array of paths to the netcdfs
@@ -125,12 +138,7 @@ def plot_particles(lats, lons, ages, domain, land=True, savefile=None, vmax=None
 
     plt.title(titlestr)
 
-    plt.draw()
-
-    if savefile is not None:
-        plt.savefig(savefile)
-        print(f"Plot saved to {savefile}", file=sys.stderr)
-        plt.close()
+    draw_plt(savefile)
 
 
 def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefile=None, vmax=None, field_vmax=None, part_size=4):
@@ -172,17 +180,27 @@ def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefi
                                            titlestr="Particles and ")
         ax.scatter(lons, lats, s=part_size)
 
-    # plt.tight_layout()
-    plt.autoscale()
-    plt.draw()
+    draw_plt(savefile)
 
-    if savefile is not None:
-        plt.savefig(savefile)
-        print(f"Plot saved to {savefile}", file=sys.stderr)
-        plt.close()
+
+def plot_points_fieldset(lats, lons, show_time, hfrgrid, domain=None, line=False, savefile=None, part_size=4):
+    """
+    Plot a bunch of points on top of a fieldset vector field. Option for plotting a line.
+    """
+    if domain is None:
+        domain = hfrgrid.get_domain()
+    _, fig, ax, _ = plotting.plotfield(field=hfrgrid.fieldset.UV, show_time=show_time,
+                                        domain=domain, land=True)
+    ax.scatter(lons, lats, s=part_size)
+    if line:
+        ax.plot(lons, lats)
+    draw_plt(savefile)
 
 
 def plot_particles_nc(nc, domain, time=None, label=None, show_time=None, land=True, savefile=None, vmax=None, field_vmax=None, part_size=4):
+    """
+    Plots a bunch of particles to a map given the dataset is that single timestep of particles.
+    """
     if "obs" in nc.dims:
         raise Exception("netcdf file must have a single obs selected")
     ext = [domain["W"], domain["E"], domain["S"], domain["N"]]

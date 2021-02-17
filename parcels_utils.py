@@ -4,12 +4,13 @@ A collection of methods wrapping OceanParcels functionalities.
 from pathlib import Path
 
 import numpy as np
-from parcels import FieldSet
 import pandas as pd
+from parcels import FieldSet
+import scipy.spatial
 import xarray as xr
 
 
-def arrays_to_particleds(time, lat, lon):
+def arrays_to_particleds(time, lat, lon) -> xr.Dataset:
     """
     Generates an xarray dataset in the same format ParticleFile saves as
     given several lists.
@@ -42,7 +43,7 @@ def arrays_to_particleds(time, lat, lon):
     return ds
 
 
-def buoycsv_to_particleds(csv_path):
+def buoycsv_to_particleds(csv_path) -> xr.Dataset:
     """
     Generates an xarray dataset in the same format ParticleFile saves as
     given a path to a csv file containing wave buoy data.
@@ -69,7 +70,7 @@ def buoycsv_to_particleds(csv_path):
     return arrays_to_particleds(times, lats, lons)
     
 
-def xr_dataset_to_fieldset(xrds, copy=True, mesh="spherical", u_key="u", v_key="v"):
+def xr_dataset_to_fieldset(xrds, copy=True, mesh="spherical", u_key="u", v_key="v") -> FieldSet:
     """
     Creates a parcels FieldSet with an ocean current xarray Dataset.
     copy is true by default since Parcels has a habit of turning nan values into 0s.
@@ -83,15 +84,17 @@ def xr_dataset_to_fieldset(xrds, copy=True, mesh="spherical", u_key="u", v_key="
         ds = xrds.copy(deep=True)
     else:
         ds = xrds
-    return FieldSet.from_xarray_dataset(
+    fieldset = FieldSet.from_xarray_dataset(
             ds,
             dict(U=u_key, V=v_key),
             dict(lat="lat", lon="lon", time="time"),
             mesh=mesh
         )
+    fieldset.check_complete()
+    return fieldset
 
 
-def get_file_info(path, res, name=None, parcels_cfg=None):
+def get_file_info(path, res, name=None, parcels_cfg=None) -> dict:
     """
     Reads from a netcdf file containing ocean current data.
     Use HFRGrid instead of this.
@@ -144,10 +147,12 @@ def reload_file_fs(file_info):
 class HFRGrid:
     """
     Wraps information relating to ocean current data given some dataset.
-    Replaces get_file_info
+    Replaces get_file_info.
+
+    TODO generate the mask of where data should be available
     """
 
-    def __init__(self, dataset, resolution):
+    def __init__(self, dataset, resolution, init_fs=True):
         """
         Reads from a netcdf file containing ocean current data.
 
@@ -165,36 +170,68 @@ class HFRGrid:
             self.xrds = dataset
         else:
             raise TypeError(f"dataset is not a path or xarray dataset")
+        self.times = self.xrds["time"].values
+        self.lats = self.xrds["lat"].values
+        self.lons = self.xrds["lon"].values
+        self.timeKDTree = scipy.spatial.cKDTree(np.array([self.times]).T)
+        self.latKDTree = scipy.spatial.cKDTree(np.array([self.lats]).T)
+        self.lonKDTree = scipy.spatial.cKDTree(np.array([self.lons]).T)
+        if init_fs:
+            self.prep_fieldsets()
+        else:
+            self.fieldset = None
+            self.fieldset_flat = None
+
+    def prep_fieldsets(self):
         # spherical mesh
         self.fieldset = xr_dataset_to_fieldset(self.xrds)
-        self.fieldset.check_complete()
         # flat mesh
         self.fieldset_flat = xr_dataset_to_fieldset(self.xrds, mesh="flat")
-        self.fieldset_flat.check_complete()
 
-    def reload_fieldsets(self):
-        """
-        Updates the parcels fieldset if the ocean current dataset has been changed.
-        """
-        self.fieldset = xr_dataset_to_fieldset(self.xrds)
-        self.fieldset_flat = xr_dataset_to_fieldset(self.xrds, mesh="flat")
-
-    def get_coords(self):
+    def get_coords(self) -> tuple:
         """
         Returns:
             (times, latitudes, longitudes)
         """
-        return self.xrds["time"].values, self.xrds["lat"].values, self.xrds["lon"].values
+        return self.times, self.lats, self.lons
 
-    def get_domain(self):
+    def get_domain(self) -> dict:
         """
         Returns:
             dict
         """
         _, lats, lons = self.get_coords()
         return {
-            "S": lats.min(),
-            "N": lats.max(),
-            "W": lons.min(),
-            "E": lons.max(),
+            "S": lats[0],
+            "N": lats[-1],
+            "W": lons[0],
+            "E": lons[-1],
         }  # mainly for use with showing a FieldSet and restricting domain
+
+    def get_closest_index(self, t, lat, lon):
+        """
+        Args:
+            t (np.datetime64): time
+            lat (float)
+            lon (float)
+
+        Returns:
+            (time index, lat index, lon index)
+        """
+        return (self.timeKDTree.query([t])[1],
+            self.latKDTree.query([lat])[1],
+            self.lonKDTree.query([lon])[1])
+
+    def get_closest_current(self, t, lat, lon):
+        """
+        Args:
+            t (np.datetime64): time
+            lat (float)
+            lon (float)
+
+        returns:
+            (u component, v component)
+        """
+        t_idx, lat_idx, lon_idx = self.get_closest_index(t, lat, lon)
+        return (self.xrds["u"].isel(time=t_idx, lat=lat_idx, lon=lon_idx).values,
+            self.xrds["v"].isel(time=t_idx, lat=lat_idx, lon=lon_idx).values)

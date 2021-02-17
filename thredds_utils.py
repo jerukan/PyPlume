@@ -52,7 +52,8 @@ def get_time_slice(time_range):
         return slice(np.datetime64(time_range[0]), np.datetime64(time_range[1]), time_range[2])
 
 
-def get_thredds_dataset(name, resolution, time_range, lat_range, lon_range, expand_coords=False):
+def get_thredds_dataset(name, resolution, time_range, lat_range, lon_range,
+        expand_coords=False) -> xr.Dataset:
     """
     Params:
         name (str)
@@ -60,6 +61,7 @@ def get_thredds_dataset(name, resolution, time_range, lat_range, lon_range, expa
         time_range (np.datetime64, np.datetime64[, int]): (start, stop[, interval])
         lat_range (float, float)
         lon_range (float, float)
+        expand_coords (bool)
 
     Returns:
         xr.Dataset

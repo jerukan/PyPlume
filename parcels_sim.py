@@ -79,6 +79,8 @@ def parse_time_range(time_range, time_list):
     """
     if time_range[0] == "START":
         t_start = time_list[0]
+    elif isinstance(time_range[0], np.datetime64):
+        t_start = time_range[0]
     else:
         try:
             t_start = int(time_range[0])
@@ -87,6 +89,8 @@ def parse_time_range(time_range, time_list):
 
     if time_range[1] == "END":
         t_end = time_list[-1]
+    elif isinstance(time_range[1], np.datetime64):
+        t_end = time_range[1]
     else:
         try:
             t_end = int(time_range[1])
@@ -94,7 +98,7 @@ def parse_time_range(time_range, time_list):
             t_end = np.datetime64(time_range[1])
             
     if isinstance(t_start, int) and isinstance(t_end, int):
-        raise TypeError("Must have at least one date in the time range.")
+        raise TypeError("Must have at least one date in the time range")
     if isinstance(t_start, int):
         t_start = t_end - np.timedelta64(t_start)
     if isinstance(t_end, int):
@@ -111,9 +115,12 @@ def prep_simulation(name, hfrgrid, cfg):
     times, _, _ = hfrgrid.get_coords()
     t_start, t_end = parse_time_range(cfg["time_range"], times)
     t_start = (t_start - times[0]) / np.timedelta64(1, "s")
-    t_end = (t_end.time_to - times[0]) / np.timedelta64(1, "s")
+    t_end = (t_end - times[0]) / np.timedelta64(1, "s")
 
-    spawn_points = utils.load_pts_mat(cfg["spawn_points"], "yf", "xf").T
+    if isinstance(cfg["spawn_points"], (str, Path)):
+        spawn_points = utils.load_pts_mat(cfg["spawn_points"], "yf", "xf").T
+    else:
+        spawn_points = np.array(cfg["spawn_points"])
 
     if cfg["repeat_dt"] <= 0:
         repetitions = 1
@@ -130,8 +137,8 @@ def prep_simulation(name, hfrgrid, cfg):
         time_arr[start:end] = t_start + cfg["repeat_dt"] * i
 
     # randomly select spawn points from the given config
-    sp_lat = spawn_points.T[0][np.random.randint(0, len(spawn_points), total)]
-    sp_lon = spawn_points.T[1][np.random.randint(0, len(spawn_points), total)]
+    sp_lat = spawn_points.T[0, np.random.randint(0, len(spawn_points), total)]
+    sp_lon = spawn_points.T[1, np.random.randint(0, len(spawn_points), total)]
     # vary spawn locations
     p_lats = utils.add_noise(sp_lat, cfg["max_variation"])
     p_lons = utils.add_noise(sp_lon, cfg["max_variation"])
@@ -172,13 +179,13 @@ def simulation(name, hfrgrid, cfg):
         total_iterations = snap_num + 3
     days = np.timedelta64(times[-1] - times[0], "s") / np.timedelta64(1, "D")
     def save_to(num, zeros=3):
-        # return str(snap_path / f"snap{str(num).zfill(zeros)}.png")
-        return str(snap_path / f"snap{num}.png")
+        return str(snap_path / f"snap{str(num).zfill(zeros)}.png")
+        # return str(snap_path / f"snap{num}.png")
     def simulation_loop(iteration, interval):
         exec_pset(pset, pfile, interval, cfg["simulation_dt"])
-        save_pset_plot(pset, save_to(iteration), days, hfrgrid.get_domain(), field="vector")
+        save_pset_plot(pset, save_to(iteration), days, cfg["shown_domain"], field="vector")
     # save initial plot
-    save_pset_plot(pset, save_to(0), days, hfrgrid.get_domain(), field="vector")
+    save_pset_plot(pset, save_to(0), days, cfg["shown_domain"], field="vector")
     for i in range(1, snap_num + 1):
         simulation_loop(i, cfg["snapshot_interval"])
 
@@ -189,12 +196,12 @@ def simulation(name, hfrgrid, cfg):
     pfile.export()
     pfile.close()
 
-    return pfile
+    return pfile_path, snap_path
 
 
 def generate_sim_gif(name, pic_path, gif_path, gif_delay):
     utils.create_gif(
         gif_delay,
         os.path.join(pic_path, "*.png"),
-        os.path.join(gif_path, f"/partsim_{name}.gif")
+        gif_path
     )

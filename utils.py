@@ -179,8 +179,9 @@ def create_gif(delay, images_path, out_path):
 
 def expand_coord_rng(coord_rng, ref_coords):
     """
-    Takes a range of two numbers and expands the range to the
-    next biggest coordinates defined in ref_coords.
+    Takes a range of two numbers and expands the range to the next biggest coordinates defined
+    in ref_coords. In effect, it's like the lower value is floored and the upper value
+    is ceiled.
 
     Args:
         ref_coords: must be sorted ascending

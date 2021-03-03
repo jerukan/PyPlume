@@ -28,30 +28,36 @@ def get_carree_gl(ax):
     return gl
 
 
+def pad_domain(domain, padding):
+    domain["S"] -= padding
+    domain["N"] += padding
+    domain["W"] -= padding
+    domain["E"] += padding
+    return domain
+
+
 def generate_domain(paths, padding=0.005):
     """
     Given paths to particle netcdf files, generate a domain that encompasses every position
     with some padding.
     Will probably break if points go from like 178 to -178 longitude or something.
     """
-    padding = 0.005
     lat_min = 90
     lat_max = -90
     lon_min = 180
     lon_max = -180
     for p in paths:
         with xr.open_dataset(p) as p_ds:
-            for i in range(p_ds.dims["traj"]):
-                lat_rng = (p_ds["lat"][i].min(), p_ds["lat"][i].max())
-                if lat_rng[0] < lat_min:
-                    lat_min = lat_rng[0]
-                if lat_rng[1] > lat_max:
-                    lat_max = lat_rng[1]
-                lon_rng = (p_ds["lon"][i].min(), p_ds["lon"][i].max())
-                if lon_rng[0] < lon_min:
-                    lon_min = lon_rng[0]
-                if lon_rng[1] > lon_max:
-                    lon_max = lon_rng[1]
+            lat_rng = (p_ds["lat"].min().values.item(), p_ds["lat"].max().values.item())
+            if lat_rng[0] < lat_min:
+                lat_min = lat_rng[0]
+            if lat_rng[1] > lat_max:
+                lat_max = lat_rng[1]
+            lon_rng = (p_ds["lon"].min().values.item(), p_ds["lon"].max().values.item())
+            if lon_rng[0] < lon_min:
+                lon_min = lon_rng[0]
+            if lon_rng[1] > lon_max:
+                lon_max = lon_rng[1]
     return dict(
         S=lat_min - padding,
         N=lat_max + padding,
@@ -71,7 +77,7 @@ def draw_plt(savefile=None, fit=True):
         plt.close()
 
 
-def plot_trajectories(paths, domain=None, legend=True, scatter=True, savefile=None, part_size=4):
+def plot_trajectories(paths, domain=None, legend=True, scatter=True, savefile=None, part_size=4, padding=0.0):
     """
     Takes in Parcels ParticleFile netcdf file paths and creates plots of the
     trajectories on the same plot.
@@ -82,7 +88,9 @@ def plot_trajectories(paths, domain=None, legend=True, scatter=True, savefile=No
     """
     # automatically generate domain if none is provided
     if domain is None:
-        domain = generate_domain(paths)
+        domain = generate_domain(paths, padding)
+    else:
+        pad_domain(domain, padding)
     ax = get_carree_axis(domain)
     gl = get_carree_gl(ax)
 
@@ -151,6 +159,9 @@ def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefi
         ps (parcels.ParticleSet)
         field_vmax (float): max value for the vector field.
     """
+    if len(ps) == 0:
+        print("No particles inside particle set. No plot generated.", file=sys.stderr)
+        return
     show_time = ps[0].time if show_time is None else show_time
     ext = [domain["W"], domain["E"], domain["S"], domain["N"]]
     p_size = len(ps)

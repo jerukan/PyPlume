@@ -177,13 +177,13 @@ def create_gif(delay, images_path, out_path):
     print((stdout, stderr))
 
 
-def expand_coord_rng(coord_rng, ref_coords):
+def include_coord_range(coord_rng, ref_coords):
     """
-    Takes a range of two numbers and expands the range to the next biggest coordinates defined
-    in ref_coords. In effect, it's like the lower value is floored and the upper value
-    is ceiled.
+    Takes a range of two values and changes the desired range to include the two original
+    values given reference coordinates if a slice were to happen with the range.
 
     Args:
+        coord_rng (value1, value2): where value1 < value2
         ref_coords: must be sorted ascending
 
     Returns:
@@ -201,6 +201,22 @@ def expand_coord_rng(coord_rng, ref_coords):
         index_max = np.where(ref_coords >= coord_rng[-1])[0][0]
         end = ref_coords[index_max]
     return start, end
+
+
+def expand_time_rng(time_rng, precision="h"):
+    """
+    Floors the start time and ceils the end time according to the precision specified.
+
+    Args:
+        time_rng (np.datetime64, np.datetime64)
+        precision (str)
+    
+    Returns:
+        (np.datetime64, np.datetime64)
+    """
+    start_time = np.datetime64(time_rng[0], precision) - np.timedelta64(1, precision)
+    end_time = np.datetime64(time_rng[1], precision) + np.timedelta64(1, precision)
+    return start_time, end_time
 
 
 def load_pts_mat(path, lat_ind, lon_ind):

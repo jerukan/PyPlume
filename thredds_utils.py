@@ -19,8 +19,8 @@ thredds_data = {
 def get_region(data):
     time_range = get_time_slice(data[2])
     if data[5]:
-        lat_range = utils.expand_coord_rng(data[3], thredds_data[data[1]]["lat"].values)
-        lon_range = utils.expand_coord_rng(data[4], thredds_data[data[1]]["lon"].values)
+        lat_range = utils.include_coord_range(data[3], thredds_data[data[1]]["lat"].values)
+        lon_range = utils.include_coord_range(data[4], thredds_data[data[1]]["lon"].values)
     else:
         lat_range = data[3]
         lon_range = data[4]
@@ -44,16 +44,25 @@ def get_latest_span(delta):
     return (time_now - delta, time_now)
 
 
-def get_time_slice(time_range):
+def get_time_slice(time_range, inclusive=False, ref_coords=None):
+    if time_range[0] == time_range[1]:
+        return slice(np.datetime64(time_range[0], "h"),
+                     np.datetime64(time_range[1], "h") + np.timedelta64(1, "h"))
     if len(time_range) == 2:
+        if inclusive:
+            time_range = utils.include_coord_range(time_range, ref_coords)
         return slice(np.datetime64(time_range[0]), np.datetime64(time_range[1]))
     if len(time_range) == 3:
         # step size is an integer in hours
+        if inclusive:
+            interval = time_range[2]
+            time_range = utils.include_coord_range(time_range[0:2], ref_coords)
+            time_range = (time_range[0], time_range[1], interval)
         return slice(np.datetime64(time_range[0]), np.datetime64(time_range[1]), time_range[2])
 
 
 def get_thredds_dataset(name, resolution, time_range, lat_range, lon_range,
-        expand_coords=False) -> xr.Dataset:
+        inclusive=False) -> xr.Dataset:
     """
     Params:
         name (str)
@@ -61,22 +70,24 @@ def get_thredds_dataset(name, resolution, time_range, lat_range, lon_range,
         time_range (np.datetime64, np.datetime64[, int]): (start, stop[, interval])
         lat_range (float, float)
         lon_range (float, float)
-        expand_coords (bool)
+        inclusive (bool)
 
     Returns:
         xr.Dataset
     """
     reg_data = thredds_data[resolution]
-    if expand_coords:
-        lat_range = utils.expand_coord_rng(lat_range, reg_data["lat"].values)
-        lon_range = utils.expand_coord_rng(lon_range, reg_data["lon"].values)
-    time_slice = get_time_slice(time_range)
+    if inclusive:
+        lat_range = utils.include_coord_range(lat_range, reg_data["lat"].values)
+        lon_range = utils.include_coord_range(lon_range, reg_data["lon"].values)
+    time_slice = get_time_slice(time_range, inclusive=inclusive, ref_coords=reg_data["time"].values)
     dataset_start = reg_data["time"].values[0]
     if time_slice.start >= np.datetime64("now") or time_slice.stop <= dataset_start:
-        raise ValueError(f"Desired time range is out of range for the dataset")
+        raise ValueError("Desired time range is out of range for the dataset")
     sliced_data = reg_data.sel(
         time=time_slice,
         lat=slice(lat_range[0], lat_range[1]),
         lon=slice(lon_range[0], lon_range[1]),
     )
+    if len(sliced_data["time"]) == 0:
+        raise ValueError("No timestamps inside given time interval")
     return sliced_data

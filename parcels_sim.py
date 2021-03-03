@@ -114,6 +114,8 @@ def prep_simulation(name, hfrgrid, cfg):
     """
     times, _, _ = hfrgrid.get_coords()
     t_start, t_end = parse_time_range(cfg["time_range"], times)
+    if t_start < times[0] or t_end < times[0] or t_start > times[-1] or t_end > times[-1]:
+        raise ValueError("Start and end times of simulation are out of bounds")
     t_start = (t_start - times[0]) / np.timedelta64(1, "s")
     t_end = (t_end - times[0]) / np.timedelta64(1, "s")
 
@@ -156,6 +158,10 @@ def prep_simulation(name, hfrgrid, cfg):
 
     snap_num = math.floor((t_end - t_start) / cfg["snapshot_interval"])
     last_int = t_end - (snap_num * cfg["snapshot_interval"] + t_start)
+    print(last_int)
+    print(snap_num * cfg["snapshot_interval"] + t_start)
+    print(t_start)
+    print(t_end - t_start + last_int)
     if last_int == 0:
         print("No last interval exists.")
         print(f"Num snapshots to save for {name}: {snap_num + 2}")
@@ -182,6 +188,9 @@ def simulation(name, hfrgrid, cfg):
         return str(snap_path / f"snap{str(num).zfill(zeros)}.png")
         # return str(snap_path / f"snap{num}.png")
     def simulation_loop(iteration, interval):
+        if len(pset) == 0:
+            print("Particle set is empty, simulation loop not run.", file=sys.stderr)
+            return
         exec_pset(pset, pfile, interval, cfg["simulation_dt"])
         save_pset_plot(pset, save_to(iteration), days, cfg["shown_domain"], field="vector")
     # save initial plot

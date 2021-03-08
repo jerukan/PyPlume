@@ -1,3 +1,7 @@
+"""
+TODO add support to get regions other than just US west coast
+"""
+
 import numpy as np
 import xarray as xr
 
@@ -10,17 +14,61 @@ dataset_url_1kmhourly = "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/h
 
 num_chunks = 50
 
-thredds_data = {
-    utils.DATA_6KM: xr.open_dataset(dataset_url_6kmhourly, chunks={"time": num_chunks}),
-    utils.DATA_2KM: xr.open_dataset(dataset_url_2kmhourly, chunks={"time": num_chunks}),
-    utils.DATA_1KM: xr.open_dataset(dataset_url_1kmhourly, chunks={"time": num_chunks})
+thredds_urls = {
+    utils.DATA_6KM: dataset_url_6kmhourly,
+    utils.DATA_2KM: dataset_url_2kmhourly,
+    utils.DATA_1KM: dataset_url_1kmhourly
 }
+
+# do not access this dict directly, only load datasets when they are needed
+# use retrieve_dataset to get this data
+thredds_data = {
+    utils.DATA_6KM: None,
+    utils.DATA_2KM: None,
+    utils.DATA_1KM: None
+}
+
+def retrieve_dataset(resolution):
+    """
+    Get the full xarray dataset for thredds data at a given resolution
+
+    TODO check if the thredds server is down so it doesn't get stuck
+    """
+    if thredds_data[resolution] is None:
+        print(f"Data for resolution {resolution} not loaded yet. Loading from...")
+        print(thredds_urls[resolution])
+        thredds_data[resolution] = xr.open_dataset(
+            thredds_urls[resolution], chunks={"time": num_chunks}
+        )
+    return thredds_data[resolution]
+
+
+def get_time_slice(time_range, inclusive=False, ref_coords=None, precision="h"):
+    if time_range[0] == time_range[1]:
+        return slice(np.datetime64(time_range[0], precision),
+                     np.datetime64(time_range[1], precision) + np.timedelta64(1, precision))
+    if len(time_range) == 2:
+        if inclusive:
+            if ref_coords is None:
+                time_range = ()
+            else:
+                time_range = utils.include_coord_range(time_range, ref_coords)
+        return slice(np.datetime64(time_range[0]), np.datetime64(time_range[1]))
+    if len(time_range) == 3:
+        # step size is an integer in hours
+        if inclusive:
+            interval = time_range[2]
+            time_range = utils.include_coord_range(time_range[0:2], ref_coords)
+            time_range = (time_range[0], time_range[1], interval)
+        return slice(np.datetime64(time_range[0]), np.datetime64(time_range[1]), time_range[2])
+
 
 def get_region(data):
     time_range = get_time_slice(data[2])
     if data[5]:
-        lat_range = utils.include_coord_range(data[3], thredds_data[data[1]]["lat"].values)
-        lon_range = utils.include_coord_range(data[4], thredds_data[data[1]]["lon"].values)
+        dataset = retrieve_dataset(data[1])
+        lat_range = utils.include_coord_range(data[3], dataset["lat"].values)
+        lon_range = utils.include_coord_range(data[4], dataset["lon"].values)
     else:
         lat_range = data[3]
         lon_range = data[4]
@@ -44,25 +92,21 @@ def get_latest_span(delta):
     return (time_now - delta, time_now)
 
 
-def get_time_slice(time_range, inclusive=False, ref_coords=None):
-    if time_range[0] == time_range[1]:
-        return slice(np.datetime64(time_range[0], "h"),
-                     np.datetime64(time_range[1], "h") + np.timedelta64(1, "h"))
-    if len(time_range) == 2:
-        if inclusive:
-            time_range = utils.include_coord_range(time_range, ref_coords)
-        return slice(np.datetime64(time_range[0]), np.datetime64(time_range[1]))
-    if len(time_range) == 3:
-        # step size is an integer in hours
-        if inclusive:
-            interval = time_range[2]
-            time_range = utils.include_coord_range(time_range[0:2], ref_coords)
-            time_range = (time_range[0], time_range[1], interval)
-        return slice(np.datetime64(time_range[0]), np.datetime64(time_range[1]), time_range[2])
+def check_bounds(dataset, lat_range, lon_range, time_range):
+    times = dataset["time"].values
+    lats = dataset["lat"].values
+    lons = dataset["lon"].values
+    span_checker = lambda rng, coords: rng[0] <= coords[0] or rng[1] >= coords[-1]
+    if span_checker(time_range, times):
+        print("Time spans entire dataset")
+    if span_checker(lat_range, lats):
+        print("Latitude spans its entire range")
+    if span_checker(lon_range, lons):
+        print("Longitude spans its entire range")
 
 
 def get_thredds_dataset(name, resolution, time_range, lat_range, lon_range,
-        inclusive=False) -> xr.Dataset:
+        inclusive=False, padding=0.0) -> xr.Dataset:
     """
     Params:
         name (str)
@@ -71,14 +115,19 @@ def get_thredds_dataset(name, resolution, time_range, lat_range, lon_range,
         lat_range (float, float)
         lon_range (float, float)
         inclusive (bool)
+        padding (float): lat and lon padding
 
     Returns:
         xr.Dataset
     """
-    reg_data = thredds_data[resolution]
+    print("Retrieving thredds dataset...")
+    reg_data = retrieve_dataset(resolution)
     if inclusive:
         lat_range = utils.include_coord_range(lat_range, reg_data["lat"].values)
         lon_range = utils.include_coord_range(lon_range, reg_data["lon"].values)
+    lat_range = (lat_range[0] - padding, lat_range[1] + padding)
+    lon_range = (lon_range[0] - padding, lon_range[1] + padding)
+    check_bounds(reg_data, lat_range, lon_range, time_range)
     time_slice = get_time_slice(time_range, inclusive=inclusive, ref_coords=reg_data["time"].values)
     dataset_start = reg_data["time"].values[0]
     if time_slice.start >= np.datetime64("now") or time_slice.stop <= dataset_start:

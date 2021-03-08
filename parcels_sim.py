@@ -158,10 +158,6 @@ def prep_simulation(name, hfrgrid, cfg):
 
     snap_num = math.floor((t_end - t_start) / cfg["snapshot_interval"])
     last_int = t_end - (snap_num * cfg["snapshot_interval"] + t_start)
-    print(last_int)
-    print(snap_num * cfg["snapshot_interval"] + t_start)
-    print(t_start)
-    print(t_end - t_start + last_int)
     if last_int == 0:
         print("No last interval exists.")
         print(f"Num snapshots to save for {name}: {snap_num + 2}")

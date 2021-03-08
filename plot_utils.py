@@ -77,7 +77,7 @@ def draw_plt(savefile=None, fit=True):
         plt.close()
 
 
-def plot_trajectories(paths, domain=None, legend=True, scatter=True, savefile=None, part_size=4, padding=0.0):
+def plot_trajectories(paths, domain=None, legend=True, scatter=True, savefile=None, titlestr=None, part_size=4, padding=0.0):
     """
     Takes in Parcels ParticleFile netcdf file paths and creates plots of the
     trajectories on the same plot.
@@ -108,7 +108,7 @@ def plot_trajectories(paths, domain=None, legend=True, scatter=True, savefile=No
                 ax.plot(p_ds["lon"][i][0], p_ds["lat"][i][0], 'kx')
     if legend:
         ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05))
-    plt.title("Particle trajectories")
+    plt.title("Particle trajectories" if titlestr is None else titlestr)
 
     if savefile is None:
         plt.show()

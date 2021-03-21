@@ -127,8 +127,8 @@ def get_thredds_dataset(name, resolution, time_range, lat_range, lon_range,
         lon_range = utils.include_coord_range(lon_range, reg_data["lon"].values)
     lat_range = (lat_range[0] - padding, lat_range[1] + padding)
     lon_range = (lon_range[0] - padding, lon_range[1] + padding)
-    check_bounds(reg_data, lat_range, lon_range, time_range)
     time_slice = get_time_slice(time_range, inclusive=inclusive, ref_coords=reg_data["time"].values)
+    check_bounds(reg_data, lat_range, lon_range, (time_slice.start, time_slice.stop))
     dataset_start = reg_data["time"].values[0]
     if time_slice.start >= np.datetime64("now") or time_slice.stop <= dataset_start:
         raise ValueError("Desired time range is out of range for the dataset")

@@ -40,8 +40,8 @@ def TestOOB(particle, fieldset, time):
 
 
 def DeleteParticle(particle, fieldset, time):
-    # print(f"Particle [{particle.id}] lost "
-    #       f"({particle.time}, {particle.depth}, {particle.lat}, {particle.lon})", file=sys.stderr)
+    print(f"Particle [{particle.id}] lost "
+          f"({particle.time}, {particle.depth}, {particle.lat}, {particle.lon})", file=sys.stderr)
     particle.delete()
 
 
@@ -107,7 +107,7 @@ def parse_time_range(time_range, time_list):
     return t_start, t_end
 
 
-def prep_simulation(name, hfrgrid, cfg):
+def prep_simulation(name, hfrgrid, cfg, resolution=None):
     """
     Note every path returned is a Path object.
     Returns a bunch of objects.
@@ -166,7 +166,7 @@ def prep_simulation(name, hfrgrid, cfg):
     if snap_num >= 200:
         # TODO move this somewhere else and less hardcoded
         raise Exception(f"Too many snapshots ({snap_num}).")
-    snap_path = utils.create_path(utils.PICUTRE_DIR / f"{utils.filename_dict[hfrgrid.resolution]}/{name}")
+    snap_path = utils.create_path(utils.PICUTRE_DIR / name)
     print(f"Path to save snapshots to: {snap_path}")
 
     return pset, pfile, pfile_path, snap_path, snap_num, last_int

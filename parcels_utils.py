@@ -68,7 +68,15 @@ def buoycsv_to_particleds(csv_path) -> xr.Dataset:
         lats[0, i] = row["latitude"]
         lons[0, i] = row["longitude"]
     return arrays_to_particleds(times, lats, lons)
-    
+
+
+def clean_erddap_ds(ds):
+    clean_ds = ds.rename_vars({"latitude": "lat", "longitude": "lon"})
+    new_lon = -(180 - (clean_ds["lon"] - 180))
+    clean_ds = clean_ds.assign_coords({"lon": new_lon})
+    clean_ds = clean_ds.sel(depth=0.0)
+    return clean_ds
+
 
 def xr_dataset_to_fieldset(xrds, copy=True, mesh="spherical", u_key="u", v_key="v") -> FieldSet:
     """
@@ -97,6 +105,7 @@ def xr_dataset_to_fieldset(xrds, copy=True, mesh="spherical", u_key="u", v_key="
 def get_file_info(path, res, name=None, parcels_cfg=None) -> dict:
     """
     Reads from a netcdf file containing ocean current data.
+    DON'T use this anymore
     Use HFRGrid instead of this.
 
     Args:
@@ -152,15 +161,13 @@ class HFRGrid:
     TODO generate the mask of where data should be available
     """
 
-    def __init__(self, dataset, resolution, init_fs=True):
+    def __init__(self, dataset, init_fs=True):
         """
         Reads from a netcdf file containing ocean current data.
 
         Args:
             dataset (path-like or xr.Dataset): represents the netcdf ocean current data.
-            resolution (int): resolution of the data (500m, 1km, 2km, or 6km)
         """
-        self.resolution = resolution
         if isinstance(dataset, (Path, str)):
             self.path = dataset
             with xr.open_dataset(dataset) as ds:

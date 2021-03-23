@@ -23,6 +23,7 @@ filename_dict = {
 PARCELS_CONFIGS_DIR = Path("parcels_configs")
 CURRENT_NETCDF_DIR = Path("current_netcdfs")
 PARTICLE_NETCDF_DIR = Path("particledata")
+WAVEBUOY_DATA_DIR = Path("buoy_data")
 MATLAB_DIR = Path("matlab")
 PICUTRE_DIR = Path("snapshots")
 
@@ -50,7 +51,7 @@ def haversine(lat1, lat2, lon1, lon2):
     dLat = lat2 * math.pi / 180 - lat1 * math.pi / 180
     dLon = lon2 * math.pi / 180 - lon1 * math.pi / 180
     a = math.sin(dLat / 2) * math.sin(dLat / 2) + math.cos(lat1 * math.pi / 180) * math.cos(lat2 * math.pi / 180) * math.sin(dLon / 2) * math.sin(dLon / 2)
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    c = 2 * math.atan2(a ** (1 / 2), (1 - a) ** (1 / 2))
     d = R * c
     return d * 1000  # meters
 
@@ -176,21 +177,46 @@ def create_gif(delay, images_path, out_path):
     print((stdout, stderr))
 
 
-def expand_coord_rng(coord_rng, ref_coords):
+def include_coord_range(coord_rng, ref_coords):
     """
-    Takes a range of two numbers and expands the range to the
-    next biggest coordinates defined in ref_coords.
+    Takes a range of two values and changes the desired range to include the two original
+    values given reference coordinates if a slice were to happen with the range.
 
     Args:
+        coord_rng (value1, value2): where value1 < value2
         ref_coords: must be sorted ascending
 
     Returns:
         (float1, float2): where float1 <= coord_rng[0] and
             float2 >= coord_rng[-1]
     """
-    index_min = np.where(ref_coords <= coord_rng[0])[0][-1]
-    index_max = np.where(ref_coords >= coord_rng[-1])[0][0]
-    return ref_coords[index_min], ref_coords[index_max]
+    if ref_coords[0] > coord_rng[0]:
+        start = coord_rng[0]
+    else:
+        index_min = np.where(ref_coords <= coord_rng[0])[0][-1]
+        start = ref_coords[index_min]
+    if ref_coords[-1] < coord_rng[1]:
+        end = coord_rng[1]
+    else:
+        index_max = np.where(ref_coords >= coord_rng[-1])[0][0]
+        end = ref_coords[index_max]
+    return start, end
+
+
+def expand_time_rng(time_rng, precision="h"):
+    """
+    Floors the start time and ceils the end time according to the precision specified.
+
+    Args:
+        time_rng (np.datetime64, np.datetime64)
+        precision (str)
+    
+    Returns:
+        (np.datetime64, np.datetime64)
+    """
+    start_time = np.datetime64(time_rng[0], precision) - np.timedelta64(1, precision)
+    end_time = np.datetime64(time_rng[1], precision) + np.timedelta64(1, precision)
+    return start_time, end_time
 
 
 def load_pts_mat(path, lat_ind, lon_ind):

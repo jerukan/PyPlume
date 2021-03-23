@@ -71,9 +71,14 @@ def buoycsv_to_particleds(csv_path) -> xr.Dataset:
 
 
 def clean_erddap_ds(ds):
+    """
+    Converts a dataset from ERDDAP to fit with the existing framework.
+    """
     clean_ds = ds.rename_vars({"latitude": "lat", "longitude": "lon"})
+    # convert longitude values to -180 to 180 range (instead of 360)
     new_lon = -(180 - (clean_ds["lon"] - 180))
     clean_ds = clean_ds.assign_coords({"lon": new_lon})
+    # retrieve only surface currents
     clean_ds = clean_ds.sel(depth=0.0)
     return clean_ds
 

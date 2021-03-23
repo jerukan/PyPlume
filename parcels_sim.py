@@ -204,7 +204,7 @@ def simulation(name, hfrgrid, cfg):
     return pfile_path, snap_path
 
 
-def generate_sim_gif(name, pic_path, gif_path, gif_delay):
+def generate_sim_gif(pic_path, gif_path, gif_delay):
     utils.create_gif(
         gif_delay,
         os.path.join(pic_path, "*.png"),

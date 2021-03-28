@@ -70,13 +70,26 @@ def buoycsv_to_particleds(csv_path) -> xr.Dataset:
     return arrays_to_particleds(times, lats, lons)
 
 
+def convert_lon_readings(lons):
+    """
+    Converts a list of longitude values going from 0 to 360 to a scale that goes from
+    -180 to 180. Probably applies to latitude too.
+    """
+    convert_idx = np.where(lons > 180)
+    new_lons = -(180 - (lons - 180))
+    copied = np.zeros(lons.shape)
+    copied[:] = lons[:]
+    copied[convert_idx] = new_lons[convert_idx]
+    return copied
+
+
 def clean_erddap_ds(ds):
     """
     Converts a dataset from ERDDAP to fit with the existing framework.
     """
-    clean_ds = ds.rename_vars({"latitude": "lat", "longitude": "lon"})
+    clean_ds = ds.rename({"latitude": "lat", "longitude": "lon"})
     # convert longitude values to -180 to 180 range (instead of 360)
-    new_lon = -(180 - (clean_ds["lon"] - 180))
+    new_lon = convert_lon_readings(clean_ds["lon"].values)
     clean_ds = clean_ds.assign_coords({"lon": new_lon})
     # retrieve only surface currents
     clean_ds = clean_ds.sel(depth=0.0)

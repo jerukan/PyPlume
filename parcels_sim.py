@@ -115,7 +115,8 @@ def prep_simulation(name, hfrgrid, cfg, resolution=None):
     times, _, _ = hfrgrid.get_coords()
     t_start, t_end = parse_time_range(cfg["time_range"], times)
     if t_start < times[0] or t_end < times[0] or t_start > times[-1] or t_end > times[-1]:
-        raise ValueError("Start and end times of simulation are out of bounds")
+        raise ValueError("Start and end times of simulation are out of bounds\n" +
+            f"Simulation range: ({t_start}, {t_end}), allowed domain: ({times[0]}, {times[-1]})")
     t_start = (t_start - times[0]) / np.timedelta64(1, "s")
     t_end = (t_end - times[0]) / np.timedelta64(1, "s")
 

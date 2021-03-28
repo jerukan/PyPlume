@@ -1,6 +1,7 @@
 """
 A collection of methods related to plotting.
 """
+from pathlib import Path
 import sys
 
 import cartopy
@@ -36,28 +37,30 @@ def pad_domain(domain, padding):
     return domain
 
 
-def generate_domain(paths, padding=0.005):
+def generate_domain(datasets, padding=0.005):
     """
-    Given paths to particle netcdf files, generate a domain that encompasses every position
-    with some padding.
+    Given a list of datasets or paths to particle netcdf files, generate a domain that encompasses
+    every position with some padding.
     Will probably break if points go from like 178 to -178 longitude or something.
     """
     lat_min = 90
     lat_max = -90
     lon_min = 180
     lon_max = -180
-    for p in paths:
-        with xr.open_dataset(p) as p_ds:
-            lat_rng = (p_ds["lat"].min().values.item(), p_ds["lat"].max().values.item())
-            if lat_rng[0] < lat_min:
-                lat_min = lat_rng[0]
-            if lat_rng[1] > lat_max:
-                lat_max = lat_rng[1]
-            lon_rng = (p_ds["lon"].min().values.item(), p_ds["lon"].max().values.item())
-            if lon_rng[0] < lon_min:
-                lon_min = lon_rng[0]
-            if lon_rng[1] > lon_max:
-                lon_max = lon_rng[1]
+    for ds in datasets:
+        if isinstance(ds, (str, Path)):
+            with xr.open_dataset(ds) as p_ds:
+                ds = p_ds
+        lat_rng = (ds["lat"].values.min(), ds["lat"].values.max())
+        if lat_rng[0] < lat_min:
+            lat_min = lat_rng[0]
+        if lat_rng[1] > lat_max:
+            lat_max = lat_rng[1]
+        lon_rng = (ds["lon"].values.min(), ds["lon"].values.max())
+        if lon_rng[0] < lon_min:
+            lon_min = lon_rng[0]
+        if lon_rng[1] > lon_max:
+            lon_max = lon_rng[1]
     return dict(
         S=lat_min - padding,
         N=lat_max + padding,
@@ -77,35 +80,37 @@ def draw_plt(savefile=None, fit=True):
         plt.close()
 
 
-def plot_trajectories(paths, domain=None, legend=True, scatter=True, savefile=None, titlestr=None, part_size=4, padding=0.0):
+def plot_trajectories(datasets, names, domain=None, legend=True, scatter=True, savefile=None, titlestr=None, part_size=4, padding=0.0):
     """
-    Takes in Parcels ParticleFile netcdf file paths and creates plots of the
+    Takes in Parcels ParticleFile datasets or netcdf file paths and creates plots of those
     trajectories on the same plot.
 
     Args:
-        paths (array-like): array of paths to the netcdfs
-        domain (dict)
+        paths (array-like): array of particle trajectory datasets or paths to nc files containing
+         the same type of data
     """
+    if len(datasets) != len(names):
+        raise ValueError("dataset list length and name list length do not match")
     # automatically generate domain if none is provided
     if domain is None:
-        domain = generate_domain(paths, padding)
+        domain = generate_domain(datasets, padding)
     else:
         pad_domain(domain, padding)
     ax = get_carree_axis(domain)
     gl = get_carree_gl(ax)
 
-    for p in paths:
-        p = str(p)
-        with xr.open_dataset(p) as p_ds:
-            # now I'm not entirely sure how matplotlib deals with
-            # nan values, so if any show up, damnit
-            for i in range(p_ds.dims["traj"]):
-                name = p.split("/")[-1].split(".")[0]
-                if scatter:
-                    ax.scatter(p_ds["lon"][i], p_ds["lat"][i], s=part_size)
-                ax.plot(p_ds["lon"][i], p_ds["lat"][i], label=name)
-                # plot starting point as a black X
-                ax.plot(p_ds["lon"][i][0], p_ds["lat"][i][0], 'kx')
+    for i, ds in enumerate(datasets):
+        if isinstance(ds, (str, Path)):
+            with xr.open_dataset(ds) as p_ds:
+                ds = p_ds
+        # now I'm not entirely sure how matplotlib deals with
+        # nan values, so if any show up, damnit
+        for j in range(ds.dims["traj"]):
+            if scatter:
+                ax.scatter(ds["lon"][j], ds["lat"][j], s=part_size)
+            ax.plot(ds["lon"][j], ds["lat"][j], label=names[i])
+            # plot starting point as a black X
+            ax.plot(ds["lon"][j][0], ds["lat"][j][0], 'kx')
     if legend:
         ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05))
     plt.title("Particle trajectories" if titlestr is None else titlestr)

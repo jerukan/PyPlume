@@ -64,10 +64,18 @@ def exec_pset(pset, pfile, runtime, dt):
     )
 
 
-def save_pset_plot(pset, path, days, domain, field=None):
+def save_pset_plot(pset, path, days, domain, field=None, part_size=4):
     plot_utils.plot_particles_age(
         pset, domain, field=field, savefile=path,
-        vmax=days, field_vmax=MAX_V
+        vmax=days, field_vmax=MAX_V, part_size=part_size
+    )
+
+
+def save_pset_plot_with_path(pset, path_lats, path_lons, path, days, domain, field=None,
+    part_size=4):
+    plot_utils.plot_particles_with_path(
+        pset, path_lats, path_lons, domain, field=field, savefile=path,
+        vmax=days, field_vmax=MAX_V, part_size=part_size
     )
 
 
@@ -184,14 +192,48 @@ def simulation(name, hfrgrid, cfg):
     def save_to(num, zeros=3):
         return str(snap_path / f"snap{str(num).zfill(zeros)}.png")
         # return str(snap_path / f"snap{num}.png")
+    part_size = cfg.get("part_size", 4)
     def simulation_loop(iteration, interval):
         if len(pset) == 0:
             print("Particle set is empty, simulation loop not run.", file=sys.stderr)
             return
         exec_pset(pset, pfile, interval, cfg["simulation_dt"])
-        save_pset_plot(pset, save_to(iteration), days, cfg["shown_domain"], field="vector")
+        save_pset_plot(pset, save_to(iteration), days, cfg["shown_domain"], field="vector", part_size=part_size)
     # save initial plot
-    save_pset_plot(pset, save_to(0), days, cfg["shown_domain"], field="vector")
+    save_pset_plot(pset, save_to(0), days, cfg["shown_domain"], field="vector", part_size=part_size)
+    for i in range(1, snap_num + 1):
+        simulation_loop(i, cfg["snapshot_interval"])
+
+    # run the last interval (the remainder) if needed
+    if last_int != 0:
+        simulation_loop(snap_num + 1, last_int)
+
+    pfile.export()
+    pfile.close()
+
+    return pfile_path, snap_path
+
+
+def simulation_buoy(name, hfrgrid, cfg, path_lats, path_lons):
+    times, _, _ = hfrgrid.get_coords()
+    pset, pfile, pfile_path, snap_path, snap_num, last_int = prep_simulation(name, hfrgrid, cfg)
+    if last_int == 0:
+        total_iterations = snap_num + 2
+    else:
+        total_iterations = snap_num + 3
+    days = np.timedelta64(times[-1] - times[0], "s") / np.timedelta64(1, "D")
+    def save_to(num, zeros=3):
+        return str(snap_path / f"snap{str(num).zfill(zeros)}.png")
+        # return str(snap_path / f"snap{num}.png")
+    part_size = cfg.get("part_size", 4)
+    def simulation_loop(iteration, interval):
+        if len(pset) == 0:
+            print("Particle set is empty, simulation loop not run.", file=sys.stderr)
+            return
+        exec_pset(pset, pfile, interval, cfg["simulation_dt"])
+        save_pset_plot_with_path(pset, path_lats, path_lons, save_to(iteration), days, cfg["shown_domain"], field="vector", part_size=part_size)
+    # save initial plot
+    save_pset_plot_with_path(pset, path_lats, path_lons, save_to(0), days, cfg["shown_domain"], field="vector", part_size=part_size)
     for i in range(1, snap_num + 1):
         simulation_loop(i, cfg["snapshot_interval"])
 

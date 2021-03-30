@@ -199,6 +199,40 @@ def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefi
     draw_plt(savefile)
 
 
+def plot_particles_with_path(ps, path_lats, path_lons, domain, field, show_time=None, land=True,
+    savefile=None, vmax=None, field_vmax=None, part_size=4):
+    """
+    Args:
+        ps (parcels.ParticleSet)
+        field_vmax (float): max value for the vector field.
+    """
+    if len(ps) == 0:
+        print("No particles inside particle set. No plot generated.", file=sys.stderr)
+        return
+    show_time = ps[0].time if show_time is None else show_time
+    ext = [domain["W"], domain["E"], domain["S"], domain["N"]]
+    p_size = len(ps)
+    lats = np.zeros(p_size)
+    lons = np.zeros(p_size)
+
+    for i in range(p_size):
+        p = ps[i]
+        lats[i] = p.lat
+        lons[i] = p.lon
+
+    if field == "vector":
+        field = ps.fieldset.UV
+    # vector values will always be above 0
+    _, fig, ax, _ = plotting.plotfield(field=field, show_time=show_time,
+                                        domain=domain, land=land, vmin=0, vmax=field_vmax,
+                                        titlestr="Particles and ")
+    ax.scatter(lons, lats, s=part_size)
+    ax.scatter(path_lons, path_lats, s=4)
+    ax.plot(path_lons, path_lats)
+
+    draw_plt(savefile)
+
+
 def plot_points_fieldset(lats, lons, show_time, hfrgrid, domain=None, line=False, savefile=None, part_size=4):
     """
     Plot a bunch of points on top of a fieldset vector field. Option for plotting a line.

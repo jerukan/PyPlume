@@ -2,6 +2,7 @@
 A collection of methods wrapping OceanParcels functionalities.
 """
 from pathlib import Path
+import sys
 
 import numpy as np
 import pandas as pd
@@ -225,12 +226,11 @@ class HFRGrid:
         Returns:
             dict
         """
-        _, lats, lons = self.get_coords()
         return {
-            "S": lats[0],
-            "N": lats[-1],
-            "W": lons[0],
-            "E": lons[-1],
+            "S": self.lats[0],
+            "N": self.lats[-1],
+            "W": self.lons[0],
+            "E": self.lons[-1],
         }  # mainly for use with showing a FieldSet and restricting domain
 
     def get_closest_index(self, t, lat, lon):
@@ -257,6 +257,12 @@ class HFRGrid:
         returns:
             (u component, v component)
         """
+        if t < self.times.min() or t > self.times.max():
+            print("Warning: time is out of bounds", file=sys.stderr)
+        if lat < self.lats.min() or lat > self.lats.max():
+            print("Warning: latitude is out of bounds", file=sys.stderr)
+        if lon < self.lons.min() or lon > self.lons.max():
+            print("Warning: latitude is out of bounds", file=sys.stderr)
         t_idx, lat_idx, lon_idx = self.get_closest_index(t, lat, lon)
         return (self.xrds["u"].isel(time=t_idx, lat=lat_idx, lon=lon_idx).values,
             self.xrds["v"].isel(time=t_idx, lat=lat_idx, lon=lon_idx).values)

@@ -49,9 +49,7 @@ def get_time_slice(time_range, inclusive=False, ref_coords=None, precision="h"):
                      np.datetime64(time_range[1], precision) + np.timedelta64(1, precision))
     if len(time_range) == 2:
         if inclusive:
-            if ref_coords is None:
-                time_range = ()
-            else:
+            if ref_coords is not None:
                 time_range = utils.include_coord_range(time_range, ref_coords)
         return slice(np.datetime64(time_range[0]), np.datetime64(time_range[1]))
     if len(time_range) == 3:

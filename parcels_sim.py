@@ -215,6 +215,9 @@ def simulation(name, hfrgrid, cfg):
 
 
 def simulation_buoy(name, hfrgrid, cfg, path_lats, path_lons):
+    """
+    Simulation but draws an extra buoy path on top.
+    """
     times, _, _ = hfrgrid.get_coords()
     pset, pfile, pfile_path, snap_path, snap_num, last_int = prep_simulation(name, hfrgrid, cfg)
     if last_int == 0:
@@ -224,7 +227,6 @@ def simulation_buoy(name, hfrgrid, cfg, path_lats, path_lons):
     days = np.timedelta64(times[-1] - times[0], "s") / np.timedelta64(1, "D")
     def save_to(num, zeros=3):
         return str(snap_path / f"snap{str(num).zfill(zeros)}.png")
-        # return str(snap_path / f"snap{num}.png")
     part_size = cfg.get("part_size", 4)
     def simulation_loop(iteration, interval):
         if len(pset) == 0:
@@ -232,12 +234,10 @@ def simulation_buoy(name, hfrgrid, cfg, path_lats, path_lons):
             return
         exec_pset(pset, pfile, interval, cfg["simulation_dt"])
         save_pset_plot_with_path(pset, path_lats, path_lons, save_to(iteration), days, cfg["shown_domain"], field="vector", part_size=part_size)
-    # save initial plot
     save_pset_plot_with_path(pset, path_lats, path_lons, save_to(0), days, cfg["shown_domain"], field="vector", part_size=part_size)
     for i in range(1, snap_num + 1):
         simulation_loop(i, cfg["snapshot_interval"])
 
-    # run the last interval (the remainder) if needed
     if last_int != 0:
         simulation_loop(snap_num + 1, last_int)
 

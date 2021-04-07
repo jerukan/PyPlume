@@ -11,6 +11,8 @@ import numpy as np
 from parcels import FieldSet, ParticleSet, JITParticle, plotting
 import xarray as xr
 
+import utils
+
 
 def get_carree_axis(domain, land=True):
     ext = [domain["W"], domain["E"], domain["S"], domain["N"]]
@@ -278,3 +280,39 @@ def plot_particles_nc(nc, domain, time=None, label=None, show_time=None, land=Tr
         plt.savefig(savefile, bbox_inches="tight")
         print(f"Plot saved to {savefile}", file=sys.stderr)
         plt.close()
+
+
+def generate_simulation_plots(name, pf, hfrgrid, output_dir=utils.PICUTRE_DIR, domain=None, line_lats=None, line_lons=None, land=True, field_vmax=None, part_size=4, fig_size=None):
+    """
+    Args:
+        name
+        pf (path-like or xr.Dataset): particle file output
+    """
+    if isinstance(pf, (str, Path)):
+        with xr.open_dataset(pf) as p_ds:
+            pf = p_ds
+    if domain is None:
+        domain = hfrgrid.get_domain()
+    timestamps = pf["time"].isel(traj=0).values
+    plot_path = utils.create_path(Path(output_dir) / name)
+    num_pad = len(str(len(timestamps)))
+    grid_time_origin = hfrgrid.times[0]
+    for i, time in enumerate(timestamps):
+        savefile = str(plot_path / f"snap{str(i).zfill(num_pad)}.png")
+        show_time = int((time - grid_time_origin) / np.timedelta64(1, "s"))
+        if show_time < 0:
+            raise ValueError("Particle simulation time domain goes out of bounds")
+        _, fig, ax, _ = plotting.plotfield(field=hfrgrid.fieldset.UV, show_time=show_time,
+                                        domain=domain, land=land, vmin=0, vmax=field_vmax,
+                                        titlestr="Particles and ")
+        ax.scatter(pf["lon"].isel(obs=i), pf["lat"].isel(obs=i), s=part_size)
+        if line_lats is not None and line_lons is not None:
+            for j in range(len(line_lats)):
+                ax.plot(line_lons[j], line_lats[j])
+        # ax.scatter(lons, lats, s=part_size)
+        # if line:
+        #     ax.plot(lons, lats)
+        if fig_size is not None:
+            fig.set_size_inches(fig_size, fig_size)
+        draw_plt(savefile)
+    return plot_path

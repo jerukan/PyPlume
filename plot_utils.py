@@ -16,11 +16,12 @@ import utils
 
 def get_carree_axis(domain, land=True):
     ext = [domain["W"], domain["E"], domain["S"], domain["N"]]
-    ax = plt.axes(projection=ccrs.PlateCarree())
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
     ax.set_extent(ext, crs=ccrs.PlateCarree())
     if land:
         ax.add_feature(cartopy.feature.COASTLINE)
-    return ax
+    return fig, ax
 
 
 def get_carree_gl(ax):
@@ -71,18 +72,25 @@ def generate_domain(datasets, padding=0.005):
     )
 
 
-def draw_plt(savefile=None, fit=True):
+def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None):
+    if figsize is not None:
+        if fig is None:
+            print("Figure not passed in, figure size unchanged", file=sys.stderr)
+        else:
+            fig.set_size_inches(figsize[0], figsize[1])
     if fit:
         plt.autoscale()
     plt.draw()
 
+    if show:
+        plt.show()
     if savefile is not None:
         plt.savefig(savefile)
         print(f"Plot saved to {savefile}", file=sys.stderr)
         plt.close()
 
 
-def plot_trajectories(datasets, names, domain=None, legend=True, scatter=True, savefile=None, titlestr=None, part_size=4, padding=0.0):
+def plot_trajectories(datasets, names, domain=None, legend=True, scatter=True, savefile=None, titlestr=None, part_size=4, padding=0.0, figsize=None):
     """
     Takes in Parcels ParticleFile datasets or netcdf file paths and creates plots of those
     trajectories on the same plot.
@@ -98,7 +106,7 @@ def plot_trajectories(datasets, names, domain=None, legend=True, scatter=True, s
         domain = generate_domain(datasets, padding)
     else:
         pad_domain(domain, padding)
-    ax = get_carree_axis(domain)
+    fig, ax = get_carree_axis(domain)
     gl = get_carree_gl(ax)
 
     for i, ds in enumerate(datasets):
@@ -117,12 +125,7 @@ def plot_trajectories(datasets, names, domain=None, legend=True, scatter=True, s
         ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05))
     plt.title("Particle trajectories" if titlestr is None else titlestr)
 
-    if savefile is None:
-        plt.show()
-    else:
-        plt.savefig(savefile, bbox_inches="tight")
-        print(f"Plot saved to {savefile}", file=sys.stderr)
-        plt.close()
+    draw_plt(savefile=savefile, fig=fig, figsize=figsize)
 
 
 def plot_particles_ps(fs, lats, lons):
@@ -142,7 +145,7 @@ def plot_particles_ps(fs, lats, lons):
 
 
 def plot_particles(lats, lons, ages, domain, land=True, savefile=None, vmax=None, part_size=4, titlestr=None):
-    ax = get_carree_axis(domain, land)
+    _, ax = get_carree_axis(domain, land)
     gl = get_carree_gl(ax)
 
     if ages is None:
@@ -263,7 +266,7 @@ def plot_particles_nc(nc, domain, time=None, label=None, show_time=None, land=Tr
 
     ages /= 86400  # seconds in a day
 
-    ax = get_carree_axis(domain, land)
+    _, ax = get_carree_axis(domain, land)
     gl = get_carree_gl(ax)
 
     plt.scatter(lons, lats, s=part_size, label=label)
@@ -282,8 +285,10 @@ def plot_particles_nc(nc, domain, time=None, label=None, show_time=None, land=Tr
         plt.close()
 
 
-def generate_simulation_plots(name, pf, hfrgrid, output_dir=utils.PICUTRE_DIR, domain=None, line_lats=None, line_lons=None, land=True, field_vmax=None, part_size=4, fig_size=None):
+def generate_simulation_plots(name, pf, hfrgrid, output_dir=utils.PICUTRE_DIR, domain=None, line_lats=None, line_lons=None, land=True, field_vmax=None, part_size=4, figsize=None):
     """
+    Generates a separate plot for each timestamp of the saved simulation.
+
     Args:
         name
         pf (path-like or xr.Dataset): particle file output
@@ -309,10 +314,5 @@ def generate_simulation_plots(name, pf, hfrgrid, output_dir=utils.PICUTRE_DIR, d
         if line_lats is not None and line_lons is not None:
             for j in range(len(line_lats)):
                 ax.plot(line_lons[j], line_lats[j])
-        # ax.scatter(lons, lats, s=part_size)
-        # if line:
-        #     ax.plot(lons, lats)
-        if fig_size is not None:
-            fig.set_size_inches(fig_size, fig_size)
-        draw_plt(savefile)
+        draw_plt(savefile=savefile, fig=fig, figsize=figsize)
     return plot_path

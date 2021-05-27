@@ -45,12 +45,6 @@ def DeleteParticle(particle, fieldset, time):
     particle.delete()
 
 
-class TimedFrame:
-    def __init__(self, time, path):
-        self.time = time
-        self.path = path
-
-
 def exec_pset(pset, pfile, runtime, dt):
     k_age = pset.Kernel(AgeParticle)
     k_oob = pset.Kernel(TestOOB)
@@ -65,16 +59,8 @@ def exec_pset(pset, pfile, runtime, dt):
 
 
 def save_pset_plot(pset, path, days, domain, field=None, part_size=4):
-    plot_utils.plot_particles_age(
+    plot_utils.draw_particles_age(
         pset, domain, field=field, savefile=path,
-        vmax=days, field_vmax=MAX_V, part_size=part_size
-    )
-
-
-def save_pset_plot_with_path(pset, path_lats, path_lons, path, days, domain, field=None,
-    part_size=4):
-    plot_utils.plot_particles_with_path(
-        pset, path_lats, path_lons, domain, field=field, savefile=path,
         vmax=days, field_vmax=MAX_V, part_size=part_size
     )
 
@@ -115,8 +101,138 @@ def parse_time_range(time_range, time_list):
     return t_start, t_end
 
 
+class ParcelsSimulation:
+    MAX_SNAPSHOTS = 200
+    MAX_V = 0.6
+
+    def __init__(self, name, hfrgrid, cfg):
+        self.name = name
+        self.hfrgrid = hfrgrid
+        self.cfg = cfg
+
+        t_start, t_end = self.get_time_bounds()
+
+        if isinstance(cfg["spawn_points"], (str, Path)):
+            spawn_points = utils.load_pts_mat(cfg["spawn_points"], "yf", "xf").T
+        else:
+            spawn_points = np.array(cfg["spawn_points"])
+
+        if cfg["repeat_dt"] <= 0:
+            repetitions = 1
+        else:
+            repetitions = int((t_end - t_start) / cfg["repeat_dt"])
+        # the total number of particles that will exist in the simulation
+        if cfg["particles_per_dt"] <= 0:
+            cfg["particles_per_dt"] = len(spawn_points)
+        total = repetitions * cfg["particles_per_dt"]
+        time_arr = np.zeros(total)
+        for i in range(repetitions):
+            start = cfg["particles_per_dt"] * i
+            end = cfg["particles_per_dt"] * (i + 1)
+            time_arr[start:end] = t_start + cfg["repeat_dt"] * i
+
+        # randomly select spawn points from the given config
+        sp_lat = spawn_points.T[0, np.random.randint(0, len(spawn_points), total)]
+        sp_lon = spawn_points.T[1, np.random.randint(0, len(spawn_points), total)]
+        # vary spawn locations
+        p_lats = utils.add_noise(sp_lat, cfg["max_variation"])
+        p_lons = utils.add_noise(sp_lon, cfg["max_variation"])
+
+        # set up ParticleSet and ParticleFile
+        self.pset = ParticleSet(
+            fieldset=hfrgrid.fieldset, pclass=ThreddsParticle,
+            lon=p_lons, lat=p_lats, time=time_arr
+        )
+        self.pfile_path = utils.create_path(utils.PARTICLE_NETCDF_DIR) / f"particle_{name}.nc"
+        self.pfile = self.pset.ParticleFile(self.pfile_path)
+        print(f"Particle trajectories for {name} will be saved to {self.pfile_path}")
+        print(f"    total particles in simulation: {total}")
+
+        self.snap_num = math.floor((t_end - t_start) / cfg["snapshot_interval"])
+        self.last_int = t_end - (self.snap_num * cfg["snapshot_interval"] + t_start)
+        if self.last_int == 0:
+            print("No last interval exists.")
+            print(f"Num snapshots to save for {name}: {self.snap_num + 2}")
+        else:
+            print(f"Num snapshots to save for {name}: {self.snap_num + 3}")
+        if self.snap_num >= ParcelsSimulation.MAX_SNAPSHOTS:
+            # TODO move this somewhere else and less hardcoded
+            raise Exception(f"Too many snapshots ({self.snap_num}).")
+        self.snap_path = utils.create_path(utils.PICUTRE_DIR / name)
+        print(f"Path to save snapshots to: {self.snap_path}")
+
+        self.completed = False
+        self.lat_pts = []
+        self.lon_pts = []
+
+    def add_line(self, lats, lons):
+        self.lat_pts.append(lats)
+        self.lon_pts.append(lons)
+
+    def get_time_bounds(self):
+        times, _, _ = self.hfrgrid.get_coords()
+        t_start, t_end = parse_time_range(self.cfg["time_range"], times)
+        if t_start < times[0] or t_end < times[0] or t_start > times[-1] or t_end > times[-1]:
+            raise ValueError("Start and end times of simulation are out of bounds\n" +
+                f"Simulation range: ({t_start}, {t_end}), allowed domain: ({times[0]}, {times[-1]})")
+        t_start = (t_start - times[0]) / np.timedelta64(1, "s")
+        t_end = (t_end - times[0]) / np.timedelta64(1, "s")
+        return t_start, t_end
+
+    def save_pset_plot(self, path, days):
+        part_size = self.cfg.get("part_size", 4)
+        fig, ax = plot_utils.plot_particles_age(
+            self.pset, self.cfg["shown_domain"], field="vector", vmax=days,
+            field_vmax=ParcelsSimulation.MAX_V, part_size=part_size
+        )
+        for i in range(len(self.lat_pts)):
+            ax.scatter(self.lon_pts, self.lat_pts, s=4)
+            ax.plot(self.lon_pts, self.lat_pts)
+        plot_utils.draw_plt(savefile=path, fig=fig)
+
+    def execute(self):
+        times, _, _ = self.hfrgrid.get_coords()
+        if self.last_int == 0:
+            total_iterations = self.snap_num + 2
+        else:
+            total_iterations = self.snap_num + 3
+        days = np.timedelta64(times[-1] - times[0], "s") / np.timedelta64(1, "D")
+        part_size = self.cfg.get("part_size", 4)
+        def save_to(num, zeros=3):
+            return str(self.snap_path / f"snap{str(num).zfill(zeros)}.png")
+            # return str(snap_path / f"snap{num}.png")
+        def simulation_loop(iteration, interval):
+            if len(self.pset) == 0:
+                print("Particle set is empty, simulation loop not run.", file=sys.stderr)
+                return
+            exec_pset(self.pset, self.pfile, interval, self.cfg["simulation_dt"])
+            self.save_pset_plot(save_to(iteration), days)
+        # save initial plot
+        self.save_pset_plot(save_to(0), days)
+        for i in range(1, self.snap_num + 1):
+            simulation_loop(i, self.cfg["snapshot_interval"])
+
+        # run the last interval (the remainder) if needed
+        if self.last_int != 0:
+            simulation_loop(self.snap_num + 1, self.last_int)
+
+        self.pfile.export()
+        self.pfile.close()
+        self.completed = True
+
+    def generate_gif(self, gif_path, gif_delay=25):
+        if not self.completed:
+            raise RuntimeError("Simulation has not been run yet, cannot generate gif")
+        utils.create_gif(
+            gif_delay,
+            os.path.join(self.snap_path, "*.png"),
+            gif_path
+        )
+
+
 def prep_simulation(name, hfrgrid, cfg, resolution=None):
     """
+    don't use
     Note every path returned is a Path object.
     Returns a bunch of objects.
     """
@@ -182,6 +298,7 @@ def prep_simulation(name, hfrgrid, cfg, resolution=None):
 
 
 def simulation(name, hfrgrid, cfg):
+    """don't use"""
     times, _, _ = hfrgrid.get_coords()
     pset, pfile, pfile_path, snap_path, snap_num, last_int = prep_simulation(name, hfrgrid, cfg)
     if last_int == 0:
@@ -215,6 +332,7 @@ def simulation(name, hfrgrid, cfg):
 
 
 def generate_sim_gif(pic_path, gif_path, gif_delay):
+    """don't use"""
     utils.create_gif(
         gif_delay,
         os.path.join(pic_path, "*.png"),

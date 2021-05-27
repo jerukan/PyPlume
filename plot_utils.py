@@ -87,7 +87,7 @@ def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None):
         plt.close()
 
 
-def plot_trajectories(datasets, names, domain=None, legend=True, scatter=True, savefile=None, titlestr=None, part_size=4, padding=0.0, figsize=None):
+def draw_trajectories(datasets, names, domain=None, legend=True, scatter=True, savefile=None, titlestr=None, part_size=4, padding=0.0, figsize=None):
     """
     Takes in Parcels ParticleFile datasets or netcdf file paths and creates plots of those
     trajectories on the same plot.
@@ -125,7 +125,7 @@ def plot_trajectories(datasets, names, domain=None, legend=True, scatter=True, s
     draw_plt(savefile=savefile, fig=fig, figsize=figsize)
 
 
-def plot_particles_ps(fs, lats, lons):
+def draw_particles_ps(fs, lats, lons):
     """
     Quick and dirty way to graph a collection of particles using ParticleSet.show()
 
@@ -141,22 +141,35 @@ def plot_particles_ps(fs, lats, lons):
     pset.show()
 
 
-def plot_particles(lats, lons, ages, domain, land=True, savefile=None, vmax=None, part_size=4, titlestr=None):
-    _, ax = get_carree_axis(domain, land)
+def draw_particles(lats, lons, ages, domain, land=True, savefile=None, vmax=None, part_size=4, titlestr=None):
+    fig, ax = plot_particles(lats, lons, ages, domain, land=land, vmax=vmax, part_size=part_size, titlestr=titlestr)
+    draw_plt(savefile, fig)
+
+
+def plot_particles(lats, lons, ages, domain, land=True, vmax=None, part_size=4, titlestr=None):
+    fig, ax = get_carree_axis(domain, land)
     gl = get_carree_gl(ax)
 
     if ages is None:
-        plt.scatter(lons, lats, s=part_size)
+        ax.scatter(lons, lats, s=part_size)
     else:
-        plt.scatter(lons, lats, c=ages, edgecolors="k", vmin=0, vmax=vmax, s=part_size)
+        ax.scatter(lons, lats, c=ages, edgecolors="k", vmin=0, vmax=vmax, s=part_size)
         plt.colorbar()
 
     plt.title(titlestr)
 
-    draw_plt(savefile)
+    return fig, ax
 
 
-def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefile=None, vmax=None, field_vmax=None, part_size=4):
+def draw_particles_age(ps, domain, show_time=None, field=None, land=True, savefile=None, vmax=None, field_vmax=None, part_size=4):
+    """
+    plot_particles_age but it draws it directly idk
+    """
+    fig, ax = plot_particles_age(ps, domain, show_time=show_time, field=field, land=land, vmax=vmax, field_vmax=field_vmax, part_size=part_size)
+    draw_plt(savefile, fig=fig)
+
+
+def plot_particles_age(ps, domain, show_time=None, field=None, land=True, vmax=None, field_vmax=None, part_size=4):
     """
     A scuffed version of ParticleSet.show().
     Colors particles to visualize the particle ages.
@@ -185,7 +198,7 @@ def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefi
     ages /= 86400  # seconds in a day
 
     if field is None:
-        plot_particles(lats, lons, ages, domain, land=land, vmax=vmax, part_size=part_size)
+        fig, ax = plot_particles(lats, lons, ages, domain, land=land, vmax=vmax, part_size=part_size)
         time_str = plotting.parsetimestr(ps.fieldset.U.grid.time_origin, show_time)
         plt.title(f"Particle ages (days){time_str}")
     else:
@@ -198,44 +211,10 @@ def plot_particles_age(ps, domain, show_time=None, field=None, land=True, savefi
                                            titlestr="Particles and ")
         ax.scatter(lons, lats, s=part_size)
 
-    draw_plt(savefile)
+    return fig, ax
 
 
-def plot_particles_with_path(ps, path_lats, path_lons, domain, field, show_time=None, land=True,
-    savefile=None, vmax=None, field_vmax=None, part_size=4):
-    """
-    Args:
-        ps (parcels.ParticleSet)
-        field_vmax (float): max value for the vector field.
-    """
-    if len(ps) == 0:
-        print("No particles inside particle set. No plot generated.", file=sys.stderr)
-        return
-    show_time = ps[0].time if show_time is None else show_time
-    ext = [domain["W"], domain["E"], domain["S"], domain["N"]]
-    p_size = len(ps)
-    lats = np.zeros(p_size)
-    lons = np.zeros(p_size)
-
-    for i in range(p_size):
-        p = ps[i]
-        lats[i] = p.lat
-        lons[i] = p.lon
-
-    if field == "vector":
-        field = ps.fieldset.UV
-    # vector values will always be above 0
-    _, fig, ax, _ = plotting.plotfield(field=field, show_time=show_time,
-                                        domain=domain, land=land, vmin=0, vmax=field_vmax,
-                                        titlestr="Particles and ")
-    ax.scatter(lons, lats, s=part_size)
-    ax.scatter(path_lons, path_lats, s=4)
-    ax.plot(path_lons, path_lats)
-
-    draw_plt(savefile)
-
-
-def plot_points_fieldset(lats, lons, show_time, hfrgrid, domain=None, line=False, savefile=None, part_size=4):
+def draw_points_fieldset(lats, lons, show_time, hfrgrid, domain=None, line=False, savefile=None, part_size=4):
     """
     Plot a bunch of points on top of a fieldset vector field. Option for plotting a line.
     """
@@ -249,7 +228,7 @@ def plot_points_fieldset(lats, lons, show_time, hfrgrid, domain=None, line=False
     draw_plt(savefile)
 
 
-def plot_particles_nc(nc, domain, time=None, label=None, show_time=None, land=True, savefile=None, vmax=None, field_vmax=None, part_size=4):
+def draw_particles_nc(nc, domain, time=None, label=None, show_time=None, land=True, savefile=None, vmax=None, field_vmax=None, part_size=4):
     """
     Plots a bunch of particles to a map given the dataset is that single timestep of particles.
     """

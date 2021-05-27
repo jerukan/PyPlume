@@ -214,39 +214,6 @@ def simulation(name, hfrgrid, cfg):
     return pfile_path, snap_path
 
 
-def simulation_buoy(name, hfrgrid, cfg, path_lats, path_lons):
-    """
-    Simulation but draws an extra buoy path on top.
-    """
-    times, _, _ = hfrgrid.get_coords()
-    pset, pfile, pfile_path, snap_path, snap_num, last_int = prep_simulation(name, hfrgrid, cfg)
-    if last_int == 0:
-        total_iterations = snap_num + 2
-    else:
-        total_iterations = snap_num + 3
-    days = np.timedelta64(times[-1] - times[0], "s") / np.timedelta64(1, "D")
-    def save_to(num, zeros=3):
-        return str(snap_path / f"snap{str(num).zfill(zeros)}.png")
-    part_size = cfg.get("part_size", 4)
-    def simulation_loop(iteration, interval):
-        if len(pset) == 0:
-            print("Particle set is empty, simulation loop not run.", file=sys.stderr)
-            return
-        exec_pset(pset, pfile, interval, cfg["simulation_dt"])
-        save_pset_plot_with_path(pset, path_lats, path_lons, save_to(iteration), days, cfg["shown_domain"], field="vector", part_size=part_size)
-    save_pset_plot_with_path(pset, path_lats, path_lons, save_to(0), days, cfg["shown_domain"], field="vector", part_size=part_size)
-    for i in range(1, snap_num + 1):
-        simulation_loop(i, cfg["snapshot_interval"])
-
-    if last_int != 0:
-        simulation_loop(snap_num + 1, last_int)
-
-    pfile.export()
-    pfile.close()
-
-    return pfile_path, snap_path
-
-
 def generate_sim_gif(pic_path, gif_path, gif_delay):
     utils.create_gif(
         gif_delay,

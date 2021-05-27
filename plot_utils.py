@@ -78,14 +78,11 @@ def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None):
             print("Figure not passed in, figure size unchanged", file=sys.stderr)
         else:
             fig.set_size_inches(figsize[0], figsize[1])
-    if fit:
-        plt.autoscale()
     plt.draw()
-
     if show:
         plt.show()
     if savefile is not None:
-        plt.savefig(savefile)
+        plt.savefig(savefile, bbox_inches="tight" if fit else None)
         print(f"Plot saved to {savefile}", file=sys.stderr)
         plt.close()
 
@@ -96,7 +93,7 @@ def plot_trajectories(datasets, names, domain=None, legend=True, scatter=True, s
     trajectories on the same plot.
 
     Args:
-        paths (array-like): array of particle trajectory datasets or paths to nc files containing
+        datasets (array-like): array of particle trajectory datasets or paths to nc files containing
          the same type of data
     """
     if len(datasets) != len(names):

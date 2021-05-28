@@ -186,8 +186,8 @@ class ParcelsSimulation:
             field_vmax=ParcelsSimulation.MAX_V, part_size=part_size
         )
         for i in range(len(self.lat_pts)):
-            ax.scatter(self.lon_pts, self.lat_pts, s=4)
-            ax.plot(self.lon_pts, self.lat_pts)
+            ax.scatter(self.lon_pts[i], self.lat_pts[i], s=4)
+            ax.plot(self.lon_pts[i], self.lat_pts[i])
         plot_utils.draw_plt(savefile=path, fig=fig)
 
     def execute(self):

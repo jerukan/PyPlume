@@ -191,6 +191,8 @@ class ParcelsSimulation:
         plot_utils.draw_plt(savefile=path, fig=fig)
 
     def execute(self):
+        for p in self.snap_path.glob("*.png"):
+            p.unlink()
         times, _, _ = self.hfrgrid.get_coords()
         if self.last_int == 0:
             total_iterations = self.snap_num + 2

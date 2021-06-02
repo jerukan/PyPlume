@@ -75,7 +75,10 @@ def create_path(path_str, iterate=False):
     while iterate and path.is_dir():
         path = Path(path_base + f"-{num}")
         num += 1
-    path.mkdir(parents=True, exist_ok=True)
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except FileExistsError:
+        pass
     return path
 
 

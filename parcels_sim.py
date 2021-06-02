@@ -113,10 +113,13 @@ class ParcelsSimulation:
 
         t_start, t_end = self.get_time_bounds()
 
-        if isinstance(cfg["spawn_points"], (str, Path)):
+        try:
+            spawn_points = np.array(cfg["spawn_points"], dtype=float)
+            if len(spawn_points.shape) != 2 or spawn_points.shape[1] != 2:
+                raise ValueError(f"Spawn points is incorrect shape {spawn_points.shape}")
+        except ValueError:
+            # assume a path was passed in, try to load stuff
             spawn_points = utils.load_pts_mat(cfg["spawn_points"], "yf", "xf").T
-        else:
-            spawn_points = np.array(cfg["spawn_points"])
 
         if cfg["repeat_dt"] <= 0:
             repetitions = 1

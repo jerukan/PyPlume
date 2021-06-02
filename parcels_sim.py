@@ -51,19 +51,6 @@ def DeleteParticle(particle, fieldset, time):
     particle.delete()
 
 
-def exec_pset(pset, pfile, runtime, dt):
-    k_age = pset.Kernel(AgeParticle)
-    k_oob = pset.Kernel(TestOOB)
-
-    pset.execute(
-        AdvectionRK4 + k_age + k_oob,
-        runtime=timedelta(seconds=runtime),
-        dt=timedelta(seconds=dt),
-        recovery={ErrorCode.ErrorOutOfBounds: DeleteParticle},
-        output_file=pfile
-    )
-
-
 def parse_time_range(time_range, time_list):
     """
     Args:
@@ -102,6 +89,7 @@ def parse_time_range(time_range, time_list):
 
 class ParcelsSimulation:
     MAX_SNAPSHOTS = 200
+    MAX_NUM_LEN = len(str(MAX_SNAPSHOTS))
     MAX_V = 0.6
     PFILE_SAVE_DEFAULT = utils.PARTICLE_NETCDF_DIR
     PLOT_SAVE_DEFAULT = utils.PICUTRE_DIR
@@ -113,6 +101,7 @@ class ParcelsSimulation:
 
         t_start, t_end = self.get_time_bounds()
 
+        # load spawn points
         try:
             spawn_points = np.array(cfg["spawn_points"], dtype=float)
             if len(spawn_points.shape) != 2 or spawn_points.shape[1] != 2:
@@ -121,6 +110,7 @@ class ParcelsSimulation:
             # assume a path was passed in, try to load stuff
             spawn_points = utils.load_pts_mat(cfg["spawn_points"], "yf", "xf").T
 
+        # calculate number of times particles will be spawned
         if cfg["repeat_dt"] <= 0:
             repetitions = 1
         elif cfg["repetitions"] <= 0:
@@ -138,7 +128,6 @@ class ParcelsSimulation:
             end = num_spawns * (i + 1)
             time_arr[start:end] = t_start + cfg["repeat_dt"] * i
 
-        # randomly select spawn points from the given config
         p_lats = spawn_points.T[0, np.tile(np.arange(num_spawns), repetitions)]
         p_lons = spawn_points.T[1, np.tile(np.arange(num_spawns), repetitions)]
 
@@ -177,6 +166,8 @@ class ParcelsSimulation:
             self.kernels = kernels
         self.kernel = None
         self.update_kernel()
+        times, _, _ = hfrgrid.get_coords()
+        self.days = np.timedelta64(times[-1] - times[0], "s") / np.timedelta64(1, "D")
 
     def add_line(self, lats, lons):
         self.lat_pts.append(lats)
@@ -222,34 +213,33 @@ class ParcelsSimulation:
             output_file=self.pfile
         )
 
+    def save_to(self, num, zeros=MAX_NUM_LEN):
+        return str(self.snap_path / f"snap{str(num).zfill(zeros)}.png")
+
+    def simulation_loop(self, iteration, interval):
+        if len(self.pset) == 0:
+            print("Particle set is empty, simulation loop not run.", file=sys.stderr)
+            return
+        self.exec_pset(interval)
+        self.save_pset_plot(self.save_to(iteration), self.days)
+
     def execute(self):
         # clear the folder of pngs (not everything just in case)
         for p in self.snap_path.glob("*.png"):
             p.unlink()
-        times, _, _ = self.hfrgrid.get_coords()
         if self.last_int == 0:
             total_iterations = self.snap_num + 2
         else:
             total_iterations = self.snap_num + 3
-        days = np.timedelta64(times[-1] - times[0], "s") / np.timedelta64(1, "D")
         part_size = self.cfg.get("part_size", 4)
-        def save_to(num, zeros=3):
-            return str(self.snap_path / f"snap{str(num).zfill(zeros)}.png")
-            # return str(snap_path / f"snap{num}.png")
-        def simulation_loop(iteration, interval):
-            if len(self.pset) == 0:
-                print("Particle set is empty, simulation loop not run.", file=sys.stderr)
-                return
-            self.exec_pset(interval)
-            self.save_pset_plot(save_to(iteration), days)
         # save initial plot
-        self.save_pset_plot(save_to(0), days)
+        self.save_pset_plot(self.save_to(0), self.days)
         for i in range(1, self.snap_num + 1):
-            simulation_loop(i, self.cfg["snapshot_interval"])
+            self.simulation_loop(i, self.cfg["snapshot_interval"])
 
         # run the last interval (the remainder) if needed
         if self.last_int != 0:
-            simulation_loop(self.snap_num + 1, self.last_int)
+            self.simulation_loop(self.snap_num + 1, self.last_int)
 
         self.pfile.export()
         self.pfile.close()

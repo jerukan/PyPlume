@@ -168,6 +168,9 @@ def add_noise(arr, max_var, repeat=None):
 
 
 def create_gif(delay, images_path, out_path):
+    """
+    Use regex with images_path
+    """
     magick_sp = subprocess.Popen(
         [
             "magick", "-delay", str(delay), images_path, out_path
@@ -230,7 +233,7 @@ def load_pts_mat(path, lat_ind, lon_ind):
         path: path to mat file
 
     Returns:
-        np.ndarray: [[lats], [lons]]
+        np.ndarray: [lats], [lons]
     """
     mat_data = scipy.io.loadmat(path)
     xf = mat_data[lon_ind]
@@ -238,9 +241,6 @@ def load_pts_mat(path, lat_ind, lon_ind):
     # filter out nan values
     xf = xf[np.where(~np.isnan(xf))].flatten()
     yf = yf[np.where(~np.isnan(yf))].flatten()
-    assert len(xf) == len(yf)
-    points = np.empty((2, len(xf)))
-    # points are read as (lat, lon), so reverse order
-    points[0] = yf
-    points[1] = xf
-    return points
+    if len(xf) != len(yf):
+        raise ValueError("lat and lon values have different lengths of non-nan values")
+    return yf, xf

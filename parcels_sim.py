@@ -87,6 +87,15 @@ def parse_time_range(time_range, time_list):
     return t_start, t_end
 
 
+class TimedFrame:
+    def __init__(self, time, path):
+        self.time = time
+        self.path = path
+
+    def __repr__(self):
+        return f"([{self.path}] at [{self.time}])"
+
+
 class ParcelsSimulation:
     MAX_SNAPSHOTS = 200
     MAX_NUM_LEN = len(str(MAX_SNAPSHOTS))
@@ -98,7 +107,7 @@ class ParcelsSimulation:
         self.name = name
         self.hfrgrid = hfrgrid
         self.cfg = cfg
-
+        self.times, _, _ = hfrgrid.get_coords()
         t_start, t_end = self.get_time_bounds()
 
         # load spawn points
@@ -108,7 +117,8 @@ class ParcelsSimulation:
                 raise ValueError(f"Spawn points is incorrect shape {spawn_points.shape}")
         except ValueError:
             # assume a path was passed in, try to load stuff
-            spawn_points = utils.load_pts_mat(cfg["spawn_points"], "yf", "xf").T
+            lats, lons = utils.load_pts_mat(cfg["spawn_points"], "yf", "xf")
+            spawn_points = np.array([lats, lons]).T
 
         # calculate number of times particles will be spawned
         if cfg["repeat_dt"] <= 0:
@@ -144,10 +154,11 @@ class ParcelsSimulation:
         self.snap_num = math.floor((t_end - t_start) / cfg["snapshot_interval"])
         self.last_int = t_end - (self.snap_num * cfg["snapshot_interval"] + t_start)
         if self.last_int == 0:
+            # +1 snapshot is from an initial plot
             print("No last interval exists.")
-            print(f"Num snapshots to save for {name}: {self.snap_num + 2}")
+            print(f"Num snapshots to save for {name}: {self.snap_num + 1}")
         else:
-            print(f"Num snapshots to save for {name}: {self.snap_num + 3}")
+            print(f"Num snapshots to save for {name}: {self.snap_num + 2}")
         if self.snap_num >= ParcelsSimulation.MAX_SNAPSHOTS:
             raise Exception(f"Too many snapshots ({self.snap_num}).")
         self.snap_path = utils.create_path(ParcelsSimulation.PLOT_SAVE_DEFAULT / name)
@@ -166,8 +177,8 @@ class ParcelsSimulation:
             self.kernels = kernels
         self.kernel = None
         self.update_kernel()
-        times, _, _ = hfrgrid.get_coords()
-        self.days = np.timedelta64(times[-1] - times[0], "s") / np.timedelta64(1, "D")
+        self.days = np.timedelta64(self.times[-1] - self.times[0], "s") / np.timedelta64(1, "D")
+        self.plots = []
 
     def add_line(self, lats, lons):
         self.lat_pts.append(lats)
@@ -177,6 +188,7 @@ class ParcelsSimulation:
         if kernel in self.kernels:
             raise ValueError(f"{kernel} is already in the list of kernels.")
         self.kernels.append(kernel)
+        self.update_kernel()
 
     def update_kernel(self):
         self.kernel = AdvectionRK4
@@ -184,13 +196,14 @@ class ParcelsSimulation:
             self.kernel += self.pset.Kernel(k)
 
     def get_time_bounds(self):
-        times, _, _ = self.hfrgrid.get_coords()
-        t_start, t_end = parse_time_range(self.cfg["time_range"], times)
-        if t_start < times[0] or t_end < times[0] or t_start > times[-1] or t_end > times[-1]:
+        t_start, t_end = parse_time_range(self.cfg["time_range"], self.times)
+        if (t_start < self.times[0] or t_end < self.times[0] or
+            t_start > self.times[-1] or t_end > self.times[-1]):
             raise ValueError("Start and end times of simulation are out of bounds\n" +
-                f"Simulation range: ({t_start}, {t_end}), allowed domain: ({times[0]}, {times[-1]})")
-        t_start = (t_start - times[0]) / np.timedelta64(1, "s")
-        t_end = (t_end - times[0]) / np.timedelta64(1, "s")
+                f"Simulation range: ({t_start}, {t_end})\n" +
+                f"Allowed domain: ({self.times[0]}, {self.times[-1]})")
+        t_start = (t_start - self.times[0]) / np.timedelta64(1, "s")
+        t_end = (t_end - self.times[0]) / np.timedelta64(1, "s")
         return t_start, t_end
 
     def save_pset_plot(self, path, days):
@@ -203,6 +216,7 @@ class ParcelsSimulation:
             ax.scatter(self.lon_pts[i], self.lat_pts[i], s=4)
             ax.plot(self.lon_pts[i], self.lat_pts[i])
         plot_utils.draw_plt(savefile=path, fig=fig)
+        self.plots.append(TimedFrame(self.times[0] + np.timedelta64(int(self.pset[0].time), "s"), path))
 
     def exec_pset(self, runtime):
         self.pset.execute(
@@ -227,10 +241,6 @@ class ParcelsSimulation:
         # clear the folder of pngs (not everything just in case)
         for p in self.snap_path.glob("*.png"):
             p.unlink()
-        if self.last_int == 0:
-            total_iterations = self.snap_num + 2
-        else:
-            total_iterations = self.snap_num + 3
         part_size = self.cfg.get("part_size", 4)
         # save initial plot
         self.save_pset_plot(self.save_to(0), self.days)

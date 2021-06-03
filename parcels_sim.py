@@ -206,10 +206,10 @@ class ParcelsSimulation:
         t_end = (t_end - self.times[0]) / np.timedelta64(1, "s")
         return t_start, t_end
 
-    def save_pset_plot(self, path, days):
+    def save_pset_plot(self, path):
         part_size = self.cfg.get("part_size", 4)
         fig, ax = plot_utils.plot_particles_age(
-            self.pset, self.shown_domain, field="vector", vmax=days,
+            self.pset, self.shown_domain, field="vector", vmax=self.days,
             field_vmax=ParcelsSimulation.MAX_V, part_size=part_size
         )
         for i in range(len(self.lat_pts)):
@@ -227,23 +227,33 @@ class ParcelsSimulation:
             output_file=self.pfile
         )
 
-    def save_to(self, num, zeros=MAX_NUM_LEN):
+    def get_plot_save(self, num, zeros=MAX_NUM_LEN):
+        """Return path to save a plot to given some number"""
         return str(self.snap_path / f"snap{str(num).zfill(zeros)}.png")
+
+    def pre_loop(self, iteration, interval):
+        """Can override this hook"""
+        pass
+
+    def post_loop(self, iteration, interval):
+        """Can override this hook"""
+        pass
 
     def simulation_loop(self, iteration, interval):
         if len(self.pset) == 0:
             print("Particle set is empty, simulation loop not run.", file=sys.stderr)
             return
+        self.pre_loop(iteration, interval)
         self.exec_pset(interval)
-        self.save_pset_plot(self.save_to(iteration), self.days)
+        self.save_pset_plot(self.get_plot_save(iteration))
+        self.post_loop(iteration, interval)
 
     def execute(self):
         # clear the folder of pngs (not everything just in case)
         for p in self.snap_path.glob("*.png"):
             p.unlink()
-        part_size = self.cfg.get("part_size", 4)
         # save initial plot
-        self.save_pset_plot(self.save_to(0), self.days)
+        self.save_pset_plot(self.get_plot_save(0))
         for i in range(1, self.snap_num + 1):
             self.simulation_loop(i, self.cfg["snapshot_interval"])
 

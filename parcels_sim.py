@@ -253,7 +253,7 @@ class ParcelsSimulation:
         for p in self.snap_path.glob("*.png"):
             p.unlink()
         # save initial plot
-        self.save_pset_plot(self.get_plot_save(0))
+        self.simulation_loop(0, 0)
         for i in range(1, self.snap_num + 1):
             self.simulation_loop(i, self.cfg["snapshot_interval"])
 

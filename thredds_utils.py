@@ -7,40 +7,37 @@ import xarray as xr
 
 import utils
 
-
-dataset_url_6kmhourly = "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd"
-dataset_url_2kmhourly = "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/2km/hourly/RTV/HFRADAR_US_West_Coast_2km_Resolution_Hourly_RTV_best.ncd"
-dataset_url_1kmhourly = "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/hourly/RTV/HFRADAR_US_West_Coast_1km_Resolution_Hourly_RTV_best.ncd"
+USWC_6KM_HOURLY = 0
+USWC_2KM_HOURLY = 1
+USWC_1KM_HOURLY = 2
+USWC_500M_HOURLY = 3
 
 num_chunks = 50
 
 thredds_urls = {
-    utils.DATA_6KM: dataset_url_6kmhourly,
-    utils.DATA_2KM: dataset_url_2kmhourly,
-    utils.DATA_1KM: dataset_url_1kmhourly
+    USWC_6KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd",
+    USWC_2KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/2km/hourly/RTV/HFRADAR_US_West_Coast_2km_Resolution_Hourly_RTV_best.ncd",
+    USWC_1KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/hourly/RTV/HFRADAR_US_West_Coast_1km_Resolution_Hourly_RTV_best.ncd"
 }
 
 # do not access this dict directly, only load datasets when they are needed
 # use retrieve_dataset to get this data
-thredds_data = {
-    utils.DATA_6KM: None,
-    utils.DATA_2KM: None,
-    utils.DATA_1KM: None
-}
+# functions like a cache
+thredds_data = {}
 
-def retrieve_dataset(resolution):
+def retrieve_dataset(thredds_code):
     """
-    Get the full xarray dataset for thredds data at a given resolution
+    Get the full xarray dataset for thredds data at a given thredds dataset
 
     TODO check if the thredds server is down so it doesn't get stuck
     """
-    if thredds_data[resolution] is None:
-        print(f"Data for resolution {resolution} not loaded yet. Loading from...")
-        print(thredds_urls[resolution])
-        thredds_data[resolution] = xr.open_dataset(
-            thredds_urls[resolution], chunks={"time": num_chunks}
+    if thredds_code not in thredds_data or thredds_data[thredds_code] is None:
+        print(f"Data for type {thredds_code} not loaded yet. Loading from...")
+        print(thredds_urls[thredds_code])
+        thredds_data[thredds_code] = xr.open_dataset(
+            thredds_urls[thredds_code], chunks={"time": num_chunks}
         )
-    return thredds_data[resolution]
+    return thredds_data[thredds_code]
 
 
 def get_time_slice(time_range, inclusive=False, ref_coords=None, precision="h"):
@@ -103,12 +100,12 @@ def check_bounds(dataset, lat_range, lon_range, time_range):
         print("Longitude spans its entire range")
 
 
-def get_thredds_dataset(name, resolution, time_range, lat_range, lon_range,
+def get_thredds_dataset(thredds_code, time_range, lat_range, lon_range,
         inclusive=False, padding=0.0) -> xr.Dataset:
     """
     Params:
         name (str)
-        resolution (int)
+        thredds_code (int)
         time_range (np.datetime64, np.datetime64[, int]): (start, stop[, interval])
         lat_range (float, float)
         lon_range (float, float)
@@ -119,7 +116,7 @@ def get_thredds_dataset(name, resolution, time_range, lat_range, lon_range,
         xr.Dataset
     """
     print("Retrieving thredds dataset...")
-    reg_data = retrieve_dataset(resolution)
+    reg_data = retrieve_dataset(thredds_code)
     if inclusive:
         lat_range = utils.include_coord_range(lat_range, reg_data["lat"].values)
         lon_range = utils.include_coord_range(lon_range, reg_data["lon"].values)

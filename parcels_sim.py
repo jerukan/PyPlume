@@ -275,3 +275,4 @@ class ParcelsSimulation:
             os.path.join(self.snap_path, "*.png"),
             gif_path
         )
+        return gif_path

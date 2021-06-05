@@ -12,7 +12,13 @@ USWC_2KM_HOURLY = 1
 USWC_1KM_HOURLY = 2
 USWC_500M_HOURLY = 3
 
-num_chunks = 50
+NUM_CHUNKS = 50
+
+thredds_names = {
+    USWC_6KM_HOURLY: "US west coast 6km hourly",
+    USWC_2KM_HOURLY: "US west coast 2km hourly",
+    USWC_1KM_HOURLY: "US west coast 1km hourly"
+}
 
 thredds_urls = {
     USWC_6KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd",
@@ -35,7 +41,7 @@ def retrieve_dataset(thredds_code):
         print(f"Data for type {thredds_code} not loaded yet. Loading from...")
         print(thredds_urls[thredds_code])
         thredds_data[thredds_code] = xr.open_dataset(
-            thredds_urls[thredds_code], chunks={"time": num_chunks}
+            thredds_urls[thredds_code], chunks={"time": NUM_CHUNKS}
         )
     return thredds_data[thredds_code]
 

@@ -3,6 +3,7 @@ from operator import attrgetter
 import os
 import math
 from pathlib import Path
+import subprocess
 import sys
 
 import numpy as np
@@ -270,9 +271,15 @@ class ParcelsSimulation:
             raise RuntimeError("Simulation has not been run yet, cannot generate gif")
         if gif_path is None:
             gif_path = ParcelsSimulation.PLOT_SAVE_DEFAULT / f"partsim_{self.name}.gif"
-        utils.create_gif(
-            gif_delay,
-            os.path.join(self.snap_path, "*.png"),
-            gif_path
+        input_paths = [str(frame.path) for frame in self.plots]
+        sp_in = ["magick", "-delay", str(gif_delay)] + input_paths
+        sp_in.append(str(gif_path))
+        magick_sp = subprocess.Popen(
+            sp_in,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True
         )
+        stdout, stderr = magick_sp.communicate()
+        print(f"magick ouptput: {(stdout, stderr)}", file=sys.stderr)
         return gif_path

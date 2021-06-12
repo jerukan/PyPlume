@@ -170,11 +170,11 @@ def plot_particles(lats, lons, ages, domain, land=True, agemax=None, part_size=D
     return fig, ax
 
 
-def draw_particles_age(ps, domain, show_time=None, field=None, land=True, savefile=None, vmax=None, ages=False, agemax=None, part_size=DEFAULT_PARTICLE_SIZE):
+def draw_particles_age(ps, domain, show_time=None, field=None, land=True, savefile=None, vmax=None, agemax=None, part_size=DEFAULT_PARTICLE_SIZE):
     """
     plot_particles_age but it draws it directly idk
     """
-    fig, ax = plot_particles_age(ps, domain, show_time=show_time, field=field, land=land, vmax=vmax, ages=ages, agemax=agemax, part_size=part_size)
+    fig, ax = plot_particles_age(ps, domain, show_time=show_time, field=field, land=land, vmax=vmax, agemax=agemax, part_size=part_size)
     draw_plt(savefile, fig=fig)
 
 

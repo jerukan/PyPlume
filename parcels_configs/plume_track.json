@@ -5,10 +5,8 @@
 	"parcels_config": {
 		"time_range": ["2020-08-09T01:00", "2020-08-14T13:00"],
 		"repeat_dt": -1,
-		"particles_per_dt": -1,
-		"max_variation": 0,
+		"repetitions": -1,
 		"spawn_points": "matlab/support_data/TrackerOutput/sort/pts_20200810_0130.mat",
-		"random_spawn": false,
 		"simulation_dt": 300,
 		"snapshot_interval": 3600,
 		"save_snapshots": true,

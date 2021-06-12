@@ -65,7 +65,7 @@ def parse_time_range(time_range, time_list):
     else:
         try:
             t_start = int(time_range[0])
-        except ValueError:
+        except (ValueError, TypeError):
             t_start = np.datetime64(time_range[0])
 
     if time_range[1] == "END":
@@ -75,7 +75,7 @@ def parse_time_range(time_range, time_list):
     else:
         try:
             t_end = int(time_range[1])
-        except ValueError:
+        except (ValueError, TypeError):
             t_end = np.datetime64(time_range[1])
             
     if isinstance(t_start, int) and isinstance(t_end, int):
@@ -178,7 +178,7 @@ class ParcelsSimulation:
             self.kernels = kernels
         self.kernel = None
         self.update_kernel()
-        self.days = np.timedelta64(self.times[-1] - self.times[0], "s") / np.timedelta64(1, "D")
+        self.days = np.timedelta64(int(t_end - t_start), "s") / np.timedelta64(1, "D")
         self.plots = []
 
     def add_line(self, lats, lons):
@@ -210,8 +210,8 @@ class ParcelsSimulation:
     def save_pset_plot(self, path):
         part_size = self.cfg.get("part_size", 4)
         fig, ax = plot_utils.plot_particles_age(
-            self.pset, self.shown_domain, field="vector", vmax=self.days,
-            field_vmax=ParcelsSimulation.MAX_V, part_size=part_size
+            self.pset, self.shown_domain, field="vector", agemax=self.days,
+            vmax=ParcelsSimulation.MAX_V, part_size=part_size
         )
         for i in range(len(self.lat_pts)):
             ax.scatter(self.lon_pts[i], self.lat_pts[i], s=4)
@@ -241,15 +241,22 @@ class ParcelsSimulation:
         pass
 
     def simulation_loop(self, iteration, interval):
+        # yes 2 checks are needed to prevent it from breaking
         if len(self.pset) == 0:
             print("Particle set is empty, simulation loop not run.", file=sys.stderr)
-            return
+            return False
         self.pre_loop(iteration, interval)
         self.exec_pset(interval)
+        if len(self.pset) == 0:
+            print("Particle set empty after execution, no plotting or post-loop run.", file=sys.stderr)
+            return False
         self.save_pset_plot(self.get_plot_save(iteration))
         self.post_loop(iteration, interval)
+        return True
 
     def execute(self):
+        if self.completed:
+            raise RuntimeError("Simulation has already completed.")
         # clear the folder of pngs (not everything just in case)
         for p in self.snap_path.glob("*.png"):
             p.unlink()

@@ -14,6 +14,9 @@ import xarray as xr
 import utils
 
 
+DEFAULT_PARTICLE_SIZE = 4
+
+
 def get_carree_axis(domain, land=True):
     ext = [domain["W"], domain["E"], domain["S"], domain["N"]]
     fig = plt.figure()
@@ -87,7 +90,7 @@ def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None):
         plt.close()
 
 
-def draw_trajectories(datasets, names, domain=None, legend=True, scatter=True, savefile=None, titlestr=None, part_size=4, padding=0.0, figsize=None):
+def draw_trajectories(datasets, names, domain=None, legend=True, scatter=True, savefile=None, titlestr=None, part_size=DEFAULT_PARTICLE_SIZE, padding=0.0, figsize=None):
     """
     Takes in Parcels ParticleFile datasets or netcdf file paths and creates plots of those
     trajectories on the same plot.
@@ -141,35 +144,41 @@ def draw_particles_ps(fs, lats, lons):
     pset.show()
 
 
-def draw_particles(lats, lons, ages, domain, land=True, savefile=None, vmax=None, part_size=4, titlestr=None):
+def scatter_particles_ax(ax, lats, lons, ages=None, agemax=None, part_size=DEFAULT_PARTICLE_SIZE):
+    """Draws particles from a list of coordinates on an axes"""
+    if ages is None:
+        ax.scatter(lons, lats, s=part_size)
+    else:
+        sc = ax.scatter(lons, lats, c=ages, vmin=0, vmax=agemax, s=part_size)
+        # TODO display alongside vector field bar
+        # plt.colorbar(sc)
+
+
+def draw_particles(lats, lons, ages, domain, land=True, savefile=None, vmax=None, part_size=DEFAULT_PARTICLE_SIZE, titlestr=None):
     fig, ax = plot_particles(lats, lons, ages, domain, land=land, vmax=vmax, part_size=part_size, titlestr=titlestr)
     draw_plt(savefile, fig)
 
 
-def plot_particles(lats, lons, ages, domain, land=True, vmax=None, part_size=4, titlestr=None):
+def plot_particles(lats, lons, ages, domain, land=True, agemax=None, part_size=DEFAULT_PARTICLE_SIZE, titlestr=None):
     fig, ax = get_carree_axis(domain, land)
     gl = get_carree_gl(ax)
 
-    if ages is None:
-        ax.scatter(lons, lats, s=part_size)
-    else:
-        ax.scatter(lons, lats, c=ages, edgecolors="k", vmin=0, vmax=vmax, s=part_size)
-        plt.colorbar()
+    scatter_particles_ax(ax, lats, lons, ages=ages, agemax=agemax, part_size=part_size)
 
     plt.title(titlestr)
 
     return fig, ax
 
 
-def draw_particles_age(ps, domain, show_time=None, field=None, land=True, savefile=None, vmax=None, field_vmax=None, part_size=4):
+def draw_particles_age(ps, domain, show_time=None, field=None, land=True, savefile=None, vmax=None, ages=False, agemax=None, part_size=DEFAULT_PARTICLE_SIZE):
     """
     plot_particles_age but it draws it directly idk
     """
-    fig, ax = plot_particles_age(ps, domain, show_time=show_time, field=field, land=land, vmax=vmax, field_vmax=field_vmax, part_size=part_size)
+    fig, ax = plot_particles_age(ps, domain, show_time=show_time, field=field, land=land, vmax=vmax, ages=ages, agemax=agemax, part_size=part_size)
     draw_plt(savefile, fig=fig)
 
 
-def plot_particles_age(ps, domain, show_time=None, field=None, land=True, vmax=None, field_vmax=None, part_size=4):
+def plot_particles_age(ps, domain, show_time=None, field=None, land=True, vmax=None, agemax=None, part_size=DEFAULT_PARTICLE_SIZE):
     """
     A scuffed version of ParticleSet.show().
     Colors particles to visualize the particle ages.
@@ -177,44 +186,51 @@ def plot_particles_age(ps, domain, show_time=None, field=None, land=True, vmax=N
 
     Args:
         ps (parcels.ParticleSet)
-        field_vmax (float): max value for the vector field.
+        vmax (float): max value for the vector field.
     """
-    if len(ps) == 0:
-        print("No particles inside particle set. No plot generated.", file=sys.stderr)
-        return
-    show_time = ps[0].time if show_time is None else show_time
+    if len(ps) != 0:
+        show_time = ps[0].time if show_time is None else show_time
+    else:
+        # only place to get the time now is from a field if particle set is empty
+        # I don't even think this is the right time
+        show_time = ps.fieldset.U.grid.time[0] if show_time is None else show_time
     ext = [domain["W"], domain["E"], domain["S"], domain["N"]]
     p_size = len(ps)
     lats = np.zeros(p_size)
     lons = np.zeros(p_size)
-    ages = np.zeros(p_size)
+    ages = None
 
-    for i in range(p_size):
-        p = ps[i]
-        lats[i] = p.lat
-        lons[i] = p.lon
-        ages[i] = p.lifetime
-
-    ages /= 86400  # seconds in a day
+    if agemax is not None and len(ps) > 0 and hasattr(ps[0], "lifetime"):
+        ages = np.zeros(p_size)
+        for i in range(p_size):
+            p = ps[i]
+            lats[i] = p.lat
+            lons[i] = p.lon
+            ages[i] = p.lifetime
+        ages /= 86400  # seconds in a day
+    else:
+        for i in range(p_size):
+            p = ps[i]
+            lats[i] = p.lat
+            lons[i] = p.lon
 
     if field is None:
-        fig, ax = plot_particles(lats, lons, ages, domain, land=land, vmax=vmax, part_size=part_size)
+        fig, ax = plot_particles(lats, lons, ages, domain, land=land, agemax=agemax, part_size=part_size)
         time_str = plotting.parsetimestr(ps.fieldset.U.grid.time_origin, show_time)
         plt.title(f"Particle ages (days){time_str}")
     else:
-        print("Particle age display cannot be used with fields. Showing field only.", file=sys.stderr)
         if field == "vector":
             field = ps.fieldset.UV
         # vector values will always be above 0
         _, fig, ax, _ = plotting.plotfield(field=field, show_time=show_time,
-                                           domain=domain, land=land, vmin=0, vmax=field_vmax,
+                                           domain=domain, land=land, vmin=0, vmax=vmax,
                                            titlestr="Particles and ")
-        ax.scatter(lons, lats, s=part_size)
+        scatter_particles_ax(ax, lats, lons, ages=ages, agemax=agemax, part_size=part_size)
 
     return fig, ax
 
 
-def draw_points_fieldset(lats, lons, show_time, hfrgrid, domain=None, line=False, savefile=None, part_size=4):
+def draw_points_fieldset(lats, lons, show_time, hfrgrid, domain=None, line=False, savefile=None, part_size=DEFAULT_PARTICLE_SIZE):
     """
     Plot a bunch of points on top of a fieldset vector field. Option for plotting a line.
     """
@@ -228,7 +244,7 @@ def draw_points_fieldset(lats, lons, show_time, hfrgrid, domain=None, line=False
     draw_plt(savefile)
 
 
-def draw_particles_nc(nc, domain, time=None, label=None, show_time=None, land=True, savefile=None, vmax=None, field_vmax=None, part_size=4):
+def draw_particles_nc(nc, domain, time=None, label=None, show_time=None, land=True, savefile=None, vmax=None, field_vmax=None, part_size=DEFAULT_PARTICLE_SIZE):
     """
     Plots a bunch of particles to a map given the dataset is that single timestep of particles.
     """
@@ -261,7 +277,7 @@ def draw_particles_nc(nc, domain, time=None, label=None, show_time=None, land=Tr
         plt.close()
 
 
-def generate_simulation_plots(name, pf, hfrgrid, output_dir=utils.PICUTRE_DIR, domain=None, line_lats=None, line_lons=None, land=True, field_vmax=None, part_size=4, figsize=None):
+def generate_simulation_plots(name, pf, hfrgrid, output_dir=utils.PICUTRE_DIR, domain=None, line_lats=None, line_lons=None, land=True, field_vmax=None, part_size=DEFAULT_PARTICLE_SIZE, figsize=None):
     """
     Generates a separate plot for each timestamp of the saved simulation.
 

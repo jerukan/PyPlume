@@ -147,7 +147,7 @@ class ParcelsSimulation:
             fieldset=hfrgrid.fieldset, pclass=ThreddsParticle,
             lon=p_lons, lat=p_lats, time=time_arr
         )
-        self.pfile_path = utils.create_path(ParcelsSimulation.PFILE_SAVE_DEFAULT / f"particle_{name}.nc")
+        self.pfile_path = utils.create_path(ParcelsSimulation.PFILE_SAVE_DEFAULT) / f"particle_{name}.nc"
         self.pfile = self.pset.ParticleFile(self.pfile_path)
         print(f"Particle trajectories for {name} will be saved to {self.pfile_path}")
         print(f"    total particles in simulation: {total}")

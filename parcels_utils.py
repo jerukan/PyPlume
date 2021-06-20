@@ -207,6 +207,9 @@ class HFRGrid:
         else:
             self.fieldset = None
             self.fieldset_flat = None
+        # for caching
+        self.u = None
+        self.v = None
 
     def prep_fieldsets(self):
         # spherical mesh
@@ -233,7 +236,7 @@ class HFRGrid:
             "E": self.lons[-1],
         }  # mainly for use with showing a FieldSet and restricting domain
 
-    def get_closest_index(self, t, lat, lon):
+    def get_closest_index(self, t=None, lat=None, lon=None):
         """
         Args:
             t (np.datetime64): time
@@ -243,26 +246,51 @@ class HFRGrid:
         Returns:
             (time index, lat index, lon index)
         """
-        return (self.timeKDTree.query([t])[1],
-            self.latKDTree.query([lat])[1],
-            self.lonKDTree.query([lon])[1])
+        return (self.timeKDTree.query([t])[1] if t is not None else None,
+            self.latKDTree.query([lat])[1] if lat is not None else None,
+            self.lonKDTree.query([lon])[1] if lon is not None else None)
 
     def get_closest_current(self, t, lat, lon):
         """
         Args:
-            t (np.datetime64): time
+            t (np.datetime64 or int): time (or the index directly)
             lat (float)
             lon (float)
 
         returns:
             (u component, v component)
         """
-        if t < self.times.min() or t > self.times.max():
-            print("Warning: time is out of bounds", file=sys.stderr)
+        if not isinstance(t, (int, np.integer)):
+            if t < self.times.min() or t > self.times.max():
+                print("Warning: time is out of bounds", file=sys.stderr)
         if lat < self.lats.min() or lat > self.lats.max():
             print("Warning: latitude is out of bounds", file=sys.stderr)
         if lon < self.lons.min() or lon > self.lons.max():
             print("Warning: latitude is out of bounds", file=sys.stderr)
-        t_idx, lat_idx, lon_idx = self.get_closest_index(t, lat, lon)
-        return (self.xrds["u"].isel(time=t_idx, lat=lat_idx, lon=lon_idx).values,
-            self.xrds["v"].isel(time=t_idx, lat=lat_idx, lon=lon_idx).values)
+        if isinstance(t, (int, np.integer)):
+            t_idx = t
+            _, lat_idx, lon_idx = self.get_closest_index(None, lat, lon)
+        else:
+            t_idx, lat_idx, lon_idx = self.get_closest_index(t, lat, lon)
+        # cache the whole array because isel is slow when doing it individually
+        if self.u is None:
+            self.u = self.xrds["u"].values
+        if self.v is None:
+            self.v = self.xrds["v"].values
+        return self.u[t_idx, lat_idx, lon_idx], self.v[t_idx, lat_idx, lon_idx]
+
+    def get_fs_current(self, t, lat, lon, flat=True):
+        """
+        Gets the current information at a position from the fieldset instead of from the
+        dataset.
+        TODO: support for datetime64
+
+        Args:
+            t (float): time relative to the fieldset
+            lat (float)
+            lon (float)
+            flat (bool): if true, use the flat fieldset. otherwise use the spherical fieldset
+        """
+        if flat:
+            return self.fieldset_flat.U[t, 0, lat, lon], self.fieldset_flat.V[t, 0, lat, lon]
+        return self.fieldset.U[t, 0, lat, lon], self.fieldset.V[t, 0, lat, lon]

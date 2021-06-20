@@ -112,7 +112,8 @@ def conv_to_dataarray(arr, darr_ref):
 
 def generate_mask_invalid(data):
     """
-    Generates a boolean mask signifying which points in the data are invalid.
+    Generates a boolean mask signifying which points in the data are invalid. (don't have data
+    but normally should have)
 
     Args:
         data (np.ndarray): an array with the shape of (time, lat, lon).
@@ -120,35 +121,24 @@ def generate_mask_invalid(data):
     Returns:
         np.ndarray: boolean mask with the same shape as data.
     """
-    mask = np.zeros(data.shape, dtype=bool)
-    for i in range(data.shape[1]):
-        for j in range(data.shape[2]):
-            point = data[:, i, j]
-            nan_vals = np.isnan(point)
-            # if the point at (lat, lon) contains real data and nan values
-            # mark those points as invalid
-            if not nan_vals.all():
-                mask[:, i, j] = np.where(nan_vals.flatten(), 1, 0)
+    mask_none = np.tile(generate_mask_none(data), (data.shape[0], 1, 1))
+    mask = np.isnan(data)
+    mask[mask_none] = False
     return mask
 
 
 def generate_mask_none(data):
     """
-    Generates a boolean mask signifying which points in the data don't have data.
+    Generates a boolean mask signifying which points in the data don't have data and never should.
 
     Args:
         data (np.ndarray): an array with the shape of (time, lat, lon).
 
     Returns:
-        np.ndarray: boolean mask with the same shape as data.
+        np.ndarray: boolean mask with the shape of (lat, lon).
     """
-    mask = np.zeros(data.shape, dtype=bool)
-    for i in range(data.shape[1]):
-        for j in range(data.shape[2]):
-            point = data[:, i, j]
-            if np.isnan(point).all():
-                mask[:, i, j] = True
-    return mask
+    nan_data = ~np.isnan(data)
+    return nan_data.sum(axis=0) == 0
 
 
 def add_noise(arr, max_var, repeat=None):

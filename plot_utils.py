@@ -155,7 +155,7 @@ def scatter_particles_ax(ax, lats, lons, ages=None, agemax=None, part_size=DEFAU
 
 
 def draw_particles(lats, lons, ages, domain, land=True, savefile=None, vmax=None, part_size=DEFAULT_PARTICLE_SIZE, titlestr=None):
-    fig, ax = plot_particles(lats, lons, ages, domain, land=land, vmax=vmax, part_size=part_size, titlestr=titlestr)
+    fig, ax = plot_particles(lats, lons, ages, domain, land=land, agemax=vmax, part_size=part_size, titlestr=titlestr)
     draw_plt(savefile, fig)
 
 
@@ -277,7 +277,7 @@ def draw_particles_nc(nc, domain, time=None, label=None, show_time=None, land=Tr
         plt.close()
 
 
-def generate_simulation_plots(name, pf, hfrgrid, output_dir=utils.PICUTRE_DIR, domain=None, line_lats=None, line_lons=None, land=True, field_vmax=None, part_size=DEFAULT_PARTICLE_SIZE, figsize=None):
+def generate_simulation_plots(name, pf, hfrgrid=None, output_dir=utils.PICUTRE_DIR, domain=None, line_lats=None, line_lons=None, land=True, field_vmax=None, part_size=DEFAULT_PARTICLE_SIZE, figsize=None):
     """
     Generates a separate plot for each timestamp of the saved simulation.
 
@@ -289,19 +289,31 @@ def generate_simulation_plots(name, pf, hfrgrid, output_dir=utils.PICUTRE_DIR, d
         with xr.open_dataset(pf) as p_ds:
             pf = p_ds
     if domain is None:
-        domain = hfrgrid.get_domain()
+        if hfrgrid is None:
+            domain = {
+                "W": pf["lon"].min().values.item(),
+                "E": pf["lon"].max().values.item(),
+                "S": pf["lat"].min().values.item(),
+                "N": pf["lat"].max().values.item()
+            }
+            domain = pad_domain(domain, 0.0005)
+        else:
+            domain = hfrgrid.get_domain()
     timestamps = pf["time"].isel(traj=0).values
     plot_path = utils.create_path(Path(output_dir) / name)
     num_pad = len(str(len(timestamps)))
-    grid_time_origin = hfrgrid.times[0]
     for i, time in enumerate(timestamps):
         savefile = str(plot_path / f"snap{str(i).zfill(num_pad)}.png")
-        show_time = int((time - grid_time_origin) / np.timedelta64(1, "s"))
-        if show_time < 0:
-            raise ValueError("Particle simulation time domain goes out of bounds")
-        _, fig, ax, _ = plotting.plotfield(field=hfrgrid.fieldset.UV, show_time=show_time,
-                                        domain=domain, land=land, vmin=0, vmax=field_vmax,
-                                        titlestr="Particles and ")
+        if hfrgrid is None:
+            fig, ax = get_carree_axis(domain, land=land)
+            get_carree_gl(ax)
+        else:
+            show_time = int((time - hfrgrid.times[0]) / np.timedelta64(1, "s"))
+            if show_time < 0:
+                raise ValueError("Particle simulation time domain goes out of bounds")
+            _, fig, ax, _ = plotting.plotfield(field=hfrgrid.fieldset.UV, show_time=show_time,
+                                            domain=domain, land=land, vmin=0, vmax=field_vmax,
+                                            titlestr="Particles and ")
         ax.scatter(pf["lon"].isel(obs=i), pf["lat"].isel(obs=i), s=part_size)
         if line_lats is not None and line_lons is not None:
             for j in range(len(line_lats)):

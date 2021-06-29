@@ -208,7 +208,7 @@ class ParcelsSimulation:
         return t_start, t_end
 
     def save_pset_plot(self, path):
-        part_size = self.cfg.get("part_size", 4)
+        part_size = self.cfg.get("part_size", 20)
         fig, ax = plot_utils.plot_particles_age(
             self.pset, self.shown_domain, field="vector", agemax=self.days,
             vmax=ParcelsSimulation.MAX_V, part_size=part_size

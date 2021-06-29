@@ -149,7 +149,7 @@ def scatter_particles_ax(ax, lats, lons, ages=None, agemax=None, part_size=DEFAU
     if ages is None:
         ax.scatter(lons, lats, s=part_size)
     else:
-        sc = ax.scatter(lons, lats, c=ages, vmin=0, vmax=agemax, s=part_size)
+        sc = ax.scatter(lons, lats, c=ages, edgecolor="k", vmin=0, vmax=agemax, s=part_size)
         # TODO display alongside vector field bar
         # plt.colorbar(sc)
 

@@ -1,7 +1,9 @@
 """
 A collection of methods wrapping OceanParcels functionalities.
 """
+import datetime
 from pathlib import Path
+import os
 import sys
 
 import numpy as np
@@ -9,6 +11,8 @@ import pandas as pd
 from parcels import FieldSet
 import scipy.spatial
 import xarray as xr
+
+import utils
 
 
 def arrays_to_particleds(time, lat, lon) -> xr.Dataset:
@@ -97,7 +101,7 @@ def clean_erddap_ds(ds):
     return clean_ds
 
 
-def xr_dataset_to_fieldset(xrds, copy=True, mesh="spherical", u_key="u", v_key="v") -> FieldSet:
+def xr_dataset_to_fieldset(xrds, copy=True, raw=True, mesh="spherical") -> FieldSet:
     """
     Creates a parcels FieldSet with an ocean current xarray Dataset.
     copy is true by default since Parcels has a habit of turning nan values into 0s.
@@ -111,12 +115,19 @@ def xr_dataset_to_fieldset(xrds, copy=True, mesh="spherical", u_key="u", v_key="
         ds = xrds.copy(deep=True)
     else:
         ds = xrds
-    fieldset = FieldSet.from_xarray_dataset(
-            ds,
-            dict(U=u_key, V=v_key),
-            dict(lat="lat", lon="lon", time="time"),
+    if raw:
+        fieldset = FieldSet.from_data(
+            {"U": ds["u"].values, "V": ds["v"].values},
+            {"time": ds["time"].values, "lat": ds["lat"].values, "lon": ds["lon"].values},
             mesh=mesh
         )
+    else:
+        fieldset = FieldSet.from_xarray_dataset(
+                ds,
+                dict(U="u", V="v"),
+                dict(lat="lat", lon="lon", time="time"),
+                mesh=mesh
+            )
     fieldset.check_complete()
     return fieldset
 
@@ -179,13 +190,13 @@ class HFRGrid:
 
     TODO generate the mask of where data should be available
     """
-
     def __init__(self, dataset, init_fs=True):
         """
         Reads from a netcdf file containing ocean current data.
 
         Args:
             dataset (path-like or xr.Dataset): represents the netcdf ocean current data.
+            cache_ds (bool): no effect when dataset is a file path
         """
         if isinstance(dataset, (Path, str)):
             self.path = dataset
@@ -195,7 +206,7 @@ class HFRGrid:
             self.path = None
             self.xrds = dataset
         else:
-            raise TypeError(f"dataset is not a path or xarray dataset")
+            raise TypeError(f"{dataset} is not a path or xarray dataset")
         self.times = self.xrds["time"].values
         self.lats = self.xrds["lat"].values
         self.lons = self.xrds["lon"].values
@@ -210,6 +221,7 @@ class HFRGrid:
         # for caching
         self.u = None
         self.v = None
+
 
     def prep_fieldsets(self):
         # spherical mesh

@@ -196,7 +196,6 @@ class HFRGrid:
 
         Args:
             dataset (path-like or xr.Dataset): represents the netcdf ocean current data.
-            cache_ds (bool): no effect when dataset is a file path
         """
         if isinstance(dataset, (Path, str)):
             self.path = dataset

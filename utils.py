@@ -44,8 +44,7 @@ def euc_dist(vec1, vec2):
 
 def haversine(lat1, lat2, lon1, lon2):
     """
-    lol look at all this MATH
-    how does this even work
+    Calculates the haversine distance between two points.
     """
     R = 6378.137  # Radius of earth in KM
     dLat = lat2 * math.pi / 180 - lat1 * math.pi / 180

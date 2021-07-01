@@ -209,9 +209,9 @@ class HFRGrid:
         self.times = self.xrds["time"].values
         self.lats = self.xrds["lat"].values
         self.lons = self.xrds["lon"].values
-        self.timeKDTree = scipy.spatial.cKDTree(np.array([self.times]).T)
-        self.latKDTree = scipy.spatial.cKDTree(np.array([self.lats]).T)
-        self.lonKDTree = scipy.spatial.cKDTree(np.array([self.lons]).T)
+        self.timeKDTree = scipy.spatial.KDTree(np.array([self.times]).T)
+        self.latKDTree = scipy.spatial.KDTree(np.array([self.lats]).T)
+        self.lonKDTree = scipy.spatial.KDTree(np.array([self.lons]).T)
         if init_fs:
             self.prep_fieldsets()
         else:

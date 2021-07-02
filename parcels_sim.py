@@ -46,6 +46,13 @@ def TestOOB(particle, fieldset, time):
         particle.oob = 0
 
 
+def DeleteOOB(particle, fieldset, time):
+    """Deletes particles that go out of bounds"""
+    u, v = fieldset.UV[time, particle.depth, particle.lat, particle.lon]
+    if math.fabs(u) < 1e-14 and math.fabs(v) < 1e-14:
+        particle.delete()
+
+
 def DeleteParticle(particle, fieldset, time):
     print(f"Particle [{particle.id}] lost "
           f"({particle.time}, {particle.depth}, {particle.lat}, {particle.lon})", file=sys.stderr)
@@ -101,8 +108,8 @@ class ParcelsSimulation:
     MAX_SNAPSHOTS = 200
     MAX_NUM_LEN = len(str(MAX_SNAPSHOTS))
     MAX_V = 0.6
-    PFILE_SAVE_DEFAULT = utils.PARTICLE_NETCDF_DIR
-    PLOT_SAVE_DEFAULT = utils.PICUTRE_DIR
+    PFILE_SAVE_DEFAULT = utils.FILES_ROOT / utils.PARTICLE_NETCDF_DIR
+    PLOT_SAVE_DEFAULT = utils.FILES_ROOT / utils.PICUTRE_DIR
 
     def __init__(self, name, hfrgrid, cfg, kernels=None):
         self.name = name

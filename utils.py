@@ -20,6 +20,7 @@ filename_dict = {
     DATA_1KM: "west_coast_1km_hourly"
 }
 
+FILES_ROOT = Path("/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast")
 PARCELS_CONFIGS_DIR = Path("parcels_configs")
 CURRENT_NETCDF_DIR = Path("current_netcdfs")
 PARTICLE_NETCDF_DIR = Path("particledata")

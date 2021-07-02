@@ -1,12 +1,12 @@
 {
 	"name": "plume_track",
-	"netcdf_path": "current_netcdfs/west_coast_1km_hourly/tj_plume_interped.nc",
+	"netcdf_path": "current_netcdfs/west_coast_1km_hourly/tj_plume_2020-08_interped.nc",
 	"resolution": 1,
 	"parcels_config": {
 		"time_range": ["2020-08-09T01:00", "2020-08-14T13:00"],
 		"repeat_dt": -1,
 		"repetitions": -1,
-		"spawn_points": "matlab/support_data/TrackerOutput/sort/pts_20200810_0130.mat",
+		"spawn_points": "matlab/glist90zj_pts_position.mat",
 		"simulation_dt": 300,
 		"snapshot_interval": 3600,
 		"save_snapshots": true,

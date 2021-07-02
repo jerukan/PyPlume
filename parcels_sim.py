@@ -10,6 +10,7 @@ import numpy as np
 from parcels import ParticleSet, ErrorCode, JITParticle, Variable, AdvectionRK4
 
 import utils
+from parcels_analysis import ParticleResult
 import plot_utils
 
 # ignore annoying deprecation warnings
@@ -39,8 +40,9 @@ def TestOOB(particle, fieldset, time):
     """
     Kernel to test if a particle has gone into a location without any ocean current data.
     """
+    OOB_THRESH = 1e-14
     u, v = fieldset.UV[time, particle.depth, particle.lat, particle.lon]
-    if math.fabs(u) < 1e-14 and math.fabs(v) < 1e-14:
+    if math.fabs(u) < OOB_THRESH and math.fabs(v) < OOB_THRESH:
         particle.oob = 1
     else:
         particle.oob = 0
@@ -48,8 +50,9 @@ def TestOOB(particle, fieldset, time):
 
 def DeleteOOB(particle, fieldset, time):
     """Deletes particles that go out of bounds"""
+    OOB_THRESH = 1e-10
     u, v = fieldset.UV[time, particle.depth, particle.lat, particle.lon]
-    if math.fabs(u) < 1e-14 and math.fabs(v) < 1e-14:
+    if math.fabs(u) < OOB_THRESH and math.fabs(v) < OOB_THRESH:
         particle.delete()
 
 
@@ -95,21 +98,11 @@ def parse_time_range(time_range, time_list):
     return t_start, t_end
 
 
-class TimedFrame:
-    def __init__(self, time, path):
-        self.time = time
-        self.path = path
-
-    def __repr__(self):
-        return f"([{self.path}] at [{self.time}])"
-
-
 class ParcelsSimulation:
     MAX_SNAPSHOTS = 200
     MAX_NUM_LEN = len(str(MAX_SNAPSHOTS))
     MAX_V = 0.6
     PFILE_SAVE_DEFAULT = utils.FILES_ROOT / utils.PARTICLE_NETCDF_DIR
-    PLOT_SAVE_DEFAULT = utils.FILES_ROOT / utils.PICUTRE_DIR
 
     def __init__(self, name, hfrgrid, cfg, kernels=None):
         self.name = name
@@ -169,28 +162,15 @@ class ParcelsSimulation:
             print(f"Num snapshots to save for {name}: {self.snap_num + 2}")
         if self.snap_num >= ParcelsSimulation.MAX_SNAPSHOTS:
             raise Exception(f"Too many snapshots ({self.snap_num}).")
-        self.snap_path = utils.create_path(ParcelsSimulation.PLOT_SAVE_DEFAULT / name)
-        print(f"Path to save snapshots to: {self.snap_path}")
 
-        if "shown_domain" not in cfg or cfg["shown_domain"] is None:
-            self.shown_domain = hfrgrid.get_domain()
-        else:
-            self.shown_domain = cfg["shown_domain"]
         self.completed = False
-        self.lat_pts = []
-        self.lon_pts = []
+        self.parcels_result = None
         if kernels is None:
-            self.kernels = [AgeParticle, TestOOB]
+            self.kernels = [AgeParticle, DeleteOOB]
         else:
             self.kernels = kernels
         self.kernel = None
         self.update_kernel()
-        self.days = np.timedelta64(int(t_end - t_start), "s") / np.timedelta64(1, "D")
-        self.plots = []
-
-    def add_line(self, lats, lons):
-        self.lat_pts.append(lats)
-        self.lon_pts.append(lons)
 
     def add_kernel(self, kernel):
         if kernel in self.kernels:
@@ -214,18 +194,6 @@ class ParcelsSimulation:
         t_end = (t_end - self.times[0]) / np.timedelta64(1, "s")
         return t_start, t_end
 
-    def save_pset_plot(self, path):
-        part_size = self.cfg.get("part_size", 20)
-        fig, ax = plot_utils.plot_particles_age(
-            self.pset, self.shown_domain, field="vector", agemax=self.days,
-            vmax=ParcelsSimulation.MAX_V, part_size=part_size
-        )
-        for i in range(len(self.lat_pts)):
-            ax.scatter(self.lon_pts[i], self.lat_pts[i], s=4)
-            ax.plot(self.lon_pts[i], self.lat_pts[i])
-        plot_utils.draw_plt(savefile=path, fig=fig)
-        self.plots.append(TimedFrame(self.times[0] + np.timedelta64(int(self.pset[0].time), "s"), path))
-
     def exec_pset(self, runtime):
         self.pset.execute(
             self.kernel,
@@ -234,10 +202,6 @@ class ParcelsSimulation:
             recovery={ErrorCode.ErrorOutOfBounds: DeleteParticle},
             output_file=self.pfile
         )
-
-    def get_plot_save(self, num, zeros=MAX_NUM_LEN):
-        """Return path to save a plot to given some number"""
-        return str(self.snap_path / f"snap{str(num).zfill(zeros)}.png")
 
     def pre_loop(self, iteration, interval):
         """Can override this hook"""
@@ -255,18 +219,14 @@ class ParcelsSimulation:
         self.pre_loop(iteration, interval)
         self.exec_pset(interval)
         if len(self.pset) == 0:
-            print("Particle set empty after execution, no plotting or post-loop run.", file=sys.stderr)
+            print("Particle set empty after execution, no post-loop run.", file=sys.stderr)
             return False
-        self.save_pset_plot(self.get_plot_save(iteration))
         self.post_loop(iteration, interval)
         return True
 
     def execute(self):
         if self.completed:
             raise RuntimeError("Simulation has already completed.")
-        # clear the folder of pngs (not everything just in case)
-        for p in self.snap_path.glob("*.png"):
-            p.unlink()
         # save initial plot
         self.simulation_loop(0, 0)
         for i in range(1, self.snap_num + 1):
@@ -279,21 +239,5 @@ class ParcelsSimulation:
         self.pfile.export()
         self.pfile.close()
         self.completed = True
-
-    def generate_gif(self, gif_path=None, gif_delay=25):
-        if not self.completed:
-            raise RuntimeError("Simulation has not been run yet, cannot generate gif")
-        if gif_path is None:
-            gif_path = ParcelsSimulation.PLOT_SAVE_DEFAULT / f"partsim_{self.name}.gif"
-        input_paths = [str(frame.path) for frame in self.plots]
-        sp_in = ["magick", "-delay", str(gif_delay)] + input_paths
-        sp_in.append(str(gif_path))
-        magick_sp = subprocess.Popen(
-            sp_in,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            universal_newlines=True
-        )
-        stdout, stderr = magick_sp.communicate()
-        print(f"magick ouptput: {(stdout, stderr)}", file=sys.stderr)
-        return gif_path
+        self.parcels_result = ParticleResult(self.pfile_path)
+        self.parcels_result.add_grid(self.hfrgrid)

@@ -1,12 +1,12 @@
-import datetime
 from pathlib import Path
 import os
 import subprocess
 import sys
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from parcels import FieldSet, plotting
+from parcels import plotting
 import scipy.spatial
 import xarray as xr
 
@@ -16,19 +16,21 @@ import utils
 
 
 def line_seg(x1, y1, x2, y2):
+    """Creates information needed to represent a linear line segment."""
     return dict(
-        x1=x1,
-        y1=y1,
-        x2=x2,
-        y2=y2,
-        dom=(x1, x2) if x1 <= x2 else (x2, x1),
-        rng=(y1, y2) if y1 <= y2 else (y2, y1),
+        x1=x1,  # endpoint 1 x
+        y1=y1,  # endpoint 1 y
+        x2=x2,  # endpoint 2 x
+        y2=y2,  # endpoint 2 y
+        dom=(x1, x2) if x1 <= x2 else (x2, x1),  # domain
+        rng=(y1, y2) if y1 <= y2 else (y2, y1),  # range
         # check for vertical line
         slope=(y1 - y2) / (x1 - x2) if x1 - x2 != 0 else np.nan
     )
 
 
 def valid_point(x, y, line):
+    """Checks if a point on a line segment is inside its domain/range"""
     in_dom = line["dom"][0] <= x <= line["dom"][1]
     in_range = line["rng"][0] <= y <= line["rng"][1]
     return in_dom and in_range
@@ -36,6 +38,8 @@ def valid_point(x, y, line):
 
 def intersection_info(x, y, line):
     """
+    Given a point and a line, return the xy coordinate of the closest point to the line.
+
     Returns:
         intersection x, intersection y
     """
@@ -129,9 +133,11 @@ class ParticlePlotFeature:
 
 
 class TimedFrame:
-    def __init__(self, time, path):
+    """Class that stores information about a single simulation plot"""
+    def __init__(self, time, path, path_table=None):
         self.time = time
         self.path = path
+        self.path_table = path_table
 
     def __repr__(self):
         return f"([{self.path}] at [{self.time}])"
@@ -142,8 +148,6 @@ class ParticleResult:
     Wraps the output of a particle file to make visualizing and analyzing the results easier.
     Can also use an HFRGrid if the ocean currents are also needed.
     """
-    PLOT_SAVE_DEFAULT = utils.FILES_ROOT / utils.PICUTRE_DIR
-
     def __init__(self, dataset):
         if isinstance(dataset, (Path, str)):
             self.path = dataset
@@ -179,7 +183,10 @@ class ParticleResult:
     def add_plot_feature(self, feature: ParticlePlotFeature, station=False):
         self.plot_features.append((feature, station))
 
-    def plot_feature(self, t, feature, station, ax):
+    def count_near_feature(self, t, feature: ParticlePlotFeature):
+        return feature.count_near(self.lats[:, t], self.lons[:, t])
+
+    def plot_feature(self, t, feature: ParticlePlotFeature, station, ax, ax_table=None):
         if station:
             curr_lats = self.lats[:, t]
             curr_lons = self.lons[:, t]
@@ -190,11 +197,16 @@ class ParticleResult:
             ax.scatter(
                 feature.lons[counts > 0], feature.lats[counts > 0], c="r", s=60, edgecolor="k"
             )
+            if ax_table is not None:
+                ax_table.table(
+                    cellText=np.array([self.count_near_feature(t, feature)], dtype=np.uint32).T,
+                    rowLabels=feature.labels,
+                    loc="upper left"
+                )
         else:
             ax.scatter(feature.lons, feature.lats)
             if feature.segments is not None:
                 ax.plot(feature.lons, feature.lats)
-        return ax
 
     def get_time(self, t):
         curr_time = self.times[:, t]
@@ -231,17 +243,30 @@ class ParticleResult:
             self.lons[:, t][non_nan], self.lats[:, t][non_nan], c=self.lifetimes[:, t][non_nan],
             edgecolor="k", vmin=0, vmax=max_life, s=25
         )
+        # the only thing that needs tables generated are station features
+        if any([feat[1] for feat in self.plot_features]):
+            fig_tab = plt.figure()
+            ax_tab = fig_tab.add_subplot()
+            ax_tab.set_axis_off()
+        else:
+            fig_tab = None
+            ax_tab = None
         for feature, station in self.plot_features:
-            self.plot_feature(t, feature, station, ax)
-        return fig, ax
+            self.plot_feature(t, feature, station, ax, ax_table=ax_tab)
+        return (fig, fig_tab), (ax, ax_tab)
 
     def generate_all_plots(self, save_dir, figsize=None, domain=None):
         frames = []
         for t in range(self.lats.shape[1]):
+            (fig, fig_tab), _ = self.plot_at_t(t, domain=domain)
             savefile = os.path.join(save_dir, f"snap{t}.png")
-            fig, ax = self.plot_at_t(t, domain=domain)
             plot_utils.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
-            frames.append(TimedFrame(self.get_time(t), savefile))
+            if fig_tab is not None:
+                savefile_tab = os.path.join(save_dir, f"snap_tab{t}.png")
+                plot_utils.draw_plt(savefile=savefile_tab, fig=fig_tab, figsize=figsize)
+            else:
+                savefile_tab = None
+            frames.append(TimedFrame(self.get_time(t), savefile, path_table=savefile_tab))
         return frames
 
     def generate_gif(self, frames, gif_path, gif_delay=25):

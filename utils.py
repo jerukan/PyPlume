@@ -218,6 +218,7 @@ def expand_time_rng(time_rng, precision="h"):
 def load_pts_mat(path, lat_ind, lon_ind):
     """
     Loads points from a pts mat from the TJ Plume Tracker.
+    Only points where both lat and lon are non-nan are returned.
 
     Args:
         path: path to mat file
@@ -226,11 +227,10 @@ def load_pts_mat(path, lat_ind, lon_ind):
         np.ndarray: [lats], [lons]
     """
     mat_data = scipy.io.loadmat(path)
-    xf = mat_data[lon_ind]
-    yf = mat_data[lat_ind]
+    xf = mat_data[lon_ind].flatten()
+    yf = mat_data[lat_ind].flatten()
     # filter out nan values
-    xf = xf[np.where(~np.isnan(xf))].flatten()
-    yf = yf[np.where(~np.isnan(yf))].flatten()
-    if len(xf) != len(yf):
-        raise ValueError("lat and lon values have different lengths of non-nan values")
+    non_nan = (~np.isnan(xf)) & (~np.isnan(yf))
+    xf = xf[np.where(non_nan)]
+    yf = yf[np.where(non_nan)]
     return yf, xf

@@ -10,6 +10,7 @@ from parcels import plotting
 import scipy.spatial
 import xarray as xr
 
+from constants import *
 from parcels_utils import HFRGrid
 import plot_utils
 import utils
@@ -108,28 +109,18 @@ class ParticlePlotFeature:
         return least_dist
 
     @classmethod
-    def get_sd_stations(cls, path=None):
-        # TODO there are constants here, move them
+    def get_sd_stations(cls, path=None, track_dist=500):
         if path is None:
-            path = utils.MATLAB_DIR / "wq_stposition.mat"
-        station_mat = scipy.io.loadmat(path)
-        station_lats = station_mat["ywq"].flatten()
-        station_lons = station_mat["xwq"].flatten()
-        station_names = np.array([
-            "Coronado (North Island)",
-            "Silver Strand",
-            "Silver Strand Beach",
-            "Carnation Ave.",
-            "Imperial Beach Pier",
-            "Cortez Ave.",
-            "End of Seacoast Dr.",
-            "3/4 mi. N. of TJ River Mouth",
-            "Tijuana River Mouth",
-            "Monument Rd.",
-            "Board Fence",
-            "Mexico"
-        ])
-        return cls(station_lats, station_lons, labels=station_names, track_dist=500)
+            path = utils.MATLAB_DIR / SD_STATION_FILENAME
+        lats, lons = utils.load_pts_mat(path, "ywq", "xwq")
+        return cls(lats, lons, labels=SD_STATION_NAMES, track_dist=track_dist)
+
+    @classmethod
+    def get_sd_coastline(cls, path=None, track_dist=100):
+        if path is None:
+            path = utils.MATLAB_DIR / SD_COASTLINE_FILENAME
+        lats, lons = utils.load_pts_mat(path, "latz0", "lonz0")
+        return cls(lats, lons, track_dist=track_dist)
 
 
 class TimedFrame:

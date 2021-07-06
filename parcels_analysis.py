@@ -91,7 +91,7 @@ class ParticlePlotFeature:
             if closest_idx < len(self.points) - 1:
                 seg_check.append(self.segments[closest_idx])
             if closest_idx > 0:
-                seg_check.append(self.segments[closest_idx] - 1)
+                seg_check.append(self.segments[closest_idx - 1])
             for seg in seg_check:
                 lon_int, lat_int = intersection_info(lon, lat, seg)
                 if valid_point(lon_int, lat_int, seg):
@@ -184,8 +184,12 @@ class ParticleResult:
             curr_lats = self.lats[:, t]
             curr_lons = self.lons[:, t]
             counts = feature.count_near(curr_lats, curr_lons)
-            ax.scatter(feature.lons[counts == 0], feature.lats[counts == 0])
-            ax.scatter(feature.lons[counts > 0], feature.lats[counts > 0])
+            ax.scatter(
+                feature.lons[counts == 0], feature.lats[counts == 0], c="b", s=60, edgecolor="k"
+            )
+            ax.scatter(
+                feature.lons[counts > 0], feature.lats[counts > 0], c="r", s=60, edgecolor="k"
+            )
         else:
             ax.scatter(feature.lons, feature.lats)
             if feature.segments is not None:
@@ -199,8 +203,8 @@ class ParticleResult:
             return np.datetime64("Nat")
         return non_nat[0]
 
-    def plot_at_t(self, t):
-        if self.grid is None:
+    def plot_at_t(self, t, domain=None):
+        if self.grid is None and domain is None:
             domain = {
                 "W": np.nanmin(self.lons),
                 "E": np.nanmax(self.lons),
@@ -208,7 +212,7 @@ class ParticleResult:
                 "N": np.nanmax(self.lats),
             }
             domain = plot_utils.pad_domain(domain, 0.0005)
-        else:
+        elif self.grid is not None and domain is None:
             domain = self.grid.get_domain()
         max_life = np.nanmax(self.lifetimes)
         timestamp = self.get_time(t)
@@ -225,17 +229,17 @@ class ParticleResult:
         non_nan = ~np.isnan(self.lons[:, t])
         ax.scatter(
             self.lons[:, t][non_nan], self.lats[:, t][non_nan], c=self.lifetimes[:, t][non_nan],
-            edgecolor="k", vmin=0, vmax=max_life, s=40
+            edgecolor="k", vmin=0, vmax=max_life, s=25
         )
         for feature, station in self.plot_features:
             self.plot_feature(t, feature, station, ax)
         return fig, ax
 
-    def generate_all_plots(self, save_dir, figsize=None):
+    def generate_all_plots(self, save_dir, figsize=None, domain=None):
         frames = []
         for t in range(self.lats.shape[1]):
             savefile = os.path.join(save_dir, f"snap{t}.png")
-            fig, ax = self.plot_at_t(t)
+            fig, ax = self.plot_at_t(t, domain=domain)
             plot_utils.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
             frames.append(TimedFrame(self.get_time(t), savefile))
         return frames

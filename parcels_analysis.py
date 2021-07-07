@@ -163,14 +163,10 @@ class ParticleResult:
 
     def add_grid(self, grid: HFRGrid):
         self.grid = grid
-        gtimes, glats, glons = grid.get_coords()
+        gtimes, _, _ = grid.get_coords()
         # check if particle set is in-bounds of the given grid
         if np.nanmin(self.times) < gtimes.min() or np.nanmax(self.times) > gtimes.max():
             raise ValueError("Time out of bounds")
-        if np.nanmin(self.lats) < glats.min() or np.nanmax(self.lats) > glats.max():
-            raise ValueError("Latitude out of bounds")
-        if np.nanmin(self.lons) < glons.min() or np.nanmax(self.lons) > glons.max():
-            raise ValueError("Longitude out of bounds")
 
     def add_plot_feature(self, feature: ParticlePlotFeature):
         self.plot_features.append(feature)

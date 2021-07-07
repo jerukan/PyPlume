@@ -62,9 +62,10 @@ class ParticlePlotFeature:
     Represents additional points to plot and maybe track on top of the particles from a
     Parcels simulation.
     """
-    def __init__(self, lats, lons, labels=None, segments=False, track_dist=0):
+    def __init__(self, lats, lons, is_station=False, labels=None, segments=False, track_dist=0):
         self.lats = lats
         self.lons = lons
+        self.is_station = is_station
         self.points = np.array([lats, lons]).T
         self.kdtree = scipy.spatial.KDTree(self.points)
         self.labels = labels
@@ -113,7 +114,7 @@ class ParticlePlotFeature:
         if path is None:
             path = utils.MATLAB_DIR / SD_STATION_FILENAME
         lats, lons = utils.load_pts_mat(path, "ywq", "xwq")
-        return cls(lats, lons, labels=SD_STATION_NAMES, track_dist=track_dist)
+        return cls(lats, lons, labels=SD_STATION_NAMES, is_station=True, track_dist=track_dist)
 
     @classmethod
     def get_sd_coastline(cls, path=None, track_dist=100):
@@ -171,14 +172,14 @@ class ParticleResult:
         if np.nanmin(self.lons) < glons.min() or np.nanmax(self.lons) > glons.max():
             raise ValueError("Longitude out of bounds")
 
-    def add_plot_feature(self, feature: ParticlePlotFeature, station=False):
-        self.plot_features.append((feature, station))
+    def add_plot_feature(self, feature: ParticlePlotFeature):
+        self.plot_features.append(feature)
 
     def count_near_feature(self, t, feature: ParticlePlotFeature):
         return feature.count_near(self.lats[:, t], self.lons[:, t])
 
-    def plot_feature(self, t, feature: ParticlePlotFeature, station, ax, ax_table=None):
-        if station:
+    def plot_feature(self, t, feature: ParticlePlotFeature, ax, ax_table=None):
+        if feature.is_station:
             curr_lats = self.lats[:, t]
             curr_lons = self.lons[:, t]
             counts = feature.count_near(curr_lats, curr_lons)
@@ -235,15 +236,15 @@ class ParticleResult:
             edgecolor="k", vmin=0, vmax=max_life, s=25
         )
         # the only thing that needs tables generated are station features
-        if any([feat[1] for feat in self.plot_features]):
+        if any([feat.is_station for feat in self.plot_features]):
             fig_tab = plt.figure()
             ax_tab = fig_tab.add_subplot()
             ax_tab.set_axis_off()
         else:
             fig_tab = None
             ax_tab = None
-        for feature, station in self.plot_features:
-            self.plot_feature(t, feature, station, ax, ax_table=ax_tab)
+        for feature in self.plot_features:
+            self.plot_feature(t, feature, ax, ax_table=ax_tab)
         return (fig, fig_tab), (ax, ax_tab)
 
     def generate_all_plots(self, save_dir, figsize=None, domain=None):

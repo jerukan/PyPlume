@@ -93,7 +93,10 @@ def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None):
     if savefile is not None:
         plt.savefig(savefile, bbox_inches="tight" if fit else None)
         print(f"Plot saved to {savefile}", file=sys.stderr)
-        plt.close()
+        if fig is None:
+            plt.close()
+        else:
+            plt.close(fig)
 
 
 def draw_trajectories(datasets, names, domain=None, legend=True, scatter=True, savefile=None, titlestr=None, part_size=DEFAULT_PARTICLE_SIZE, padding=0.0, figsize=None):

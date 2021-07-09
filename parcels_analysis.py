@@ -207,23 +207,6 @@ class LatTrackedPointFeature(ParticlePlotFeature):
         return cls(TIJUANA_MOUTH_POSITION[0], TIJUANA_MOUTH_POSITION[1], xlim=[-16, 4], ymax=0.1)
 
 
-class DomainChangeFeature(ParticlePlotFeature):
-    def __init__(self, domain):
-        super().__init__([], [])
-        self.domain = domain
-
-    def generate_info_table(self, lats, lons, *args, **kwargs):
-        fig, ax = plot_utils.get_carree_axis(self.domain, land=True)
-        plot_utils.get_carree_gl(ax)
-        ages = kwargs.get("lifetimes", None)
-        max_life = kwargs.get("max_life", 10)
-        ax.scatter(
-            lons, lats, c=ages,
-            edgecolor="k", vmin=0, vmax=max_life, s=25
-        )
-        return fig, ax
-
-
 class TimedFrame:
     """Class that stores information about a single simulation plot"""
     def __init__(self, time, path, **kwargs):
@@ -279,15 +262,17 @@ class ParticleResult:
     def count_near_feature(self, t, feature: ParticlePlotFeature):
         return feature.count_near(self.lats[:, t], self.lons[:, t])
 
-    def plot_feature(self, t, feature: ParticlePlotFeature, ax):
+    def plot_feature(self, t, feature: ParticlePlotFeature, ax, feat_info=True):
         curr_lats = self.lats[:, t]
         curr_lons = self.lons[:, t]
         age_max = np.nanmax(self.lifetimes) / 86400
         feature.plot_on_frame(ax, curr_lats, curr_lons)
-        fig_inf, ax_inf = feature.generate_info_table(
-            curr_lats, curr_lons, lifetimes=self.lifetimes[:, t], age_max=age_max
-        )
-        return fig_inf, ax_inf
+        if feat_info:
+            fig_inf, ax_inf = feature.generate_info_table(
+                curr_lats, curr_lons, lifetimes=self.lifetimes[:, t], age_max=age_max
+            )
+            return fig_inf, ax_inf
+        return None, None
 
     def get_time(self, t):
         curr_time = self.times[:, t]
@@ -296,7 +281,7 @@ class ParticleResult:
             return np.datetime64("Nat")
         return non_nat[0]
 
-    def plot_at_t(self, t, domain=None):
+    def plot_at_t(self, t, domain=None, feat_info="all"):
         if self.grid is None and domain is None:
             domain = {
                 "W": np.nanmin(self.lons),
@@ -328,22 +313,36 @@ class ParticleResult:
         figs = {}
         axs = {}
         for name, feature in self.plot_features.items():
-            fig_inf, ax_inf = self.plot_feature(t, feature, ax)
+            fig_inf, ax_inf = self.plot_feature(
+                t, feature, ax, feat_info=(feat_info == "all" or name in feat_info)
+            )
             figs[name] = fig_inf
             axs[name] = ax_inf
         return fig, ax, figs, axs
 
-    def generate_all_plots(self, save_dir, figsize=None, domain=None):
+    def generate_all_plots(self, save_dir, filename=None, figsize=None, domain=None, feat_info="all"):
+        """
+        Generates plots and then saves them
+
+        Args:
+            feat_info (list or str): 'all' to plot everything, list of names to choose which
+             features to generate their own plots for
+        """
         utils.create_path(save_dir)
         frames = []
         for t in range(self.lats.shape[1]):
-            fig, _, figs, _ = self.plot_at_t(t, domain=domain)
-            savefile = os.path.join(save_dir, f"snap{t}.png")
+            fig, _, figs, _ = self.plot_at_t(t, domain=domain, feat_info=feat_info)
+            savefile = os.path.join(
+                save_dir, f"snap_{t}.png" if filename is None else f"{filename}_{t}.png"
+            )
             plot_utils.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
             savefile_infs = {}
             for name, fig_inf in figs.items():
-                if fig_inf is not None:
-                    savefile_inf = os.path.join(save_dir, f"snap_{name}_{t}.png")
+                if fig_inf is not None and (feat_info == "all" or name in feat_info):
+                    savefile_inf = os.path.join(
+                        save_dir,
+                        f"snap_{name}_{t}.png" if filename is None else f"{filename}_{name}_{t}.png"
+                    )
                     savefile_infs[name] = savefile_inf
                     plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
             frames.append(TimedFrame(self.get_time(t), savefile, **savefile_infs))

@@ -62,10 +62,9 @@ class ParticlePlotFeature:
     Represents additional points to plot and maybe track on top of the particles from a
     Parcels simulation.
     """
-    def __init__(self, lats, lons, is_station=False, labels=None, segments=False, track_dist=0):
+    def __init__(self, lats, lons, labels=None, segments=False, track_dist=0, color=None):
         self.lats = lats
         self.lons = lons
-        self.is_station = is_station
         self.points = np.array([lats, lons]).T
         self.kdtree = scipy.spatial.KDTree(self.points)
         self.labels = labels
@@ -79,6 +78,7 @@ class ParticlePlotFeature:
         else:
             self.segments = None
         self.track_dist = track_dist
+        self.color = color
 
     def count_near(self, p_lats, p_lons):
         counts = np.zeros(len(self.lats))
@@ -109,27 +109,110 @@ class ParticlePlotFeature:
         least_dist = dist if dist < least_dist else least_dist
         return least_dist
 
-    @classmethod
-    def get_sd_stations(cls, path=None, track_dist=500):
-        if path is None:
-            path = utils.MATLAB_DIR / SD_STATION_FILENAME
-        lats, lons = utils.load_pts_mat(path, "ywq", "xwq")
-        return cls(lats, lons, labels=SD_STATION_NAMES, is_station=True, track_dist=track_dist)
+    def get_all_dists(self, lats, lons):
+        """
+        Yes this will be inefficient
+        Returns a 2-d array where each row is each input particle's distance is to a point
+        in this feature
+
+        Args:
+            lats: particle lats
+            lons: particle lons
+        """
+        dists = np.empty((len(self.lats), len(lats)), dtype=np.float64)
+        for i in range(len(dists)):
+            for j in range(len(dists[i])):
+                dists[i][j] = utils.haversine(self.lats[i], lats[j], self.lons[i], lons[j])
+        return dists
+
+    def plot_on_frame(self, ax, lats, lons):
+        """Plots onto a frame plot, with information on particles at that time passed in"""
+        ax.scatter(self.lons, self.lats, c=self.color)
+        if self.segments is not None:
+            ax.plot(self.lons, self.lats, c=self.color)
+
+    def generate_info_table(self, lats, lons):
+        return None, None
 
     @classmethod
     def get_sd_coastline(cls, path=None, track_dist=100):
         if path is None:
             path = utils.MATLAB_DIR / SD_COASTLINE_FILENAME
         lats, lons = utils.load_pts_mat(path, "latz0", "lonz0")
-        return cls(lats, lons, track_dist=track_dist)
+        return cls(lats, lons, segments=True, track_dist=track_dist)
+
+
+class StationFeature(ParticlePlotFeature):
+    def plot_on_frame(self, ax, lats, lons):
+        counts = self.count_near(lats, lons)
+        ax.scatter(
+            self.lons[counts == 0], self.lats[counts == 0], c="b", s=60, edgecolor="k"
+        )
+        ax.scatter(
+            self.lons[counts > 0], self.lats[counts > 0], c="r", s=60, edgecolor="k"
+        )
+
+    def generate_info_table(self, lats, lons):
+        colors = np.full((len(self.lats), 4), "white", dtype=object)
+        counts = self.count_near(lats, lons).astype(np.uint32)
+        for i in range(len(self.lats)):
+            if counts[i] > 0:
+                colors[i, :] = "lightcoral"
+        plume_pot = np.where(counts > 0, "YES", "NO")
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        ax.set_axis_off()
+        ax.table(
+            cellText=np.array([np.arange(len(counts)) + 1, self.labels, counts, plume_pot]).T,
+            cellColours=colors,
+            colLabels=["Station ID", "Station Name", "Particle Count", "Plume Potential"],
+            loc="upper left"
+        )
+        fig.set_size_inches(12, 6)
+        return fig, ax
+
+    @classmethod
+    def get_sd_stations(cls, path=None, track_dist=500):
+        if path is None:
+            path = utils.MATLAB_DIR / SD_STATION_FILENAME
+        lats, lons = utils.load_pts_mat(path, "ywq", "xwq")
+        return cls(lats, lons, labels=SD_STATION_NAMES, track_dist=track_dist)
+
+
+class LatTrackedPointFeature(ParticlePlotFeature):
+    def __init__(self, lat, lon, xlim=None, ymax=None, **kwargs):
+        super().__init__([lat], [lon], **kwargs)
+        self.xlim = xlim
+        self.ymax = ymax
+
+    def generate_info_table(self, lats, lons):
+        dists = self.get_all_dists(lats, lons)[0]
+        north = lats < self.lats[0]
+        dists[north] = -dists[north]
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        ax.hist(dists / 1000, density=True)
+        ax.set_xlim(self.xlim)
+        if self.ymax is not None:
+            ax.set_ylim([0, self.ymax])
+        fig.canvas.draw()
+        # matplotlib uses a funny hyphen that doesn't work
+        labels = [abs(float(item.get_text().replace("−", "-"))) for item in ax.get_xticklabels()]
+        ax.set_xticklabels(labels)
+        plt.figtext(0.5, 0.01, '(North) ------ Distance from point (km) ------ (South)', horizontalalignment='center') 
+        return fig, ax
+
+    @classmethod
+    def get_tijuana_mouth(cls):
+        return cls(TIJUANA_MOUTH_POSITION[0], TIJUANA_MOUTH_POSITION[1], xlim=[-16, 4], ymax=0.1)
 
 
 class TimedFrame:
     """Class that stores information about a single simulation plot"""
-    def __init__(self, time, path, path_table=None):
+    def __init__(self, time, path, *args):
         self.time = time
         self.path = path
-        self.path_table = path_table
+        self.paths_inf = args
 
     def __repr__(self):
         return f"([{self.path}] at [{self.time}])"
@@ -174,27 +257,12 @@ class ParticleResult:
     def count_near_feature(self, t, feature: ParticlePlotFeature):
         return feature.count_near(self.lats[:, t], self.lons[:, t])
 
-    def plot_feature(self, t, feature: ParticlePlotFeature, ax, ax_table=None):
-        if feature.is_station:
-            curr_lats = self.lats[:, t]
-            curr_lons = self.lons[:, t]
-            counts = feature.count_near(curr_lats, curr_lons)
-            ax.scatter(
-                feature.lons[counts == 0], feature.lats[counts == 0], c="b", s=60, edgecolor="k"
-            )
-            ax.scatter(
-                feature.lons[counts > 0], feature.lats[counts > 0], c="r", s=60, edgecolor="k"
-            )
-            if ax_table is not None:
-                ax_table.table(
-                    cellText=np.array([self.count_near_feature(t, feature)], dtype=np.uint32).T,
-                    rowLabels=feature.labels,
-                    loc="upper left"
-                )
-        else:
-            ax.scatter(feature.lons, feature.lats)
-            if feature.segments is not None:
-                ax.plot(feature.lons, feature.lats)
+    def plot_feature(self, t, feature: ParticlePlotFeature, ax):
+        curr_lats = self.lats[:, t]
+        curr_lons = self.lons[:, t]
+        feature.plot_on_frame(ax, curr_lats, curr_lons)
+        fig_inf, ax_inf = feature.generate_info_table(curr_lats, curr_lons)
+        return fig_inf, ax_inf
 
     def get_time(self, t):
         curr_time = self.times[:, t]
@@ -231,30 +299,28 @@ class ParticleResult:
             self.lons[:, t][non_nan], self.lats[:, t][non_nan], c=self.lifetimes[:, t][non_nan],
             edgecolor="k", vmin=0, vmax=max_life, s=25
         )
-        # the only thing that needs tables generated are station features
-        if any([feat.is_station for feat in self.plot_features]):
-            fig_tab = plt.figure()
-            ax_tab = fig_tab.add_subplot()
-            ax_tab.set_axis_off()
-        else:
-            fig_tab = None
-            ax_tab = None
+        figs = []
+        axs = []
         for feature in self.plot_features:
-            self.plot_feature(t, feature, ax, ax_table=ax_tab)
-        return (fig, fig_tab), (ax, ax_tab)
+            fig_inf, ax_inf = self.plot_feature(t, feature, ax)
+            figs.append(fig_inf)
+            axs.append(ax_inf)
+        return (fig, *figs), (ax, *axs)
 
     def generate_all_plots(self, save_dir, figsize=None, domain=None):
         frames = []
         for t in range(self.lats.shape[1]):
-            (fig, fig_tab), _ = self.plot_at_t(t, domain=domain)
+            figs, _ = self.plot_at_t(t, domain=domain)
+            fig = figs[0]
             savefile = os.path.join(save_dir, f"snap{t}.png")
             plot_utils.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
-            if fig_tab is not None:
-                savefile_tab = os.path.join(save_dir, f"snap_tab{t}.png")
-                plot_utils.draw_plt(savefile=savefile_tab, fig=fig_tab, figsize=figsize)
-            else:
-                savefile_tab = None
-            frames.append(TimedFrame(self.get_time(t), savefile, path_table=savefile_tab))
+            savefile_infs = []
+            for i, fig_inf in enumerate(figs[1:]):
+                if fig_inf is not None:
+                    savefile_inf = os.path.join(save_dir, f"snap_inf{i}_{t}.png")
+                    savefile_infs.append(savefile_inf)
+                    plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
+            frames.append(TimedFrame(self.get_time(t), savefile, *savefile_infs))
         return frames
 
     def generate_gif(self, frames, gif_path, gif_delay=25):

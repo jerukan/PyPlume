@@ -10,11 +10,12 @@ TIJUANA_RIVER_DOMAIN = dict(
 
 TIJUANA_MOUTH_DOMAIN = dict(
     S=32.53,
-    N=32.564,
+    N=32.585,
     W=-117.162,
     E=-117.105
 )
 
+TIJUANA_MOUTH_POSITION = np.array([32.551967, -117.127208])
 SD_COASTLINE_FILENAME = "coastline.mat"
 SD_STATION_FILENAME = "wq_stposition.mat"
 SD_STATION_NAMES = np.array([

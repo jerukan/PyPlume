@@ -226,11 +226,11 @@ class DomainChangeFeature(ParticlePlotFeature):
 
 class TimedFrame:
     """Class that stores information about a single simulation plot"""
-    def __init__(self, time, path, *args):
+    def __init__(self, time, path, **kwargs):
         self.time = time
         self.path = path
         # path to other plots that display other information about the frame
-        self.paths_inf = args
+        self.paths_inf = kwargs
 
     def __repr__(self):
         return f"([{self.path}] at [{self.time}])"
@@ -340,13 +340,13 @@ class ParticleResult:
             fig, _, figs, _ = self.plot_at_t(t, domain=domain)
             savefile = os.path.join(save_dir, f"snap{t}.png")
             plot_utils.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
-            savefile_infs = []
+            savefile_infs = {}
             for name, fig_inf in figs.items():
                 if fig_inf is not None:
                     savefile_inf = os.path.join(save_dir, f"snap_{name}_{t}.png")
-                    savefile_infs.append(savefile_inf)
+                    savefile_infs[name] = savefile_inf
                     plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
-            frames.append(TimedFrame(self.get_time(t), savefile, *savefile_infs))
+            frames.append(TimedFrame(self.get_time(t), savefile, **savefile_infs))
         return frames
 
     def generate_gif(self, frames, gif_path, gif_delay=25):

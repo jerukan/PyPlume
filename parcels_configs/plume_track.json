@@ -3,18 +3,18 @@
 	"netcdf_path": "current_netcdfs/west_coast_1km_hourly/tj_plume_2020-08_interped.nc",
 	"resolution": 1,
 	"parcels_config": {
-		"time_range": ["2020-08-09T01:00", "2020-08-14T13:00"],
-		"repeat_dt": -1,
-		"repetitions": -1,
+		"time_range": ["2020-08-09T01:00", "2020-08-10T01:00"],
+		"repeat_dt": 7200,
+		"repetitions": 4,
 		"spawn_points": "matlab/glist90zj_pts_position.mat",
 		"simulation_dt": 300,
 		"snapshot_interval": 3600,
 		"save_snapshots": true,
 		"shown_domain": {
-			"S": 32.41,
-		    "N": 32.7,
-		    "W": -117.25,
-		    "E": -117
+			"S": 32.525,
+			"N": 32.7,
+			"W": -117.27,
+			"E": -117.09
 		}
 	}
 }

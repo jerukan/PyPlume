@@ -82,10 +82,9 @@ class ParticlePlotFeature:
 
     def count_near(self, p_lats, p_lons):
         counts = np.zeros(len(self.lats))
-        for p_point in zip(p_lats, p_lons):
-            for i, point in enumerate(self.points):
-                if utils.haversine(p_point[0], point[0], p_point[1], point[1]) <= self.track_dist:
-                    counts[i] += 1
+        for i, point in enumerate(self.points):
+            close = utils.haversine(p_lats, point[0], p_lons, point[1]) <= self.track_dist
+            counts[i] += close.sum()
         return counts
 
     def get_closest_dist(self, lat, lon):
@@ -243,6 +242,7 @@ class ParticleResult:
         self.spawntimes = self.xrds["spawntime"].values
         
         self.grid = None
+        self.frames = None
         self.plot_features = {}
 
     def add_grid(self, grid: HFRGrid):
@@ -346,10 +346,11 @@ class ParticleResult:
                     savefile_infs[name] = savefile_inf
                     plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
             frames.append(TimedFrame(self.get_time(t), savefile, **savefile_infs))
+        self.frames = frames
         return frames
 
-    def generate_gif(self, frames, gif_path, gif_delay=25):
-        input_paths = [str(frame.path) for frame in frames]
+    def generate_gif(self, gif_path, gif_delay=25):
+        input_paths = [str(frame.path) for frame in self.frames]
         sp_in = ["magick", "-delay", str(gif_delay)] + input_paths
         sp_in.append(str(gif_path))
         magick_sp = subprocess.Popen(

@@ -50,7 +50,7 @@ def TestOOB(particle, fieldset, time):
 
 def DeleteOOB(particle, fieldset, time):
     """Deletes particles that go out of bounds"""
-    OOB_THRESH = 1e-10
+    OOB_THRESH = 1e-14
     u, v = fieldset.UV[time, particle.depth, particle.lat, particle.lon]
     if math.fabs(u) < OOB_THRESH and math.fabs(v) < OOB_THRESH:
         particle.delete()

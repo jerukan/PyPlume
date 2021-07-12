@@ -12,13 +12,11 @@ example layout:
 	"parcels_config": {
 		"time_range": ["2020-07-16T00", "END"],
 		"repeat_dt": 14400,
-		"particles_per_dt": 10,
-		"max_variation": 0.0015,
+		"repetitions": 5,
 		"spawn_points": [
 			[32.551707, -117.138],
 			[32.557, -117.138]
 		],
-		"random_spawn": true,
 		"simulation_dt": 300,
 		"snapshot_interval": 10800,
 		"save_snapshots": true,
@@ -41,10 +39,8 @@ information about the variables:
 	- an integer as one of the elements will be treated as a timedelta (in hours)
 - `repeat_dt`: time to wait between releasing batches of particles (in seconds)
 	- if the value is 0 or less, only one batch of particles will be released at the starting time
-- `particles_per_dt`: number of particles to release after every interval of `repeat_dt`
-- `max_variation`: the max amount the longitude and latitude of a particle will be randomized by
+- `repetitions`: number of times to spawn the cluster of particles
 - `spawn_points`: list of [latitude, longitude] pairs to choose from as a spawn location
-- `random_spawn`: whether spawns are randomized and varied between defined spawn points
 - `simulation_dt`: the actual dt used by parcels for the simulation (in seconds)
 - `snapshot_interval`: time to wait between taking a snapshot of the simulation to save as an image in seconds
 - `shown_domain`: basically a cropping option, set to null for default domain

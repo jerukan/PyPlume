@@ -236,11 +236,14 @@ class ParticleResult:
         self.lats = self.xrds["lat"].values
         self.lons = self.xrds["lon"].values
         self.traj = self.xrds["trajectory"].values
-        self.times = self.xrds["time"].values
+        self.time_grid = self.xrds["time"].values
+        times_unique = np.unique(self.time_grid)
+        self.times = np.sort(times_unique[~np.isnan(times_unique)])
         # not part of Ak4 kernel
         self.lifetimes = self.xrds["lifetime"].values
         self.spawntimes = self.xrds["spawntime"].values
         
+        self.max_life = np.nanmax(self.lifetimes)
         self.grid = None
         self.frames = None
         self.plot_features = {}
@@ -259,27 +262,19 @@ class ParticleResult:
         else:
             self.plot_features[name] = feature
 
-    def count_near_feature(self, t, feature: ParticlePlotFeature):
-        return feature.count_near(self.lats[:, t], self.lons[:, t])
-
     def plot_feature(self, t, feature: ParticlePlotFeature, ax, feat_info=True):
-        curr_lats = self.lats[:, t]
-        curr_lons = self.lons[:, t]
+        mask = self.time_grid == self.times[t]
+        curr_lats = self.lats[mask]
+        curr_lons = self.lons[mask]
         age_max = np.nanmax(self.lifetimes) / 86400
         feature.plot_on_frame(ax, curr_lats, curr_lons)
         if feat_info:
             fig_inf, ax_inf = feature.generate_info_table(
-                curr_lats, curr_lons, lifetimes=self.lifetimes[:, t], age_max=age_max
+                curr_lats, curr_lons, lifetimes=self.lifetimes[mask], age_max=age_max
             )
             return fig_inf, ax_inf
         return None, None
 
-    def get_time(self, t):
-        curr_time = self.times[:, t]
-        non_nat = curr_time[~np.isnan(curr_time)]
-        if len(non_nat) == 0:
-            return np.datetime64("Nat")
-        return non_nat[0]
 
     def plot_at_t(self, t, domain=None, feat_info="all"):
         if self.grid is None and domain is None:
@@ -292,8 +287,7 @@ class ParticleResult:
             domain = plot_utils.pad_domain(domain, 0.0005)
         elif self.grid is not None and domain is None:
             domain = self.grid.get_domain()
-        max_life = np.nanmax(self.lifetimes)
-        timestamp = self.get_time(t)
+        timestamp = self.times[t]
         if self.grid is None:
             fig, ax = plot_utils.get_carree_axis(domain, land=True)
             plot_utils.get_carree_gl(ax)
@@ -301,14 +295,14 @@ class ParticleResult:
             show_time = int((timestamp - self.grid.times[0]) / np.timedelta64(1, "s"))
             if show_time < 0:
                 raise ValueError("Particle simulation time domain goes out of bounds")
-            _, fig, ax, _ = plotting.plotfield(field=self.grid.fieldset.UV, show_time=show_time,
-                                            domain=domain, land=True, vmin=0, vmax=0.6,
-                                            titlestr="Particles and ")
-        non_nan = ~np.isnan(self.lons[:, t])
+            _, fig, ax, _ = plotting.plotfield(
+                field=self.grid.fieldset.UV, show_time=show_time, domain=domain, land=True, vmin=0,
+                vmax=0.6, titlestr="Particles and "
+            )
+        mask = self.time_grid == self.times[t]
         ax.scatter(
-            self.lons[:, t][non_nan], self.lats[:, t][non_nan],
-            c=self.lifetimes[:, t][non_nan] / 86400, edgecolor="k", vmin=0,
-            vmax=max_life / 86400, s=25
+            self.lons[mask], self.lats[mask], c=self.lifetimes[mask] / 86400, edgecolor="k", vmin=0,
+            vmax=self.max_life / 86400, s=25
         )
         figs = {}
         axs = {}
@@ -330,7 +324,7 @@ class ParticleResult:
         """
         utils.create_path(save_dir)
         frames = []
-        for t in range(self.lats.shape[1]):
+        for t in range(len(self.times)):
             fig, _, figs, _ = self.plot_at_t(t, domain=domain, feat_info=feat_info)
             savefile = os.path.join(
                 save_dir, f"snap_{t}.png" if filename is None else f"{filename}_{t}.png"
@@ -345,7 +339,7 @@ class ParticleResult:
                     )
                     savefile_infs[name] = savefile_inf
                     plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
-            frames.append(TimedFrame(self.get_time(t), savefile, **savefile_infs))
+            frames.append(TimedFrame(self.times[t], savefile, **savefile_infs))
         self.frames = frames
         return frames
 

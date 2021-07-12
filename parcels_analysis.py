@@ -238,6 +238,7 @@ class ParticleResult:
         self.traj = self.xrds["trajectory"].values
         self.time_grid = self.xrds["time"].values
         times_unique = np.unique(self.time_grid)
+        # TODO deal with timestamps that are partway through a snapshot interval
         self.times = np.sort(times_unique[~np.isnan(times_unique)])
         # not part of Ak4 kernel
         self.lifetimes = self.xrds["lifetime"].values

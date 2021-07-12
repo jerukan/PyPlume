@@ -239,5 +239,5 @@ class ParcelsSimulation:
         self.pfile.export()
         self.pfile.close()
         self.completed = True
-        self.parcels_result = ParticleResult(self.pfile_path)
+        self.parcels_result = ParticleResult(self.pfile_path, cfg=self.cfg)
         self.parcels_result.add_grid(self.hfrgrid)

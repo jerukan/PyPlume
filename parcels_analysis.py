@@ -223,7 +223,8 @@ class ParticleResult:
     Wraps the output of a particle file to make visualizing and analyzing the results easier.
     Can also use an HFRGrid if the ocean currents are also needed.
     """
-    def __init__(self, dataset):
+    def __init__(self, dataset, cfg=None):
+        self.cfg = cfg
         if isinstance(dataset, (Path, str)):
             self.path = dataset
             with xr.open_dataset(dataset) as ds:
@@ -238,7 +239,6 @@ class ParticleResult:
         self.traj = self.xrds["trajectory"].values
         self.time_grid = self.xrds["time"].values
         times_unique = np.unique(self.time_grid)
-        # TODO deal with timestamps that are partway through a snapshot interval
         self.times = np.sort(times_unique[~np.isnan(times_unique)])
         # not part of Ak4 kernel
         self.lifetimes = self.xrds["lifetime"].values
@@ -264,7 +264,7 @@ class ParticleResult:
             self.plot_features[name] = feature
 
     def plot_feature(self, t, feature: ParticlePlotFeature, ax, feat_info=True):
-        mask = self.time_grid == self.times[t]
+        mask = self.time_grid == t
         curr_lats = self.lats[mask]
         curr_lons = self.lons[mask]
         age_max = np.nanmax(self.lifetimes) / 86400
@@ -288,19 +288,18 @@ class ParticleResult:
             domain = plot_utils.pad_domain(domain, 0.0005)
         elif self.grid is not None and domain is None:
             domain = self.grid.get_domain()
-        timestamp = self.times[t]
         if self.grid is None:
             fig, ax = plot_utils.get_carree_axis(domain, land=True)
             plot_utils.get_carree_gl(ax)
         else:
-            show_time = int((timestamp - self.grid.times[0]) / np.timedelta64(1, "s"))
+            show_time = int((t - self.grid.times[0]) / np.timedelta64(1, "s"))
             if show_time < 0:
                 raise ValueError("Particle simulation time domain goes out of bounds")
             _, fig, ax, _ = plotting.plotfield(
                 field=self.grid.fieldset.UV, show_time=show_time, domain=domain, land=True, vmin=0,
                 vmax=0.6, titlestr="Particles and "
             )
-        mask = self.time_grid == self.times[t]
+        mask = self.time_grid == t
         ax.scatter(
             self.lons[mask], self.lats[mask], c=self.lifetimes[mask] / 86400, edgecolor="k", vmin=0,
             vmax=self.max_life / 86400, s=25
@@ -325,22 +324,44 @@ class ParticleResult:
         """
         utils.create_path(save_dir)
         frames = []
-        for t in range(len(self.times)):
-            fig, _, figs, _ = self.plot_at_t(t, domain=domain, feat_info=feat_info)
-            savefile = os.path.join(
-                save_dir, f"snap_{t}.png" if filename is None else f"{filename}_{t}.png"
-            )
-            plot_utils.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
-            savefile_infs = {}
-            for name, fig_inf in figs.items():
-                if fig_inf is not None and (feat_info == "all" or name in feat_info):
-                    savefile_inf = os.path.join(
-                        save_dir,
-                        f"snap_{name}_{t}.png" if filename is None else f"{filename}_{name}_{t}.png"
-                    )
-                    savefile_infs[name] = savefile_inf
-                    plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
-            frames.append(TimedFrame(self.times[t], savefile, **savefile_infs))
+        if self.cfg is not None:
+            t = self.times[0]
+            i = 0
+            while t <= self.times[-1]:
+                fig, _, figs, _ = self.plot_at_t(t, domain=domain, feat_info=feat_info)
+                savefile = os.path.join(
+                    save_dir, f"snap_{i}.png" if filename is None else f"{filename}_{i}.png"
+                )
+                plot_utils.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
+                savefile_infs = {}
+                for name, fig_inf in figs.items():
+                    if fig_inf is not None and (feat_info == "all" or name in feat_info):
+                        savefile_inf = os.path.join(
+                            save_dir,
+                            f"snap_{name}_{i}.png" if filename is None else f"{filename}_{name}_{i}.png"
+                        )
+                        savefile_infs[name] = savefile_inf
+                        plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
+                frames.append(TimedFrame(t, savefile, **savefile_infs))
+                i += 1
+                t += np.timedelta64(self.cfg["snapshot_interval"], "s")
+        else:
+            for i in range(len(self.times)):
+                fig, _, figs, _ = self.plot_at_t(self.times[i], domain=domain, feat_info=feat_info)
+                savefile = os.path.join(
+                    save_dir, f"snap_{i}.png" if filename is None else f"{filename}_{i}.png"
+                )
+                plot_utils.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
+                savefile_infs = {}
+                for name, fig_inf in figs.items():
+                    if fig_inf is not None and (feat_info == "all" or name in feat_info):
+                        savefile_inf = os.path.join(
+                            save_dir,
+                            f"snap_{name}_{i}.png" if filename is None else f"{filename}_{name}_{i}.png"
+                        )
+                        savefile_infs[name] = savefile_inf
+                        plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
+                frames.append(TimedFrame(self.times[i], savefile, **savefile_infs))
         self.frames = frames
         return frames
 

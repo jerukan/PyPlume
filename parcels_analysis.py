@@ -276,7 +276,6 @@ class ParticleResult:
             return fig_inf, ax_inf
         return None, None
 
-
     def plot_at_t(self, t, domain=None, feat_info="all"):
         if self.grid is None and domain is None:
             domain = {
@@ -314,6 +313,9 @@ class ParticleResult:
             axs[name] = ax_inf
         return fig, ax, figs, axs
 
+    def on_plot_generated(self, savefile, savefile_infs, i, t, total):
+        pass
+
     def generate_all_plots(self, save_dir, filename=None, figsize=None, domain=None, feat_info="all"):
         """
         Generates plots and then saves them
@@ -325,6 +327,7 @@ class ParticleResult:
         utils.create_path(save_dir)
         frames = []
         if self.cfg is not None:
+            total_plots = int((self.times[-1] - self.times[0]) / np.timedelta64(1, "s") / self.cfg["snapshot_interval"])
             t = self.times[0]
             i = 0
             while t <= self.times[-1]:
@@ -343,6 +346,7 @@ class ParticleResult:
                         savefile_infs[name] = savefile_inf
                         plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
                 frames.append(TimedFrame(t, savefile, **savefile_infs))
+                self.on_plot_generated(savefile, savefile_infs, i, t, total_plots)
                 i += 1
                 t += np.timedelta64(self.cfg["snapshot_interval"], "s")
         else:
@@ -362,6 +366,7 @@ class ParticleResult:
                         savefile_infs[name] = savefile_inf
                         plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
                 frames.append(TimedFrame(self.times[i], savefile, **savefile_infs))
+                self.on_plot_generated(savefile, savefile_infs, i, self.times[i], len(self.times))
         self.frames = frames
         return frames
 

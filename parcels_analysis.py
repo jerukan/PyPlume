@@ -327,7 +327,7 @@ class ParticleResult:
         utils.create_path(save_dir)
         frames = []
         if self.cfg is not None:
-            total_plots = int((self.times[-1] - self.times[0]) / np.timedelta64(1, "s") / self.cfg["snapshot_interval"])
+            total_plots = int((self.times[-1] - self.times[0]) / np.timedelta64(1, "s") / self.cfg["snapshot_interval"]) + 1
             t = self.times[0]
             i = 0
             while t <= self.times[-1]:

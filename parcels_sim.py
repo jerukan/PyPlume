@@ -56,6 +56,12 @@ def DeleteOOB(particle, fieldset, time):
         particle.delete()
 
 
+def DeleteAfterLifetime(particle, fieldset, time):
+    LIFETIME = 43200
+    if particle.lifetime > LIFETIME:
+        particle.delete()
+
+
 def DeleteParticle(particle, fieldset, time):
     print(f"Particle [{particle.id}] lost "
           f"({particle.time}, {particle.depth}, {particle.lat}, {particle.lon})", file=sys.stderr)
@@ -166,7 +172,7 @@ class ParcelsSimulation:
         self.completed = False
         self.parcels_result = None
         if kernels is None:
-            self.kernels = [AgeParticle, DeleteOOB]
+            self.kernels = [AgeParticle, DeleteOOB, DeleteAfterLifetime]
         else:
             self.kernels = kernels
         self.kernel = None

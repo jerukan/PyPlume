@@ -99,11 +99,11 @@ def check_bounds(dataset, lat_range, lon_range, time_range):
     lons = dataset["lon"].values
     span_checker = lambda rng, coords: rng[0] <= coords[0] or rng[1] >= coords[-1]
     if span_checker(time_range, times):
-        print("Time spans entire dataset")
+        print("Timespan reaches the min/max of the range")
     if span_checker(lat_range, lats):
-        print("Latitude spans its entire range")
+        print("Latitude span reaches the min/max of the range")
     if span_checker(lon_range, lons):
-        print("Longitude spans its entire range")
+        print("Longitude span reaches the min/max of the range")
 
 
 def get_thredds_dataset(thredds_code, time_range, lat_range, lon_range,

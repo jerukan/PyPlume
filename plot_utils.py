@@ -75,16 +75,18 @@ def generate_domain(datasets, padding=0.005):
     )
 
 
-def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None):
+def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None, verbose=False):
     if fig is None:
-        print("Figure not passed in, figure size unchanged", file=sys.stderr)
+        if verbose:
+            print("Figure not passed in, figure size unchanged", file=sys.stderr)
     else:
         plt.figure(fig.number)
         if figsize is not None:
             fig.set_size_inches(figsize[0], figsize[1])
     if figsize is not None:
         if fig is None:
-            print("Figure not passed in, figure size unchanged", file=sys.stderr)
+            if verbose:
+                print("Figure not passed in, figure size unchanged", file=sys.stderr)
         else:
             fig.set_size_inches(figsize[0], figsize[1])
     plt.draw()
@@ -92,7 +94,8 @@ def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None):
         plt.show()
     if savefile is not None:
         plt.savefig(savefile, bbox_inches="tight" if fit else None)
-        print(f"Plot saved to {savefile}", file=sys.stderr)
+        if verbose:
+            print(f"Plot saved to {savefile}", file=sys.stderr)
         if fig is None:
             plt.close()
         else:

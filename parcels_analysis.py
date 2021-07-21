@@ -198,7 +198,8 @@ class LatTrackedPointFeature(ParticlePlotFeature):
         # matplotlib uses a funny hyphen that doesn't work
         labels = [abs(float(item.get_text().replace("−", "-"))) for item in ax.get_xticklabels()]
         ax.set_xticklabels(labels)
-        plt.figtext(0.5, 0.01, '(North) ------ Distance from point (km) ------ (South)', horizontalalignment='center') 
+        plt.figtext(0.5, -0.01, '(North) ------ Distance from point (km) ------ (South)', horizontalalignment='center') 
+        fig.set_size_inches(6.1, 2.5)
         return fig, ax
 
     @classmethod

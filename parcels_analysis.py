@@ -165,9 +165,10 @@ class StationFeature(ParticlePlotFeature):
             cellText=np.array([np.arange(len(counts)) + 1, self.labels, counts, plume_pot]).T,
             cellColours=colors,
             colLabels=["Station ID", "Station Name", "Particle Count", "Plume Potential"],
-            loc="upper left"
-        )
-        fig.set_size_inches(12, 6)
+            loc="center"
+        ).auto_set_column_width(col=[0, 1, 2, 3, 4])
+        ax.axis('tight')
+        fig.set_size_inches(9, 5.5)
         return fig, ax
 
     @classmethod

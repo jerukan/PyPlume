@@ -168,7 +168,7 @@ class StationFeature(ParticlePlotFeature):
             loc="center"
         ).auto_set_column_width(col=[0, 1, 2, 3, 4])
         ax.axis('tight')
-        fig.set_size_inches(9, 5.5)
+        # fig.set_size_inches(7.17, 4)
         return fig, ax
 
     @classmethod

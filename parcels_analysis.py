@@ -126,9 +126,10 @@ class ParticlePlotFeature:
 
     def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
         """Plots onto a frame plot, with information on particles at that time passed in"""
-        ax.scatter(self.lons, self.lats, c=self.color)
         if self.segments is not None:
             ax.plot(self.lons, self.lats, c=self.color)
+        else:
+            ax.scatter(self.lons, self.lats, c=self.color)
 
     def generate_info_table(self, lats, lons, *args, **kwargs):
         return None, None
@@ -139,6 +140,32 @@ class ParticlePlotFeature:
             path = utils.MATLAB_DIR / SD_COASTLINE_FILENAME
         lats, lons = utils.load_pts_mat(path, "latz0", "lonz0")
         return cls(lats, lons, segments=True, track_dist=track_dist)
+
+
+class NanSeparatedFeature(ParticlePlotFeature):
+    def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
+        lat_borders = np.split(self.lats, np.where(np.isnan(self.lats))[0])
+        lon_borders = np.split(self.lons, np.where(np.isnan(self.lons))[0])
+        for i in range(len(lat_borders)):
+            ax.plot(lon_borders[i], lat_borders[i], c=self.color)
+
+    @classmethod
+    def get_sd_full_coastline(cls, path=None):
+        if path is None:
+            path = utils.MATLAB_DIR / SD_FULL_COASTLINE_FILENAME
+        points = scipy.io.loadmat(path)["OR2Mex"]
+        lats = points.T[1]
+        lons = points.T[0]
+        lat_borders = np.split(lats, np.where(np.isnan(lats))[0][1:])
+        lon_borders = np.split(lons, np.where(np.isnan(lons))[0][1:])
+        lats_all = []
+        lons_all = []
+        for idx in SD_FULL_TIJUANA_IDXS:
+            lats_all.extend(lat_borders[idx])
+            lons_all.extend(lon_borders[idx])
+        inst = cls(lats_all, lons_all, segments=True, track_dist=0)
+        inst.color = "k"
+        return inst
 
 
 class StationFeature(ParticlePlotFeature):
@@ -180,10 +207,15 @@ class StationFeature(ParticlePlotFeature):
 
 
 class LatTrackedPointFeature(ParticlePlotFeature):
-    def __init__(self, lat, lon, xlim=None, ymax=None, **kwargs):
+    def __init__(self, lat, lon, xlim=None, ymax=None, show=True, **kwargs):
         super().__init__([lat], [lon], **kwargs)
         self.xlim = xlim
         self.ymax = ymax
+        self.show = show
+
+    def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
+        if self.show:
+            super().plot_on_frame(ax, lats, lons, *args, **kwargs)
 
     def generate_info_table(self, lats, lons, *args, **kwargs):
         dists = self.get_all_dists(lats, lons)[0]
@@ -205,7 +237,7 @@ class LatTrackedPointFeature(ParticlePlotFeature):
 
     @classmethod
     def get_tijuana_mouth(cls):
-        return cls(TIJUANA_MOUTH_POSITION[0], TIJUANA_MOUTH_POSITION[1], xlim=[-16, 4], ymax=0.1)
+        return cls(TIJUANA_MOUTH_POSITION[0], TIJUANA_MOUTH_POSITION[1], xlim=[-16, 4], ymax=0.1, show=False)
 
 
 class TimedFrame:
@@ -278,7 +310,7 @@ class ParticleResult:
             return fig_inf, ax_inf
         return None, None
 
-    def plot_at_t(self, t, domain=None, feat_info="all"):
+    def plot_at_t(self, t, domain=None, feat_info="all", land=False):
         if self.grid is None and domain is None:
             domain = {
                 "W": np.nanmin(self.lons),
@@ -290,14 +322,14 @@ class ParticleResult:
         elif self.grid is not None and domain is None:
             domain = self.grid.get_domain()
         if self.grid is None:
-            fig, ax = plot_utils.get_carree_axis(domain, land=True)
+            fig, ax = plot_utils.get_carree_axis(domain, land=land)
             plot_utils.get_carree_gl(ax)
         else:
             show_time = int((t - self.grid.times[0]) / np.timedelta64(1, "s"))
             if show_time < 0:
                 raise ValueError("Particle simulation time domain goes out of bounds")
             _, fig, ax, _ = plotting.plotfield(
-                field=self.grid.fieldset.UV, show_time=show_time, domain=domain, land=True, vmin=0,
+                field=self.grid.fieldset.UV, show_time=show_time, domain=domain, land=land, vmin=0,
                 vmax=0.6, titlestr="Particles and "
             )
         mask = self.time_grid == t

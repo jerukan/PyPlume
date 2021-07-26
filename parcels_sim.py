@@ -7,11 +7,14 @@ import subprocess
 import sys
 
 import numpy as np
-from parcels import ParticleSet, ErrorCode, JITParticle, Variable, AdvectionRK4
+from parcels import ParticleSet, ErrorCode, ScipyParticle, JITParticle, Variable, AdvectionRK4
 
 import utils
 from parcels_analysis import ParticleResult
 import plot_utils
+from parcels_kernels import (
+    AgeParticle, TestOOB, DeleteOOB, DeleteAfterLifetime, DeleteParticle, DeleteIntersectTijuana
+)
 
 # ignore annoying deprecation warnings
 import warnings
@@ -27,45 +30,6 @@ class ThreddsParticle(JITParticle):
     spawntime = Variable("spawntime", initial=attrgetter("time"), dtype=np.float32)
     # out of bounds
     oob = Variable("oob", initial=0, dtype=np.int32)
-
-
-def AgeParticle(particle, fieldset, time):
-    """
-    Kernel to measure particle ages.
-    """
-    particle.lifetime += particle.dt
-
-
-def TestOOB(particle, fieldset, time):
-    """
-    Kernel to test if a particle has gone into a location without any ocean current data.
-    """
-    OOB_THRESH = 1e-14
-    u, v = fieldset.UV[time, particle.depth, particle.lat, particle.lon]
-    if math.fabs(u) < OOB_THRESH and math.fabs(v) < OOB_THRESH:
-        particle.oob = 1
-    else:
-        particle.oob = 0
-
-
-def DeleteOOB(particle, fieldset, time):
-    """Deletes particles that go out of bounds"""
-    OOB_THRESH = 1e-14
-    u, v = fieldset.UV[time, particle.depth, particle.lat, particle.lon]
-    if math.fabs(u) < OOB_THRESH and math.fabs(v) < OOB_THRESH:
-        particle.delete()
-
-
-def DeleteAfterLifetime(particle, fieldset, time):
-    LIFETIME = 43200
-    if particle.lifetime > LIFETIME:
-        particle.delete()
-
-
-def DeleteParticle(particle, fieldset, time):
-    print(f"Particle [{particle.id}] lost "
-          f"({particle.time}, {particle.depth}, {particle.lat}, {particle.lon})", file=sys.stderr)
-    particle.delete()
 
 
 def parse_time_range(time_range, time_list):
@@ -172,7 +136,7 @@ class ParcelsSimulation:
         self.completed = False
         self.parcels_result = None
         if kernels is None:
-            self.kernels = [AgeParticle, DeleteOOB, DeleteAfterLifetime]
+            self.kernels = [AgeParticle, DeleteOOB]
         else:
             self.kernels = kernels
         self.kernel = None

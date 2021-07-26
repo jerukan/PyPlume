@@ -282,6 +282,12 @@ class ParticleResult:
         self.grid = None
         self.frames = None
         self.plot_features = {}
+        self.coastline = None
+
+    def add_coastline(self, data):
+        # TODO no hardcode
+        lats, lons = utils.load_pts_mat(data, "latz0", "lonz0")
+        self.coastline = utils.Piecewise2d(lons, lats)
 
     def add_grid(self, grid: HFRGrid):
         self.grid = grid

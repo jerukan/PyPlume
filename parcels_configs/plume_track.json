@@ -6,7 +6,7 @@
 		"time_range": ["2020-08-09T01:00", "2020-08-10T11:00"],
 		"repeat_dt": 18000,
 		"repetitions": 5,
-		"spawn_points": "matlab/glist90zj_pts_position.mat",
+		"spawn_points": "matlab/glist90zj_pts_position_spawn.mat",
 		"simulation_dt": 300,
 		"snapshot_interval": 3600,
 		"save_snapshots": true,

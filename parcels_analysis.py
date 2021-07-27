@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from parcels import plotting
 import scipy.spatial
+from shapely.geometry import LineString
 import xarray as xr
 
 from constants import *
@@ -287,7 +288,38 @@ class ParticleResult:
     def add_coastline(self, data):
         # TODO no hardcode
         lats, lons = utils.load_pts_mat(data, "latz0", "lonz0")
-        self.coastline = utils.Piecewise2d(lons, lats)
+        self.coastline = LineString(np.array([lons, lats]).T)
+
+    def process_coastline_collisions(self):
+        """
+        Checks when each particle has collided with a coastline and removes all instances of the
+        particle after the time of collision.
+        """
+        if self.coastline is None:
+            raise AttributeError("Coastline is not defined yet")
+        for i in range(self.lats.shape[0]):
+            nan_where = np.where(np.isnan(self.lats[i]))[0]
+            # LineString can't handle nan values, filter them out
+            if len(nan_where) > 0 and nan_where[0] > 0:
+                trajectory = LineString(np.array([self.lons[i][:nan_where[0]], self.lats[i][:nan_where[0]]]).T)
+            elif len(nan_where) == 0:
+                trajectory = LineString(np.array([self.lons[i], self.lats[i]]).T)
+            else:
+                # found an all nan particle (somehow)
+                continue
+            if trajectory.intersects(self.coastline):
+                for j in range(1, self.lats.shape[1]):
+                    if np.isnan(self.lons[i, j]):
+                        break
+                    part_seg = LineString([(self.lons[i, j - 1], self.lats[i, j - 1]), (self.lons[i, j], self.lats[i, j])])
+                    if self.coastline.intersects(part_seg):
+                        self.lats[i, j:] = np.nan
+                        self.lons[i, j:] = np.nan
+                        self.traj[i, j:] = np.nan
+                        self.time_grid[i, j:] = np.datetime64("NaT")
+                        self.lifetimes[i, j:] = np.nan
+                        self.spawntimes[i, j:] = np.nan
+                        break
 
     def add_grid(self, grid: HFRGrid):
         self.grid = grid
@@ -341,7 +373,7 @@ class ParticleResult:
         mask = self.time_grid == t
         ax.scatter(
             self.lons[mask], self.lats[mask], c=self.lifetimes[mask] / 86400, edgecolor="k", vmin=0,
-            vmax=self.max_life / 86400, s=25
+            vmax=self.max_life / 86400, s=20
         )
         figs = {}
         axs = {}

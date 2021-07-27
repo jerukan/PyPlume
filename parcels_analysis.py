@@ -8,54 +8,14 @@ import numpy as np
 import pandas as pd
 from parcels import plotting
 import scipy.spatial
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
+from shapely.ops import nearest_points
 import xarray as xr
 
 from constants import *
 from parcels_utils import HFRGrid
 import plot_utils
 import utils
-
-
-def line_seg(x1, y1, x2, y2):
-    """Creates information needed to represent a linear line segment."""
-    return dict(
-        x1=x1,  # endpoint 1 x
-        y1=y1,  # endpoint 1 y
-        x2=x2,  # endpoint 2 x
-        y2=y2,  # endpoint 2 y
-        dom=(x1, x2) if x1 <= x2 else (x2, x1),  # domain
-        rng=(y1, y2) if y1 <= y2 else (y2, y1),  # range
-        # check for vertical line
-        slope=(y1 - y2) / (x1 - x2) if x1 - x2 != 0 else np.nan
-    )
-
-
-def valid_point(x, y, line):
-    """Checks if a point on a line segment is inside its domain/range"""
-    in_dom = line["dom"][0] <= x <= line["dom"][1]
-    in_range = line["rng"][0] <= y <= line["rng"][1]
-    return in_dom and in_range
-
-
-def intersection_info(x, y, line):
-    """
-    Given a point and a line, return the xy coordinate of the closest point to the line.
-
-    Returns:
-        intersection x, intersection y
-    """
-    # vertical line
-    if np.isnan(line["slope"]):
-        return line["x1"], y
-    if line["slope"] == 0:
-        return x, line["y1"]
-    norm_slope = -1 / line["slope"]
-    slope_d = norm_slope - line["slope"]
-    int_d = (line["slope"] * -line["x1"] + line["y1"]) - (norm_slope * -x + y)
-    x_int = int_d / slope_d
-    y_int = norm_slope * (x_int - x) + y
-    return x_int, y_int
 
 
 class ParticlePlotFeature:
@@ -73,9 +33,7 @@ class ParticlePlotFeature:
             if len(self.labels) != len(self.lats):
                 raise ValueError("Labels must be the same length as lats/lons")
         if segments:
-            self.segments = np.empty(len(self.lats) - 1, dtype=dict)
-            for i in range(0, len(self.points) - 1):
-                self.segments[i] = line_seg(self.lons[i], self.lats[i], self.lons[i + 1], self.lats[i + 1])
+            self.segments = LineString(np.array([self.lons, self.lats]).T)
         else:
             self.segments = None
         self.track_dist = track_dist
@@ -89,25 +47,15 @@ class ParticlePlotFeature:
         return counts
 
     def get_closest_dist(self, lat, lon):
-        least_dist = np.inf
-        closest_idx = self.kdtree.query([lat, lon])[1]
+        point = Point(lon, lat)
         # check distances to line segments
         if self.segments is not None:
-            seg_check = []
-            if closest_idx < len(self.points) - 1:
-                seg_check.append(self.segments[closest_idx])
-            if closest_idx > 0:
-                seg_check.append(self.segments[closest_idx - 1])
-            for seg in seg_check:
-                lon_int, lat_int = intersection_info(lon, lat, seg)
-                if valid_point(lon_int, lat_int, seg):
-                    dist = utils.haversine(lat, lat_int, lon, lon_int)
-                    least_dist = dist if dist < least_dist else least_dist
+            seg_closest, _ = nearest_points(self.segments, point)
+            return utils.haversine(point.y, seg_closest.y, point.x, seg_closest.x)
         # check distance to closest point
+        closest_idx = self.kdtree.query([lat, lon])[1]
         pnt = self.points[closest_idx]
-        dist = utils.haversine(lat, pnt[0], lon, pnt[1])
-        least_dist = dist if dist < least_dist else least_dist
-        return least_dist
+        return utils.haversine(lat, pnt[0], lon, pnt[1])
 
     def get_all_dists(self, lats, lons):
         """

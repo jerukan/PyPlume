@@ -63,8 +63,8 @@ def DeleteAfterLifetime(particle, fieldset, time):
 
 
 def DeleteParticle(particle, fieldset, time):
-    print(f"Particle [{particle.id}] lost "
-          f"({particle.time}, {particle.depth}, {particle.lat}, {particle.lon})", file=sys.stderr)
+    # print(f"Particle [{particle.id}] lost "
+    #       f"({particle.time}, {particle.depth}, {particle.lat}, {particle.lon})", file=sys.stderr)
     particle.delete()
 
 

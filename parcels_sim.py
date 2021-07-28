@@ -8,6 +8,7 @@ import sys
 
 import numpy as np
 from parcels import ParticleSet, ErrorCode, ScipyParticle, JITParticle, Variable, AdvectionRK4
+from parcels import ParcelsRandom
 
 import utils
 from parcels_analysis import ParticleResult
@@ -19,7 +20,7 @@ warnings.simplefilter("ignore", UserWarning)
 # ignore divide by nan error that happens constantly with parcels
 np.seterr(divide='ignore', invalid='ignore')
 
-MAX_V = 0.6  # for display purposes only, so the vector field colors don't change every iteration
+ParcelsRandom.seed(42)
 
 
 class ThreddsParticle(JITParticle):
@@ -34,6 +35,26 @@ def AgeParticle(particle, fieldset, time):
     Kernel to measure particle ages.
     """
     particle.lifetime += particle.dt
+
+
+def RandomWalk(particle, fieldset, time):
+    cv = 1e-5 * 3600
+    uerr = 500
+    th = 2 * math.pi * ParcelsRandom.random()
+    u_, v_ = fieldset.UV[time, particle.depth, particle.lat, particle.lon]
+    # convert from degrees/s to m/s
+    u_conv = 1852 * 60 * math.cos(particle.lat * math.pi / 180)
+    v_conv = 1852 * 60
+    u_ *= u_conv
+    v_ *= v_conv
+    u_n = u_ + uerr * math.cos(th)
+    v_n = v_ + uerr * math.sin(th)
+    dx = u_n * cv
+    dy = v_n * cv
+    dx /= u_conv
+    dy /= v_conv
+    particle.lon += dx
+    particle.lat += dy
 
 
 def TestOOB(particle, fieldset, time):

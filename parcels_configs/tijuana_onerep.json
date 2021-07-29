@@ -5,12 +5,10 @@
 	"parcels_config": {
 		"time_range": ["START", "END"],
 		"repeat_dt": -1,
-		"particles_per_dt": 100,
-		"max_variation": 0.003,
+		"repetitions": -1,
 		"spawn_points": [
 			[32.552, -117.148]
 		],
-		"random_spawn": true,
 		"simulation_dt": 300,
 		"snapshot_interval": 7200,
 		"save_snapshots": true,

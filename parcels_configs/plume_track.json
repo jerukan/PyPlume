@@ -1,7 +1,6 @@
 {
 	"name": "plume_track",
 	"netcdf_path": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/current_netcdfs/west_coast_1km_hourly/tj_plume_2020-08_interped.nc",
-	"resolution": 1,
 	"parcels_config": {
 		"time_range": ["2020-08-09T01:00", "2020-08-14T01:00"],
 		"repeat_dt": 3600,

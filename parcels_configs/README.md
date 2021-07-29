@@ -8,7 +8,6 @@ example layout:
 {
 	"name": "name_of_config",
 	"netcdf_path": "path/to/data.nc",
-	"resolution": 1,
 	"parcels_config": {
 		"time_range": ["2020-07-16T00", "END"],
 		"repeat_dt": 14400,
@@ -32,15 +31,19 @@ example layout:
 
 information about the variables:
 
-- `resolution`: for the data being used, 1, 2, or 6 km
-- `time_range`: timeframe of the data to run the simulation on
+- `name`: This will determine the filenames and folders stuff saves to. Make sure it's unique!
+- `time_range`: Timeframe of the data to run the simulation on
 	- `"START"` as the first time will use the first time of the data
 	- `"END"` as the second time will use the last time of the data
-	- an integer as one of the elements will be treated as a timedelta (in hours)
-- `repeat_dt`: time to wait between releasing batches of particles (in seconds)
-	- if the value is 0 or less, only one batch of particles will be released at the starting time
-- `repetitions`: number of times to spawn the cluster of particles
-- `spawn_points`: list of [latitude, longitude] pairs to choose from as a spawn location
-- `simulation_dt`: the actual dt used by parcels for the simulation (in seconds)
-- `snapshot_interval`: time to wait between taking a snapshot of the simulation to save as an image in seconds
-- `shown_domain`: basically a cropping option, set to null for default domain
+	- An integer as one of the elements will be treated as a timedelta (in hours)
+- `repeat_dt`: Time to wait between releasing batches of particles (in seconds)
+	- If the value is 0 or less, only one batch of particles will be released at the starting time
+- `repetitions`: Number of times to spawn the cluster of particles
+	- If `repeat_dt` is 0 or less, this parameter will have no effect
+- `spawn_points`: List of [latitude, longitude] pairs to choose from as a spawn location
+	- You can also put a path to a .mat file, but it's hardcoded right now, so don't.
+- `simulation_dt`: The actual dt used by parcels for the simulation (in seconds)
+- `snapshot_interval`: Time to wait between taking a snapshot of the simulation to save as an image
+in seconds (also determines how often the ParticleFile saves information)
+- `save_snapshots`: True to save the plots
+- `shown_domain`: Basically a cropping option, set to null for default domain

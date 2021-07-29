@@ -1,16 +1,13 @@
 {
 	"name": "buoy_track",
-	"netcdf_path": "current_netcdfs/west_coast_6km_hourly/missing_buoy.nc",
-	"resolution": 6,
+	"netcdf_path": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/current_netcdfs/west_coast_6km_hourly/missing_buoy.nc",
 	"parcels_config": {
 		"time_range": ["START", "END"],
-		"repeat_dt": 7200,
-		"particles_per_dt": 2,
-		"max_variation": 0,
+		"repeat_dt": -1,
+		"repetitions": -1,
 		"spawn_points": [
 			[33.576910, -118.025285]
 		],
-		"random_spawn": true,
 		"simulation_dt": 300,
 		"snapshot_interval": 21600,
 		"save_snapshots": true,

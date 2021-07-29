@@ -1,6 +1,4 @@
-"""
-Just some useful methods.
-"""
+"""Just some useful methods."""
 import glob
 import json
 import math
@@ -13,16 +11,6 @@ import numpy as np
 import scipy.io
 import xarray as xr
 
-DATA_6KM = 6
-DATA_2KM = 2
-DATA_1KM = 1
-
-filename_dict = {
-    DATA_6KM: "west_coast_6km_hourly",
-    DATA_2KM: "west_coast_2km_hourly",
-    DATA_1KM: "west_coast_1km_hourly"
-}
-
 FILES_ROOT = Path("/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast")
 PARCELS_CONFIGS_DIR = Path("parcels_configs")
 CURRENT_NETCDF_DIR = Path("current_netcdfs")
@@ -30,20 +18,6 @@ PARTICLE_NETCDF_DIR = Path("particledata")
 WAVEBUOY_DATA_DIR = Path("buoy_data")
 MATLAB_DIR = Path("matlab")
 PICUTRE_DIR = Path("snapshots")
-
-
-def euc_dist(vec1, vec2):
-    """
-    Args:
-        vec1 (array-like)
-        vec2 (array-like)
-    """
-    # convert to np array if vectors aren't already
-    if not isinstance(vec1, np.ndarray):
-        vec1 = np.array(vec1)
-    if not isinstance(vec2, np.ndarray):
-        vec2 = np.array(vec2)
-    return np.sqrt(((vec1 - vec2) ** 2).sum())
 
 
 def haversine(lat1, lat2, lon1, lon2):
@@ -86,6 +60,7 @@ def create_path(path_str, iterate=False):
 
 
 def delete_all_pngs(dir_path):
+    """Deletes every simulation generated image"""
     pngs = glob.glob(os.path.join(dir_path, "*.png"))
     for png in pngs:
         if re.search(r"snap_\d+\.png$", png) is None:
@@ -150,22 +125,6 @@ def generate_mask_none(data):
     """
     nan_data = ~np.isnan(data)
     return nan_data.sum(axis=0) == 0
-
-
-def add_noise(arr, max_var, repeat=None):
-    """
-    Randomly varies the values in an array.
-    """
-    if repeat is None:
-        var_arr = np.random.random(arr.shape)
-        var_arr = (var_arr * 2 - 1) * max_var
-        return arr + var_arr
-    shp = np.ones(len(arr.shape) + 1, dtype=int)
-    shp[0] = repeat
-    rep_arr = np.tile(arr, shp)
-    var_arr = np.random.random(rep_arr.shape)
-    var_arr = (var_arr * 2 - 1) * max_var
-    return rep_arr + var_arr
 
 
 def create_gif(delay, images_path, out_path):
@@ -247,7 +206,11 @@ def load_pts_mat(path, lat_ind, lon_ind):
     return yf, xf
 
 
-def load_geo_points(data_cfg):
+def load_geo_points(data_cfg: dict):
+    """
+    Loads a collection of (lat, lon) points from a given data configuration. Each different file
+    type will have different ways of loading and different required parameters.
+    """
     ext = os.path.splitext(data_cfg["path"])[1]
     if ext == ".mat":
         lats, lons = load_pts_mat(data_cfg["path"], data_cfg["lat_var"], data_cfg["lon_var"])

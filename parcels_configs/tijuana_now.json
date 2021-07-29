@@ -7,6 +7,7 @@
 		"lat_range": [32.524, 32.75],
 		"lon_range": [-117.32, -117.09]
 	},
+	"save_snapshots": true,
 	"parcels_config": {
 		"save_dir_pfile": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/particledata",
 		"particle_type": "ThreddsParticle",
@@ -21,9 +22,11 @@
 		"simulation_dt": 300,
 		"snapshot_interval": 7200
 	},
-	"shown_domain": null,
-	"save_snapshots": true,
-	"save_dir_snapshots": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/snapshots",
-	"coastline": null,
-	"plot_feature_set": null
+	"plotting_config": {
+		"shown_domain": null,
+		"save_dir_snapshots": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/snapshots",
+		"coastline": null,
+		"plot_feature_set": null,
+		"draw_coasts": true
+	}
 }

@@ -120,7 +120,7 @@ class ParticleResult:
             return fig_inf, ax_inf
         return None, None
 
-    def plot_at_t(self, t, domain=None, feat_info="all", land=False):
+    def plot_at_t(self, t, domain=None, feat_info="all", land=True):
         if self.grid is None and domain is None:
             domain = {
                 "W": np.nanmin(self.lons),
@@ -160,7 +160,9 @@ class ParticleResult:
     def on_plot_generated(self, savefile, savefile_infs, i, t, total):
         pass
 
-    def generate_all_plots(self, save_dir, filename=None, figsize=None, domain=None, feat_info="all"):
+    def generate_all_plots(
+        self, save_dir, filename=None, figsize=None, domain=None, feat_info="all", land=True
+    ):
         """
         Generates plots and then saves them
 
@@ -176,7 +178,7 @@ class ParticleResult:
             t = self.times[0]
             i = 0
             while t <= self.times[-1]:
-                fig, _, figs, _ = self.plot_at_t(t, domain=domain, feat_info=feat_info)
+                fig, _, figs, _ = self.plot_at_t(t, domain=domain, feat_info=feat_info, land=land)
                 savefile = os.path.join(
                     save_dir, f"snap_{i}.png" if filename is None else f"{filename}_{i}.png"
                 )
@@ -196,7 +198,7 @@ class ParticleResult:
                 t += np.timedelta64(self.cfg["snapshot_interval"], "s")
         else:
             for i in range(len(self.times)):
-                fig, _, figs, _ = self.plot_at_t(self.times[i], domain=domain, feat_info=feat_info)
+                fig, _, figs, _ = self.plot_at_t(self.times[i], domain=domain, feat_info=feat_info, land=land)
                 savefile = os.path.join(
                     save_dir, f"snap_{i}.png" if filename is None else f"{filename}_{i}.png"
                 )

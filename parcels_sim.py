@@ -125,7 +125,6 @@ class ParcelsSimulation:
         print(f"    total particles in simulation: {total}")
 
         self.snap_num = math.floor((t_end - t_start) / cfg["snapshot_interval"])
-        print(self.snap_num)
         self.last_int = t_end - (self.snap_num * cfg["snapshot_interval"] + t_start)
         if self.last_int == 0:
             # +1 snapshot is from an initial plot

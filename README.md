@@ -15,4 +15,5 @@ of particle movement stitch together into a gif.
 
 ### notes
 
-any other dependencies (mostly extra netcdf and .mat files) can be downloaded from the Microsoft Teams Trajectories topic files (`parcels_westcoast`).
+any other dependencies (mostly extra netcdf and .mat files) can be downloaded from the Microsoft
+Teams Trajectories topic files (`parcels_westcoast`).

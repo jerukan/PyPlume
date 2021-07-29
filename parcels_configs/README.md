@@ -36,6 +36,8 @@ information about the variables:
 	- `"START"` as the first time will use the first time of the data
 	- `"END"` as the second time will use the last time of the data
 	- An integer as one of the elements will be treated as a timedelta (in hours)
+		- For example, `[6, "END"]` will run the simulation from 6 hours before the end until the
+		end
 - `repeat_dt`: Time to wait between releasing batches of particles (in seconds)
 	- If the value is 0 or less, only one batch of particles will be released at the starting time
 - `repetitions`: Number of times to spawn the cluster of particles

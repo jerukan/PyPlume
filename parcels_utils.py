@@ -14,6 +14,7 @@ import scipy.spatial
 import xarray as xr
 
 import plot_utils
+import thredds_utils
 import utils
 
 
@@ -132,6 +133,15 @@ def xr_dataset_to_fieldset(xrds, copy=True, raw=True, mesh="spherical") -> Field
             )
     fieldset.check_complete()
     return fieldset
+
+
+def read_netcdf_info(netcdf_cfg):
+    if netcdf_cfg["type"] == "file":
+        with xr.open_dataset(netcdf_cfg["path"]) as ds:
+            return ds
+    if netcdf_cfg["type"] == "thredds":
+        return thredds_utils.get_thredds_dataset(netcdf_cfg["path"], netcdf_cfg["time_range"],
+            netcdf_cfg["lat_range"], netcdf_cfg["lon_range"], inclusive=True)
 
 
 class HFRGrid:

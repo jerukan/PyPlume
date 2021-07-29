@@ -69,7 +69,7 @@ def DeleteOOB(particle, fieldset, time):
         particle.delete()
 
 
-def DeleteAfterLifetime(particle, fieldset, time):
+def DeleteAfter3Days(particle, fieldset, time):
     """Deletes a particle after 3 days (should probably rename this for that)"""
     LIFETIME = 259200
     if particle.lifetime > LIFETIME:

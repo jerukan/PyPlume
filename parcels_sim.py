@@ -1,9 +1,11 @@
 from datetime import timedelta
+import importlib
 import math
+import os
 import sys
 
 import numpy as np
-from parcels import ParticleSet, ErrorCode, AdvectionRK4
+from parcels import ParticleSet, ErrorCode, AdvectionRK4, ScipyParticle, JITParticle
 
 import utils
 from parcels_analysis import ParticleResult
@@ -52,13 +54,25 @@ def parse_time_range(time_range, time_list):
     return t_start, t_end
 
 
+def import_kernel_or_particle(name):
+    if name == "AdvectionRK4":
+        return AdvectionRK4
+    if name == "ScipyParticle":
+        return ScipyParticle
+    if name == "JITParticle":
+        return JITParticle
+    mod = importlib.import_module("parcels_kernels")
+    try:
+        return getattr(mod, name)
+    except AttributeError:
+        raise AttributeError(f"Kernel {name} not found in parcels_kernels.py")
+
+
 class ParcelsSimulation:
-    MAX_SNAPSHOTS = 200
-    MAX_NUM_LEN = len(str(MAX_SNAPSHOTS))
     MAX_V = 0.6
     PFILE_SAVE_DEFAULT = utils.FILES_ROOT / utils.PARTICLE_NETCDF_DIR
 
-    def __init__(self, name, hfrgrid, cfg, kernels=None):
+    def __init__(self, name, hfrgrid, cfg):
         self.name = name
         self.hfrgrid = hfrgrid
         self.cfg = cfg
@@ -66,14 +80,15 @@ class ParcelsSimulation:
         t_start, t_end = self.get_time_bounds()
 
         # load spawn points
-        try:
+        if isinstance(cfg["spawn_points"], dict):
+            lats, lons = utils.load_geo_points(cfg["spawn_points"])
+            spawn_points = np.array([lats, lons]).T
+        elif isinstance(cfg["spawn_points"], list):
             spawn_points = np.array(cfg["spawn_points"], dtype=float)
             if len(spawn_points.shape) != 2 or spawn_points.shape[1] != 2:
                 raise ValueError(f"Spawn points is incorrect shape {spawn_points.shape}")
-        except ValueError:
-            # assume a path was passed in, try to load stuff
-            lats, lons = utils.load_pts_mat(cfg["spawn_points"], "yf", "xf")
-            spawn_points = np.array([lats, lons]).T
+        else:
+            raise ValueError("Invalid spawn point format in config")
 
         # calculate number of times particles will be spawned
         if cfg["repeat_dt"] <= 0:
@@ -98,15 +113,19 @@ class ParcelsSimulation:
 
         # set up ParticleSet and ParticleFile
         self.pset = ParticleSet(
-            fieldset=hfrgrid.fieldset, pclass=ThreddsParticle,
+            fieldset=hfrgrid.fieldset, pclass=import_kernel_or_particle(cfg["particle_type"]),
             lon=p_lons, lat=p_lats, time=time_arr
         )
-        self.pfile_path = utils.create_path(ParcelsSimulation.PFILE_SAVE_DEFAULT) / f"particle_{name}.nc"
+        if "save_dir_pfile" in cfg and cfg["save_dir_pfile"] not in (None, ""):
+            self.pfile_path = utils.create_path(cfg["save_dir_pfile"]) / f"particle_{name}.nc"
+        else:
+            self.pfile_path = utils.create_path(ParcelsSimulation.PFILE_SAVE_DEFAULT) / f"particle_{name}.nc"
         self.pfile = self.pset.ParticleFile(self.pfile_path)
         print(f"Particle trajectories for {name} will be saved to {self.pfile_path}")
         print(f"    total particles in simulation: {total}")
 
         self.snap_num = math.floor((t_end - t_start) / cfg["snapshot_interval"])
+        print(self.snap_num)
         self.last_int = t_end - (self.snap_num * cfg["snapshot_interval"] + t_start)
         if self.last_int == 0:
             # +1 snapshot is from an initial plot
@@ -114,16 +133,12 @@ class ParcelsSimulation:
             print(f"Num snapshots to save for {name}: {self.snap_num + 1}")
         else:
             print(f"Num snapshots to save for {name}: {self.snap_num + 2}")
-        if self.snap_num >= ParcelsSimulation.MAX_SNAPSHOTS:
-            raise Exception(f"Too many snapshots ({self.snap_num}). Change the value of \
-            ParcelsSimulation.MAX_SNAPSHOTS if you need more snapshots.")
 
         self.completed = False
         self.parcels_result = None
-        if kernels is None:
-            self.kernels = [AgeParticle, DeleteOOB]
-        else:
-            self.kernels = kernels
+        self.kernels = [import_kernel_or_particle(kernel) for kernel in cfg["kernels"]]
+        if len(self.kernels) == 0:
+            self.kernels = [AdvectionRK4]
         self.kernel = None
         self.update_kernel()
 
@@ -134,8 +149,8 @@ class ParcelsSimulation:
         self.update_kernel()
 
     def update_kernel(self):
-        self.kernel = AdvectionRK4
-        for k in self.kernels:
+        self.kernel = self.pset.Kernel(self.kernels[0])
+        for k in self.kernels[1:]:
             self.kernel += self.pset.Kernel(k)
 
     def get_time_bounds(self):
@@ -182,14 +197,13 @@ class ParcelsSimulation:
     def execute(self):
         if self.completed:
             raise RuntimeError("Simulation has already completed.")
-        # save initial plot
-        self.simulation_loop(0, 0)
-        for i in range(1, self.snap_num + 1):
-            self.simulation_loop(i, self.cfg["snapshot_interval"])
+        for i in range(self.snap_num):
+            if not self.simulation_loop(i, self.cfg["snapshot_interval"]):
+                break
 
         # run the last interval (the remainder) if needed
         if self.last_int != 0:
-            self.simulation_loop(self.snap_num + 1, self.last_int)
+            self.simulation_loop(self.snap_num, self.last_int)
 
         self.pfile.export()
         self.pfile.close()

@@ -1,9 +1,12 @@
 """
 Just some useful methods.
 """
+import glob
 import json
 import math
+import os
 from pathlib import Path
+import re
 import subprocess
 
 import numpy as np
@@ -80,6 +83,14 @@ def create_path(path_str, iterate=False):
     except FileExistsError:
         pass
     return path
+
+
+def delete_all_pngs(dir_path):
+    pngs = glob.glob(os.path.join(dir_path, "*.png"))
+    for png in pngs:
+        if re.search(r"snap_\d+\.png$", png) is None:
+            raise Exception(f"Non-plot images founud in folder {dir_path}")
+        os.remove(png)
 
 
 def load_config(path):
@@ -234,3 +245,11 @@ def load_pts_mat(path, lat_ind, lon_ind):
     xf = xf[np.where(non_nan)]
     yf = yf[np.where(non_nan)]
     return yf, xf
+
+
+def load_geo_points(data_cfg):
+    ext = os.path.splitext(data_cfg["path"])[1]
+    if ext == ".mat":
+        lats, lons = load_pts_mat(data_cfg["path"], data_cfg["lat_var"], data_cfg["lon_var"])
+        return lats, lons
+    raise ValueError(f"Invalid extension {ext}")

@@ -1,6 +1,7 @@
 """
 TODO add support to get regions other than just US west coast
 """
+import os
 
 import numpy as np
 import xarray as xr
@@ -37,6 +38,9 @@ def retrieve_dataset(thredds_code):
 
     TODO check if the thredds server is down so it doesn't get stuck
     """
+    # url passed in
+    if isinstance(thredds_code, str):
+        return xr.open_dataset(thredds_code, chunks={"time": NUM_CHUNKS})
     if thredds_code not in thredds_data or thredds_data[thredds_code] is None:
         print(f"Data for type {thredds_code} not loaded yet. Loading from...")
         print(thredds_urls[thredds_code])
@@ -47,6 +51,9 @@ def retrieve_dataset(thredds_code):
 
 
 def get_time_slice(time_range, inclusive=False, ref_coords=None, precision="h"):
+    time_range = list(time_range)
+    time_range[0] = np.datetime64(time_range[0])
+    time_range[1] = np.datetime64(time_range[1])
     if time_range[0] == time_range[1]:
         return slice(np.datetime64(time_range[0], precision),
                      np.datetime64(time_range[1], precision) + np.timedelta64(1, precision))
@@ -110,8 +117,7 @@ def get_thredds_dataset(thredds_code, time_range, lat_range, lon_range,
         inclusive=False, padding=0.0) -> xr.Dataset:
     """
     Params:
-        name (str)
-        thredds_code (int)
+        thredds_code (int or str): the dataset constant or url
         time_range (np.datetime64, np.datetime64[, int]): (start, stop[, interval])
         lat_range (float, float)
         lon_range (float, float)

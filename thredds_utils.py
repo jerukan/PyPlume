@@ -12,19 +12,30 @@ USWC_6KM_HOURLY = 0
 USWC_2KM_HOURLY = 1
 USWC_1KM_HOURLY = 2
 USWC_500M_HOURLY = 3
+USEC_6KM_HOURLY = 4
+USEC_2KM_HOURLY = 5
+USEC_1KM_HOURLY = 6
 
 NUM_CHUNKS = 50
 
 thredds_names = {
     USWC_6KM_HOURLY: "US west coast 6km hourly",
     USWC_2KM_HOURLY: "US west coast 2km hourly",
-    USWC_1KM_HOURLY: "US west coast 1km hourly"
+    USWC_1KM_HOURLY: "US west coast 1km hourly",
+    USWC_500M_HOURLY: "US west coast 500m hourly",
+    USEC_6KM_HOURLY: "US east and gulf coast 6km hourly",
+    USEC_2KM_HOURLY: "US east and gulf coast 2km hourly",
+    USEC_1KM_HOURLY: "US east and gulf coast 1km hourly",
 }
 
 thredds_urls = {
     USWC_6KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd",
     USWC_2KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/2km/hourly/RTV/HFRADAR_US_West_Coast_2km_Resolution_Hourly_RTV_best.ncd",
-    USWC_1KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/hourly/RTV/HFRADAR_US_West_Coast_1km_Resolution_Hourly_RTV_best.ncd"
+    USWC_1KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/hourly/RTV/HFRADAR_US_West_Coast_1km_Resolution_Hourly_RTV_best.ncd",
+    USWC_500M_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/500m/hourly/RTV/HFRADAR_US_West_Coast_500m_Resolution_Hourly_RTV_best.ncd",
+    USEC_6KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/6km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_6km_Resolution_Hourly_RTV_best.ncd",
+    USEC_2KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/2km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_2km_Resolution_Hourly_RTV_best.ncd",
+    USEC_1KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/1km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_1km_Resolution_Hourly_RTV_best.ncd",
 }
 
 # do not access this dict directly, only load datasets when they are needed

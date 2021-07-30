@@ -3,7 +3,6 @@ Collection of classes that represent plotted features in a given simulation.
 These features represent additional information to the simulation on top of the already plotted
 particle movements.
 """
-
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.spatial
@@ -11,6 +10,7 @@ from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
 
 from constants import *
+from parcels_utils import buoycsv_to_particleds
 import utils
 
 
@@ -102,21 +102,39 @@ class ParticlePlotFeature:
         """
         Generates an entirely new optional plot that could display any kind of additional info
         about this particular feature.
+
+        Args:
+            lats: particle lats
+            lons: particle lons
         """
         return None, None
 
     @classmethod
     def get_sd_coastline(cls, path=None, track_dist=100):
+        """A simplified SD coastline"""
         if path is None:
             path = utils.MATLAB_DIR / SD_COASTLINE_FILENAME
         lats, lons = utils.load_pts_mat(path, "latz0", "lonz0")
         return cls(lats, lons, segments=True, track_dist=track_dist)
+
+    @classmethod
+    def get_from_buoy_data(cls, path):
+        # TODO probably a separate feature class that uses a timestamp to check distance to a
+        # particle (use interpolation, kdtree, stuff)
+        buoy_ds = buoycsv_to_particleds(path)
+        return cls(
+            buoy_ds["lat"].values[0], buoy_ds["lon"].values[0], labels=buoy_ds["time"].values[0],
+            segments=True
+        )
 
 
 class NanSeparatedFeature(ParticlePlotFeature):
     """
     A feature containing multiple line segments where nans separate each collection of segments.
     """
+    def __init__(self, lats, lons, **kwargs):
+        super().__init__(lats, lons, segments=False, **kwargs)
+
     def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
         lat_borders = np.split(self.lats, np.where(np.isnan(self.lats))[0])
         lon_borders = np.split(self.lons, np.where(np.isnan(self.lons))[0])
@@ -125,6 +143,7 @@ class NanSeparatedFeature(ParticlePlotFeature):
 
     @classmethod
     def get_sd_full_coastline(cls, path=None):
+        """Gets the full detailed Tijuana coastline. Don't try get_all_dists"""
         if path is None:
             path = utils.MATLAB_DIR / SD_FULL_COASTLINE_FILENAME
         points = scipy.io.loadmat(path)["OR2Mex"]
@@ -137,7 +156,7 @@ class NanSeparatedFeature(ParticlePlotFeature):
         for idx in SD_FULL_TIJUANA_IDXS:
             lats_all.extend(lat_borders[idx])
             lons_all.extend(lon_borders[idx])
-        inst = cls(lats_all, lons_all, segments=True, track_dist=0)
+        inst = cls(lats_all, lons_all, track_dist=0)
         inst.color = "k"
         return inst
 
@@ -150,10 +169,12 @@ class StationFeature(ParticlePlotFeature):
 
     The table they generate will show how many particles are near each station.
     """
-    def __init__(self, lats, lons, labels, track_dist=0):
-        super().__init__(lats, lons, labels=labels, segments=False, track_dist=track_dist)
+    def __init__(self, lats, lons, labels, **kwargs):
+        """Labels is required"""
+        super().__init__(lats, lons, labels=labels, segments=False, **kwargs)
 
     def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
+        """Any point with points near them are colored red, otherwise they are blue."""
         counts = self.count_near(lats, lons)
         ax.scatter(
             self.lons[counts == 0], self.lats[counts == 0], c="b", s=60, edgecolor="k"
@@ -163,6 +184,10 @@ class StationFeature(ParticlePlotFeature):
         )
 
     def generate_info_table(self, lats, lons, *args, **kwargs):
+        """
+        Creates a table where each row contains information on each station and how many particles
+        are nearby that point.
+        """
         colors = np.full((len(self.lats), 4), "white", dtype=object)
         counts = self.count_near(lats, lons).astype(np.uint32)
         for i in range(len(self.lats)):
@@ -184,6 +209,7 @@ class StationFeature(ParticlePlotFeature):
 
     @classmethod
     def get_sd_stations(cls, path=None, track_dist=500):
+        """Gets the stations in the SD area from the mat file."""
         if path is None:
             path = utils.MATLAB_DIR / SD_STATION_FILENAME
         lats, lons = utils.load_pts_mat(path, "ywq", "xwq")
@@ -203,6 +229,10 @@ class LatTrackedPointFeature(ParticlePlotFeature):
             super().plot_on_frame(ax, lats, lons, *args, **kwargs)
 
     def generate_info_table(self, lats, lons, *args, **kwargs):
+        """
+        Generates a histogram showing the distribution of meridional distances from the single
+        point.
+        """
         dists = self.get_all_dists(lats, lons)[0]
         north = lats < self.lats[0]
         dists[north] = -dists[north]

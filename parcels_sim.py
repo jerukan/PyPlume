@@ -4,7 +4,7 @@ import math
 import sys
 
 import numpy as np
-from parcels import ParticleSet, ErrorCode, AdvectionRK4, ScipyParticle, JITParticle
+from parcels import ParticleSet, ErrorCode, AdvectionRK4, AdvectionRK45, ScipyParticle, JITParticle
 
 import utils
 from parcels_analysis import ParticleResult
@@ -20,8 +20,13 @@ np.seterr(divide='ignore', invalid='ignore')
 def parse_time_range(time_range, time_list):
     """
     Args:
-        time_range (array-like): some array with 2 strings
-        data (dict)
+        time_range (array-like): some array with 2 items
+         'START' and 'END' are parsed as the start and end of time_list respectively
+         an integer represents a delta time in hours
+        time_list (array-like): sorted list of timestamps
+
+    Returns:
+        np.datetime64, np.datetime64
     """
     if time_range[0] == "START":
         t_start = time_list[0]
@@ -56,6 +61,8 @@ def parse_time_range(time_range, time_list):
 def import_kernel_or_particle(name):
     if name == "AdvectionRK4":
         return AdvectionRK4
+    if name == "AdvectionRK45":
+        return AdvectionRK45
     if name == "ScipyParticle":
         return ScipyParticle
     if name == "JITParticle":

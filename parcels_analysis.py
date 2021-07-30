@@ -30,9 +30,16 @@ class TimedFrame:
 class ParticleResult:
     """
     Wraps the output of a particle file to make visualizing and analyzing the results easier.
-    Can also use an HFRGrid if the ocean currents are also needed.
+    Can also use an HFRGrid if the ocean currents are also wanted in the plot.
+
+    NOTE this currently only works with simulations with ThreddsParticle particle classes.
     """
     def __init__(self, dataset, cfg=None):
+        """
+        Args:
+            dataset: path to ParticleFile or just the dataset itself
+            cfg: the parcels config passed into the main simulation
+        """
         self.cfg = cfg
         if isinstance(dataset, (Path, str)):
             self.path = dataset
@@ -49,7 +56,8 @@ class ParticleResult:
         self.time_grid = self.xrds["time"].values
         times_unique = np.unique(self.time_grid)
         self.times = np.sort(times_unique[~np.isnan(times_unique)])
-        # not part of Ak4 kernel
+        # not part of a normal particle
+        # TODO attrgetter shenanigans?
         self.lifetimes = self.xrds["lifetime"].values
         self.spawntimes = self.xrds["spawntime"].values
         
@@ -60,12 +68,14 @@ class ParticleResult:
         self.coastline = None
 
     def add_coastline(self, lats, lons):
+        """Adds a single coastline for processing collisions"""
         self.coastline = LineString(np.array([lons, lats]).T)
 
     def process_coastline_collisions(self):
         """
         Checks when each particle has collided with a coastline and removes all instances of the
         particle after the time of collision.
+        Does not modify the original file (it shouldn't at least).
         """
         if self.coastline is None:
             raise AttributeError("Coastline is not defined yet")
@@ -80,6 +90,8 @@ class ParticleResult:
                 # found an all nan particle (somehow)
                 continue
             if trajectory.intersects(self.coastline):
+                # the entire trajectory intersects with the coastline, find which timestamp it
+                # crosses and delete all data after that
                 for j in range(1, self.lats.shape[1]):
                     if np.isnan(self.lons[i, j]):
                         break
@@ -94,6 +106,7 @@ class ParticleResult:
                         break
 
     def add_grid(self, grid: HFRGrid):
+        """Adds a HFRGrid to draw the currents on the plots."""
         self.grid = grid
         gtimes, _, _ = grid.get_coords()
         # check if particle set is in-bounds of the given grid
@@ -107,7 +120,8 @@ class ParticleResult:
         else:
             self.plot_features[name] = feature
 
-    def plot_feature(self, t, feature: ParticlePlotFeature, ax, feat_info=True):
+    def plot_feature(self, t: np.datetime64, feature: ParticlePlotFeature, ax, feat_info=True):
+        """Plots a feature at a given time."""
         mask = self.time_grid == t
         curr_lats = self.lats[mask]
         curr_lons = self.lons[mask]
@@ -120,7 +134,14 @@ class ParticleResult:
             return fig_inf, ax_inf
         return None, None
 
-    def plot_at_t(self, t, domain=None, feat_info="all", land=True):
+    def plot_at_t(self, t: np.datetime64, domain=None, feat_info="all", land=True):
+        """
+        Create figures of the simulation at a particular time.
+        TODO when drawing land, prioritize coastline instead of using cartopy
+
+        Args:
+            feat_info: set of features to draw (their names), or 'all' to draw every feature
+        """
         if self.grid is None and domain is None:
             domain = {
                 "W": np.nanmin(self.lons),
@@ -149,6 +170,7 @@ class ParticleResult:
         )
         figs = {}
         axs = {}
+        # get feature plots
         for name, feature in self.plot_features.items():
             fig_inf, ax_inf = self.plot_feature(
                 t, feature, ax, feat_info=(feat_info == "all" or name in feat_info)
@@ -158,7 +180,32 @@ class ParticleResult:
         return fig, ax, figs, axs
 
     def on_plot_generated(self, savefile, savefile_infs, i, t, total):
+        """
+        An overridable hook just in case you want something to happen between plot generations
+        in generate_all_plots or something.
+        This was definitely not made just for celery progress tracking.
+        """
         pass
+
+    def save_at_t(self, t, i, save_dir, filename, figsize, domain, feat_info, land):
+        """Generate and save plots at a timestamp, given a bunch of information."""
+        fig, _, figs, _ = self.plot_at_t(t, domain=domain, feat_info=feat_info, land=land)
+        savefile = os.path.join(
+            save_dir, f"snap_{i}.png" if filename is None else f"{filename}_{i}.png"
+        )
+        plot_utils.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
+        savefile_infs = {}
+        # plot and save every desired feature
+        for name, fig_inf in figs.items():
+            if fig_inf is not None and (feat_info == "all" or name in feat_info):
+                savefile_inf = os.path.join(
+                    save_dir,
+                    f"snap_{name}_{i}.png" if filename is None else f"{filename}_{name}_{i}.png"
+                )
+                savefile_infs[name] = savefile_inf
+                plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
+        self.frames.append(TimedFrame(t, savefile, **savefile_infs))
+        return savefile, savefile_infs
 
     def generate_all_plots(
         self, save_dir, filename=None, figsize=None, domain=None, feat_info="all", land=True
@@ -172,52 +219,32 @@ class ParticleResult:
         """
         utils.create_path(save_dir)
         utils.delete_all_pngs(save_dir)
-        frames = []
+        self.frames = []
         if self.cfg is not None:
+            # The delta time between each snapshot is defined in the parcels config. This lets us avoid
+            # the in-between timestamps where a single particle gets deleted.
             total_plots = int((self.times[-1] - self.times[0]) / np.timedelta64(1, "s") / self.cfg["snapshot_interval"]) + 1
             t = self.times[0]
             i = 0
             while t <= self.times[-1]:
-                fig, _, figs, _ = self.plot_at_t(t, domain=domain, feat_info=feat_info, land=land)
-                savefile = os.path.join(
-                    save_dir, f"snap_{i}.png" if filename is None else f"{filename}_{i}.png"
+                savefile, savefile_infs = self.save_at_t(
+                    t, i, save_dir, filename, figsize, domain, feat_info, land
                 )
-                plot_utils.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
-                savefile_infs = {}
-                for name, fig_inf in figs.items():
-                    if fig_inf is not None and (feat_info == "all" or name in feat_info):
-                        savefile_inf = os.path.join(
-                            save_dir,
-                            f"snap_{name}_{i}.png" if filename is None else f"{filename}_{name}_{i}.png"
-                        )
-                        savefile_infs[name] = savefile_inf
-                        plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
-                frames.append(TimedFrame(t, savefile, **savefile_infs))
                 self.on_plot_generated(savefile, savefile_infs, i, t, total_plots)
                 i += 1
                 t += np.timedelta64(self.cfg["snapshot_interval"], "s")
         else:
+            # If the delta time between each snapshot is unknown, we'll just use the unique times
+            # from the particle files.
             for i in range(len(self.times)):
-                fig, _, figs, _ = self.plot_at_t(self.times[i], domain=domain, feat_info=feat_info, land=land)
-                savefile = os.path.join(
-                    save_dir, f"snap_{i}.png" if filename is None else f"{filename}_{i}.png"
+                savefile, savefile_infs = self.save_at_t(
+                    self.times[i], i, save_dir, filename, figsize, domain, feat_info, land
                 )
-                plot_utils.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
-                savefile_infs = {}
-                for name, fig_inf in figs.items():
-                    if fig_inf is not None and (feat_info == "all" or name in feat_info):
-                        savefile_inf = os.path.join(
-                            save_dir,
-                            f"snap_{name}_{i}.png" if filename is None else f"{filename}_{name}_{i}.png"
-                        )
-                        savefile_infs[name] = savefile_inf
-                        plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
-                frames.append(TimedFrame(self.times[i], savefile, **savefile_infs))
                 self.on_plot_generated(savefile, savefile_infs, i, self.times[i], len(self.times))
-        self.frames = frames
-        return frames
+        return self.frames
 
     def generate_gif(self, gif_path, gif_delay=25):
+        """Uses imagemagick to generate a gif of the main simulation plot."""
         input_paths = [str(frame.path) for frame in self.frames]
         sp_in = ["magick", "-delay", str(gif_delay)] + input_paths
         sp_in.append(str(gif_path))

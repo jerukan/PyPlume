@@ -31,7 +31,7 @@ def RandomWalk(particle, fieldset, time):
     Adds randomness to particle movement (doesn't actually work, ripped from the plume tracker).
     """
     cv = 1e-5 * 3600
-    uerr = 500
+    uerr = 200
     th = 2 * math.pi * ParcelsRandom.random()
     u_, v_ = fieldset.UV[time, particle.depth, particle.lat, particle.lon]
     # convert from degrees/s to m/s

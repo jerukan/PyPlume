@@ -1,19 +1,19 @@
 """Useful constants"""
 import numpy as np
 
-TIJUANA_RIVER_DOMAIN = dict(
-    S=32.525,
-    N=32.7,
-    W=-117.27,
-    E=-117.09
-)
+TIJUANA_RIVER_DOMAIN = {
+    "S": 32.525,
+    "N": 32.7,
+    "W": -117.27,
+    "E": -117.09
+}
 
-TIJUANA_MOUTH_DOMAIN = dict(
-    S=32.53,
-    N=32.585,
-    W=-117.162,
-    E=-117.105
-)
+TIJUANA_MOUTH_DOMAIN = {
+    "S": 32.53,
+    "N": 32.585,
+    "W": -117.162,
+    "E": -117.105
+}
 
 TIJUANA_MOUTH_POSITION = np.array([32.5567724355310, -117.130164948310])
 SD_COASTLINE_FILENAME = "coastline.mat"

@@ -88,7 +88,7 @@ class ParcelsSimulation:
         if isinstance(cfg["spawn_points"], dict):
             lats, lons = utils.load_geo_points(cfg["spawn_points"])
             spawn_points = np.array([lats, lons]).T
-        elif isinstance(cfg["spawn_points"], list):
+        elif isinstance(cfg["spawn_points"], (list, np.ndarray)):
             spawn_points = np.array(cfg["spawn_points"], dtype=float)
             if len(spawn_points.shape) != 2 or spawn_points.shape[1] != 2:
                 raise ValueError(f"Spawn points is incorrect shape {spawn_points.shape}")

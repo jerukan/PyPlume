@@ -1,3 +1,9 @@
+"""
+Collection of classes that represent plotted features in a given simulation.
+These features represent additional information to the simulation on top of the already plotted
+particle movements.
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.spatial
@@ -29,14 +35,29 @@ class ParticlePlotFeature:
         self.track_dist = track_dist
         self.color = color
 
-    def count_near(self, p_lats, p_lons):
+    def count_near(self, lats, lons):
+        """
+        Counts the number of particles close to each point in this feature.
+
+        Args:
+            lats: particle lats
+            lons: particle lons
+
+        Returns:
+            np.ndarray: array with length equal to the number of points in this feature. each index
+             represents the number of particles within tracking distance of that point.
+        """
         counts = np.zeros(len(self.lats))
         for i, point in enumerate(self.points):
-            close = utils.haversine(p_lats, point[0], p_lons, point[1]) <= self.track_dist
+            close = utils.haversine(lats, point[0], lons, point[1]) <= self.track_dist
             counts[i] += close.sum()
         return counts
 
     def get_closest_dist(self, lat, lon):
+        """
+        Given a (lat, lon) point, return the on this feature closest to the point. If segments is
+        true, it will consider all the line segments too.
+        """
         point = Point(lon, lat)
         # check distances to line segments
         if self.segments is not None:
@@ -64,13 +85,24 @@ class ParticlePlotFeature:
         return dists
 
     def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
-        """Plots onto a frame plot, with information on particles at that time passed in"""
+        """
+        Plots onto a frame plot, with information on particles at that time passed in
+
+        Args:
+            ax: the axes that the simulation plot was already drawn on
+            lats: particle lats
+            lons: particle lons
+        """
         if self.segments is not None:
             ax.plot(self.lons, self.lats, c=self.color)
         else:
             ax.scatter(self.lons, self.lats, c=self.color)
 
     def generate_info_table(self, lats, lons, *args, **kwargs):
+        """
+        Generates an entirely new optional plot that could display any kind of additional info
+        about this particular feature.
+        """
         return None, None
 
     @classmethod
@@ -82,6 +114,9 @@ class ParticlePlotFeature:
 
 
 class NanSeparatedFeature(ParticlePlotFeature):
+    """
+    A feature containing multiple line segments where nans separate each collection of segments.
+    """
     def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
         lat_borders = np.split(self.lats, np.where(np.isnan(self.lats))[0])
         lon_borders = np.split(self.lons, np.where(np.isnan(self.lons))[0])
@@ -108,6 +143,16 @@ class NanSeparatedFeature(ParticlePlotFeature):
 
 
 class StationFeature(ParticlePlotFeature):
+    """
+    Plots points that represent stations, where each is uniquely named and tracks how many
+    particles are within tracking distance. When plotted on a frame, they change colors based
+    on whether particles are near.
+
+    The table they generate will show how many particles are near each station.
+    """
+    def __init__(self, lats, lons, labels, track_dist=0):
+        super().__init__(lats, lons, labels=labels, segments=False, track_dist=track_dist)
+
     def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
         counts = self.count_near(lats, lons)
         ax.scatter(
@@ -142,10 +187,11 @@ class StationFeature(ParticlePlotFeature):
         if path is None:
             path = utils.MATLAB_DIR / SD_STATION_FILENAME
         lats, lons = utils.load_pts_mat(path, "ywq", "xwq")
-        return cls(lats, lons, labels=SD_STATION_NAMES, track_dist=track_dist)
+        return cls(lats, lons, SD_STATION_NAMES, track_dist=track_dist)
 
 
 class LatTrackedPointFeature(ParticlePlotFeature):
+    """A single point that tracks how northward/southward the particles around it are."""
     def __init__(self, lat, lon, xlim=None, ymax=None, show=True, **kwargs):
         super().__init__([lat], [lon], **kwargs)
         self.xlim = xlim

@@ -63,7 +63,7 @@ def delete_all_pngs(dir_path):
     """Deletes every simulation generated image"""
     pngs = glob.glob(os.path.join(dir_path, "*.png"))
     for png in pngs:
-        if re.search(r"snap_\d+\.png$", png) is None:
+        if re.search(r"snap_\D*\d+\.png$", png) is None:
             raise Exception(f"Non-plot images founud in folder {dir_path}")
         os.remove(png)
 

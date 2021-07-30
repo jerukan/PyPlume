@@ -102,7 +102,7 @@ class ParticleResult:
 
     def add_plot_feature(self, feature: ParticlePlotFeature, name=None):
         if name is None:
-            # just give a name
+            # just give a unique name
             self.plot_features[hash(feature)] = feature
         else:
             self.plot_features[name] = feature

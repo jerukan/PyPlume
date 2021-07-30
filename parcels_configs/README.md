@@ -18,14 +18,16 @@ example layout:
 		// end of thredds only settings
 	},
 	// whether to save the plots
+	// set this to false if you are doing post-processing and plotting somewhere else like MATLAB
 	"save_snapshots": true,
 	"parcels_config": {
+		// The DIRECTORY to save the particle netcdf file to
 		"save_dir_pfile": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/particledata",
 		// Can be either of the built-ins: JITParticle, ScipyParticle
 		// or a custom one wrote in parcels_kernels.py
 		"particle_type": "ThreddsParticle",
 		// List of kernels to add, can be built ins like AdvectionRK4
-		// or custom ones in parcels_kernels.py
+		// or custom ones in parcels_kernels.py. Feel free to add new ones to the file.
 		"kernels": ["AdvectionRK4", "DeleteOOB", "RandomWalk"],
 		// The start and end time of the simulation. START and END are special keywords that
 		// denote the start and end times of the used netcdf respectively.
@@ -58,6 +60,7 @@ example layout:
 		"snapshot_interval": 10800,
 	},
 	// this plotting config is only relevant when save_snapshots is true
+	// if save_snapshots is false, this entire thing can just be null
 	"plotting_config": {
 		// the domain to show in the plot. if null, uses the netcdf file's domain.
 		"shown_domain": {

@@ -47,14 +47,14 @@ def parse_time_range(time_range, time_list):
             t_end = int(time_range[1])
         except (ValueError, TypeError):
             t_end = np.datetime64(time_range[1])
-            
+
     if isinstance(t_start, int) and isinstance(t_end, int):
         raise TypeError("Must have at least one date in the time range")
     if isinstance(t_start, int):
         t_start = t_end - np.timedelta64(t_start)
     if isinstance(t_end, int):
         t_end = t_start + np.timedelta64(t_end)
-        
+
     return t_start, t_end
 
 

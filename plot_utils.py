@@ -140,22 +140,6 @@ def draw_trajectories(datasets, names, domain=None, legend=True, scatter=True, s
     draw_plt(savefile=savefile, fig=fig, figsize=figsize)
 
 
-def draw_particles_ps(fs, lats, lons):
-    """
-    Quick and dirty way to graph a collection of particles using ParticleSet.show()
-
-    Args:
-        fs (parcels.FieldSet)
-        lats (array-like): 1-d array of particle latitude values
-        lons (array-like): 1-d array of particle longitude values
-    """
-    if len(lats) == 0 or len(lons) == 0:
-        print("Empty lat and lon lists given")
-        return
-    pset = ParticleSet(fs, pclass=JITParticle, lon=lons, lat=lats)
-    pset.show()
-
-
 def scatter_particles_ax(ax, lats, lons, ages=None, agemax=None, part_size=DEFAULT_PARTICLE_SIZE):
     """Draws particles from a list of coordinates on an axes"""
     if ages is None:
@@ -178,66 +162,6 @@ def plot_particles(lats, lons, ages, domain, land=True, agemax=None, part_size=D
     scatter_particles_ax(ax, lats, lons, ages=ages, agemax=agemax, part_size=part_size)
 
     plt.title(titlestr)
-
-    return fig, ax
-
-
-def draw_particles_age(ps, domain, show_time=None, field=None, land=True, savefile=None, vmax=None, agemax=None, part_size=DEFAULT_PARTICLE_SIZE):
-    """
-    plot_particles_age but it draws it directly idk
-    """
-    fig, ax = plot_particles_age(ps, domain, show_time=show_time, field=field, land=land, vmax=vmax, agemax=agemax, part_size=part_size)
-    draw_plt(savefile, fig=fig)
-
-
-def plot_particles_age(ps, domain, show_time=None, field=None, land=True, vmax=None, agemax=None, part_size=DEFAULT_PARTICLE_SIZE):
-    """
-    A scuffed version of ParticleSet.show().
-    Colors particles to visualize the particle ages.
-    The arguments for this method are essentially the same as ParticleSet.show().
-
-    Args:
-        ps (parcels.ParticleSet)
-        vmax (float): max value for the vector field.
-    """
-    if len(ps) != 0:
-        show_time = ps[0].time if show_time is None else show_time
-    else:
-        # only place to get the time now is from a field if particle set is empty
-        # I don't even think this is the right time
-        show_time = ps.fieldset.U.grid.time[0] if show_time is None else show_time
-    ext = [domain["W"], domain["E"], domain["S"], domain["N"]]
-    p_size = len(ps)
-    lats = np.zeros(p_size)
-    lons = np.zeros(p_size)
-    ages = None
-
-    if agemax is not None and len(ps) > 0 and hasattr(ps[0], "lifetime"):
-        ages = np.zeros(p_size)
-        for i in range(p_size):
-            p = ps[i]
-            lats[i] = p.lat
-            lons[i] = p.lon
-            ages[i] = p.lifetime
-        ages /= 86400  # seconds in a day
-    else:
-        for i in range(p_size):
-            p = ps[i]
-            lats[i] = p.lat
-            lons[i] = p.lon
-
-    if field is None:
-        fig, ax = plot_particles(lats, lons, ages, domain, land=land, agemax=agemax, part_size=part_size)
-        time_str = plotting.parsetimestr(ps.fieldset.U.grid.time_origin, show_time)
-        plt.title(f"Particle ages (days){time_str}")
-    else:
-        if field == "vector":
-            field = ps.fieldset.UV
-        # vector values will always be above 0
-        _, fig, ax, _ = plotting.plotfield(field=field, show_time=show_time,
-                                           domain=domain, land=land, vmin=0, vmax=vmax,
-                                           titlestr="Particles and ")
-        scatter_particles_ax(ax, lats, lons, ages=ages, agemax=agemax, part_size=part_size)
 
     return fig, ax
 

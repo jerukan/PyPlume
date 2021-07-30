@@ -1,6 +1,7 @@
 """
 TODO add support to get regions other than just US west coast
 """
+import os
 
 import numpy as np
 import xarray as xr
@@ -11,19 +12,30 @@ USWC_6KM_HOURLY = 0
 USWC_2KM_HOURLY = 1
 USWC_1KM_HOURLY = 2
 USWC_500M_HOURLY = 3
+USEC_6KM_HOURLY = 4
+USEC_2KM_HOURLY = 5
+USEC_1KM_HOURLY = 6
 
 NUM_CHUNKS = 50
 
 thredds_names = {
     USWC_6KM_HOURLY: "US west coast 6km hourly",
     USWC_2KM_HOURLY: "US west coast 2km hourly",
-    USWC_1KM_HOURLY: "US west coast 1km hourly"
+    USWC_1KM_HOURLY: "US west coast 1km hourly",
+    USWC_500M_HOURLY: "US west coast 500m hourly",
+    USEC_6KM_HOURLY: "US east and gulf coast 6km hourly",
+    USEC_2KM_HOURLY: "US east and gulf coast 2km hourly",
+    USEC_1KM_HOURLY: "US east and gulf coast 1km hourly",
 }
 
 thredds_urls = {
     USWC_6KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd",
     USWC_2KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/2km/hourly/RTV/HFRADAR_US_West_Coast_2km_Resolution_Hourly_RTV_best.ncd",
-    USWC_1KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/hourly/RTV/HFRADAR_US_West_Coast_1km_Resolution_Hourly_RTV_best.ncd"
+    USWC_1KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/hourly/RTV/HFRADAR_US_West_Coast_1km_Resolution_Hourly_RTV_best.ncd",
+    USWC_500M_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/500m/hourly/RTV/HFRADAR_US_West_Coast_500m_Resolution_Hourly_RTV_best.ncd",
+    USEC_6KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/6km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_6km_Resolution_Hourly_RTV_best.ncd",
+    USEC_2KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/2km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_2km_Resolution_Hourly_RTV_best.ncd",
+    USEC_1KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/1km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_1km_Resolution_Hourly_RTV_best.ncd",
 }
 
 # do not access this dict directly, only load datasets when they are needed
@@ -37,6 +49,9 @@ def retrieve_dataset(thredds_code):
 
     TODO check if the thredds server is down so it doesn't get stuck
     """
+    # url passed in
+    if isinstance(thredds_code, str):
+        return xr.open_dataset(thredds_code, chunks={"time": NUM_CHUNKS})
     if thredds_code not in thredds_data or thredds_data[thredds_code] is None:
         print(f"Data for type {thredds_code} not loaded yet. Loading from...")
         print(thredds_urls[thredds_code])
@@ -47,6 +62,9 @@ def retrieve_dataset(thredds_code):
 
 
 def get_time_slice(time_range, inclusive=False, ref_coords=None, precision="h"):
+    time_range = list(time_range)
+    time_range[0] = np.datetime64(time_range[0])
+    time_range[1] = np.datetime64(time_range[1])
     if time_range[0] == time_range[1]:
         return slice(np.datetime64(time_range[0], precision),
                      np.datetime64(time_range[1], precision) + np.timedelta64(1, precision))
@@ -110,8 +128,7 @@ def get_thredds_dataset(thredds_code, time_range, lat_range, lon_range,
         inclusive=False, padding=0.0) -> xr.Dataset:
     """
     Params:
-        name (str)
-        thredds_code (int)
+        thredds_code (int or str): the dataset constant or url
         time_range (np.datetime64, np.datetime64[, int]): (start, stop[, interval])
         lat_range (float, float)
         lon_range (float, float)

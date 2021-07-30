@@ -3,190 +3,16 @@ import os
 import subprocess
 import sys
 
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 from parcels import plotting
-import scipy.spatial
-from shapely.geometry import LineString, Point
-from shapely.ops import nearest_points
+from shapely.geometry import LineString
 import xarray as xr
 
 from constants import *
 from parcels_utils import HFRGrid
+from plot_features import *
 import plot_utils
 import utils
-
-
-class ParticlePlotFeature:
-    """
-    Represents additional points to plot and maybe track on top of the particles from a
-    Parcels simulation.
-    """
-    def __init__(self, lats, lons, labels=None, segments=False, track_dist=0, color=None):
-        self.lats = lats
-        self.lons = lons
-        self.points = np.array([lats, lons]).T
-        self.kdtree = scipy.spatial.KDTree(self.points)
-        self.labels = labels
-        if self.labels is not None:
-            if len(self.labels) != len(self.lats):
-                raise ValueError("Labels must be the same length as lats/lons")
-        if segments:
-            self.segments = LineString(np.array([self.lons, self.lats]).T)
-        else:
-            self.segments = None
-        self.track_dist = track_dist
-        self.color = color
-
-    def count_near(self, p_lats, p_lons):
-        counts = np.zeros(len(self.lats))
-        for i, point in enumerate(self.points):
-            close = utils.haversine(p_lats, point[0], p_lons, point[1]) <= self.track_dist
-            counts[i] += close.sum()
-        return counts
-
-    def get_closest_dist(self, lat, lon):
-        point = Point(lon, lat)
-        # check distances to line segments
-        if self.segments is not None:
-            seg_closest, _ = nearest_points(self.segments, point)
-            return utils.haversine(point.y, seg_closest.y, point.x, seg_closest.x)
-        # check distance to closest point
-        closest_idx = self.kdtree.query([lat, lon])[1]
-        pnt = self.points[closest_idx]
-        return utils.haversine(lat, pnt[0], lon, pnt[1])
-
-    def get_all_dists(self, lats, lons):
-        """
-        Yes this will be inefficient
-        Returns a 2-d array where each row is each input particle's distance is to a point
-        in this feature
-
-        Args:
-            lats: particle lats
-            lons: particle lons
-        """
-        dists = np.empty((len(self.lats), len(lats)), dtype=np.float64)
-        for i in range(len(dists)):
-            for j in range(len(dists[i])):
-                dists[i][j] = utils.haversine(self.lats[i], lats[j], self.lons[i], lons[j])
-        return dists
-
-    def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
-        """Plots onto a frame plot, with information on particles at that time passed in"""
-        if self.segments is not None:
-            ax.plot(self.lons, self.lats, c=self.color)
-        else:
-            ax.scatter(self.lons, self.lats, c=self.color)
-
-    def generate_info_table(self, lats, lons, *args, **kwargs):
-        return None, None
-
-    @classmethod
-    def get_sd_coastline(cls, path=None, track_dist=100):
-        if path is None:
-            path = utils.MATLAB_DIR / SD_COASTLINE_FILENAME
-        lats, lons = utils.load_pts_mat(path, "latz0", "lonz0")
-        return cls(lats, lons, segments=True, track_dist=track_dist)
-
-
-class NanSeparatedFeature(ParticlePlotFeature):
-    def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
-        lat_borders = np.split(self.lats, np.where(np.isnan(self.lats))[0])
-        lon_borders = np.split(self.lons, np.where(np.isnan(self.lons))[0])
-        for i in range(len(lat_borders)):
-            ax.plot(lon_borders[i], lat_borders[i], c=self.color)
-
-    @classmethod
-    def get_sd_full_coastline(cls, path=None):
-        if path is None:
-            path = utils.MATLAB_DIR / SD_FULL_COASTLINE_FILENAME
-        points = scipy.io.loadmat(path)["OR2Mex"]
-        lats = points.T[1]
-        lons = points.T[0]
-        lat_borders = np.split(lats, np.where(np.isnan(lats))[0][1:])
-        lon_borders = np.split(lons, np.where(np.isnan(lons))[0][1:])
-        lats_all = []
-        lons_all = []
-        for idx in SD_FULL_TIJUANA_IDXS:
-            lats_all.extend(lat_borders[idx])
-            lons_all.extend(lon_borders[idx])
-        inst = cls(lats_all, lons_all, segments=True, track_dist=0)
-        inst.color = "k"
-        return inst
-
-
-class StationFeature(ParticlePlotFeature):
-    def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
-        counts = self.count_near(lats, lons)
-        ax.scatter(
-            self.lons[counts == 0], self.lats[counts == 0], c="b", s=60, edgecolor="k"
-        )
-        ax.scatter(
-            self.lons[counts > 0], self.lats[counts > 0], c="r", s=60, edgecolor="k"
-        )
-
-    def generate_info_table(self, lats, lons, *args, **kwargs):
-        colors = np.full((len(self.lats), 4), "white", dtype=object)
-        counts = self.count_near(lats, lons).astype(np.uint32)
-        for i in range(len(self.lats)):
-            if counts[i] > 0:
-                colors[i, :] = "lightcoral"
-        plume_pot = np.where(counts > 0, "YES", "NO")
-        fig = plt.figure()
-        ax = fig.add_subplot()
-        ax.set_axis_off()
-        ax.table(
-            cellText=np.array([np.arange(len(counts)) + 1, self.labels, counts, plume_pot]).T,
-            cellColours=colors,
-            colLabels=["Station ID", "Station Name", "Particle Count", "Plume Potential"],
-            loc="center"
-        ).auto_set_column_width(col=[0, 1, 2, 3, 4])
-        ax.axis('tight')
-        # fig.set_size_inches(7.17, 4)
-        return fig, ax
-
-    @classmethod
-    def get_sd_stations(cls, path=None, track_dist=500):
-        if path is None:
-            path = utils.MATLAB_DIR / SD_STATION_FILENAME
-        lats, lons = utils.load_pts_mat(path, "ywq", "xwq")
-        return cls(lats, lons, labels=SD_STATION_NAMES, track_dist=track_dist)
-
-
-class LatTrackedPointFeature(ParticlePlotFeature):
-    def __init__(self, lat, lon, xlim=None, ymax=None, show=True, **kwargs):
-        super().__init__([lat], [lon], **kwargs)
-        self.xlim = xlim
-        self.ymax = ymax
-        self.show = show
-
-    def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
-        if self.show:
-            super().plot_on_frame(ax, lats, lons, *args, **kwargs)
-
-    def generate_info_table(self, lats, lons, *args, **kwargs):
-        dists = self.get_all_dists(lats, lons)[0]
-        north = lats < self.lats[0]
-        dists[north] = -dists[north]
-        fig = plt.figure()
-        ax = fig.add_subplot()
-        ax.hist(dists / 1000, density=True)
-        ax.set_xlim(self.xlim)
-        if self.ymax is not None:
-            ax.set_ylim([0, self.ymax])
-        fig.canvas.draw()
-        # matplotlib uses a funny hyphen that doesn't work
-        labels = [abs(float(item.get_text().replace("−", "-"))) for item in ax.get_xticklabels()]
-        ax.set_xticklabels(labels)
-        plt.figtext(0.5, -0.01, '(North) ------ Distance from point (km) ------ (South)', horizontalalignment='center') 
-        fig.set_size_inches(6.1, 2.5)
-        return fig, ax
-
-    @classmethod
-    def get_tijuana_mouth(cls):
-        return cls(TIJUANA_MOUTH_POSITION[0], TIJUANA_MOUTH_POSITION[1], xlim=[-16, 4], ymax=0.1, show=False)
 
 
 class TimedFrame:
@@ -204,9 +30,16 @@ class TimedFrame:
 class ParticleResult:
     """
     Wraps the output of a particle file to make visualizing and analyzing the results easier.
-    Can also use an HFRGrid if the ocean currents are also needed.
+    Can also use an HFRGrid if the ocean currents are also wanted in the plot.
+
+    NOTE this currently only works with simulations with ThreddsParticle particle classes.
     """
     def __init__(self, dataset, cfg=None):
+        """
+        Args:
+            dataset: path to ParticleFile or just the dataset itself
+            cfg: the parcels config passed into the main simulation
+        """
         self.cfg = cfg
         if isinstance(dataset, (Path, str)):
             self.path = dataset
@@ -223,7 +56,8 @@ class ParticleResult:
         self.time_grid = self.xrds["time"].values
         times_unique = np.unique(self.time_grid)
         self.times = np.sort(times_unique[~np.isnan(times_unique)])
-        # not part of Ak4 kernel
+        # not part of a normal particle
+        # TODO attrgetter shenanigans?
         self.lifetimes = self.xrds["lifetime"].values
         self.spawntimes = self.xrds["spawntime"].values
         
@@ -233,22 +67,22 @@ class ParticleResult:
         self.plot_features = {}
         self.coastline = None
 
-    def add_coastline(self, data):
-        # TODO no hardcode
-        lats, lons = utils.load_pts_mat(data, "latz0", "lonz0")
+    def add_coastline(self, lats, lons):
+        """Adds a single coastline for processing collisions"""
         self.coastline = LineString(np.array([lons, lats]).T)
 
     def process_coastline_collisions(self):
         """
         Checks when each particle has collided with a coastline and removes all instances of the
         particle after the time of collision.
+        Does not modify the original file (it shouldn't at least).
         """
         if self.coastline is None:
             raise AttributeError("Coastline is not defined yet")
         for i in range(self.lats.shape[0]):
             nan_where = np.where(np.isnan(self.lats[i]))[0]
             # LineString can't handle nan values, filter them out
-            if len(nan_where) > 0 and nan_where[0] > 0:
+            if len(nan_where) > 0 and nan_where[0] > 1:
                 trajectory = LineString(np.array([self.lons[i][:nan_where[0]], self.lats[i][:nan_where[0]]]).T)
             elif len(nan_where) == 0:
                 trajectory = LineString(np.array([self.lons[i], self.lats[i]]).T)
@@ -256,6 +90,8 @@ class ParticleResult:
                 # found an all nan particle (somehow)
                 continue
             if trajectory.intersects(self.coastline):
+                # the entire trajectory intersects with the coastline, find which timestamp it
+                # crosses and delete all data after that
                 for j in range(1, self.lats.shape[1]):
                     if np.isnan(self.lons[i, j]):
                         break
@@ -270,6 +106,7 @@ class ParticleResult:
                         break
 
     def add_grid(self, grid: HFRGrid):
+        """Adds a HFRGrid to draw the currents on the plots."""
         self.grid = grid
         gtimes, _, _ = grid.get_coords()
         # check if particle set is in-bounds of the given grid
@@ -278,12 +115,13 @@ class ParticleResult:
 
     def add_plot_feature(self, feature: ParticlePlotFeature, name=None):
         if name is None:
-            # just give a name
+            # just give a unique name
             self.plot_features[hash(feature)] = feature
         else:
             self.plot_features[name] = feature
 
-    def plot_feature(self, t, feature: ParticlePlotFeature, ax, feat_info=True):
+    def plot_feature(self, t: np.datetime64, feature: ParticlePlotFeature, ax, feat_info=True):
+        """Plots a feature at a given time."""
         mask = self.time_grid == t
         curr_lats = self.lats[mask]
         curr_lons = self.lons[mask]
@@ -296,7 +134,14 @@ class ParticleResult:
             return fig_inf, ax_inf
         return None, None
 
-    def plot_at_t(self, t, domain=None, feat_info="all", land=False):
+    def plot_at_t(self, t: np.datetime64, domain=None, feat_info="all", land=True):
+        """
+        Create figures of the simulation at a particular time.
+        TODO when drawing land, prioritize coastline instead of using cartopy
+
+        Args:
+            feat_info: set of features to draw (their names), or 'all' to draw every feature
+        """
         if self.grid is None and domain is None:
             domain = {
                 "W": np.nanmin(self.lons),
@@ -325,6 +170,7 @@ class ParticleResult:
         )
         figs = {}
         axs = {}
+        # get feature plots
         for name, feature in self.plot_features.items():
             fig_inf, ax_inf = self.plot_feature(
                 t, feature, ax, feat_info=(feat_info == "all" or name in feat_info)
@@ -334,9 +180,36 @@ class ParticleResult:
         return fig, ax, figs, axs
 
     def on_plot_generated(self, savefile, savefile_infs, i, t, total):
+        """
+        An overridable hook just in case you want something to happen between plot generations
+        in generate_all_plots or something.
+        This was definitely not made just for celery progress tracking.
+        """
         pass
 
-    def generate_all_plots(self, save_dir, filename=None, figsize=None, domain=None, feat_info="all"):
+    def save_at_t(self, t, i, save_dir, filename, figsize, domain, feat_info, land):
+        """Generate and save plots at a timestamp, given a bunch of information."""
+        fig, _, figs, _ = self.plot_at_t(t, domain=domain, feat_info=feat_info, land=land)
+        savefile = os.path.join(
+            save_dir, f"snap_{i}.png" if filename is None else f"{filename}_{i}.png"
+        )
+        plot_utils.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
+        savefile_infs = {}
+        # plot and save every desired feature
+        for name, fig_inf in figs.items():
+            if fig_inf is not None and (feat_info == "all" or name in feat_info):
+                savefile_inf = os.path.join(
+                    save_dir,
+                    f"snap_{name}_{i}.png" if filename is None else f"{filename}_{name}_{i}.png"
+                )
+                savefile_infs[name] = savefile_inf
+                plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
+        self.frames.append(TimedFrame(t, savefile, **savefile_infs))
+        return savefile, savefile_infs
+
+    def generate_all_plots(
+        self, save_dir, filename=None, figsize=None, domain=None, feat_info="all", land=True
+    ):
         """
         Generates plots and then saves them
 
@@ -345,52 +218,33 @@ class ParticleResult:
              features to generate their own plots for
         """
         utils.create_path(save_dir)
-        frames = []
+        utils.delete_all_pngs(save_dir)
+        self.frames = []
         if self.cfg is not None:
+            # The delta time between each snapshot is defined in the parcels config. This lets us avoid
+            # the in-between timestamps where a single particle gets deleted.
             total_plots = int((self.times[-1] - self.times[0]) / np.timedelta64(1, "s") / self.cfg["snapshot_interval"]) + 1
             t = self.times[0]
             i = 0
             while t <= self.times[-1]:
-                fig, _, figs, _ = self.plot_at_t(t, domain=domain, feat_info=feat_info)
-                savefile = os.path.join(
-                    save_dir, f"snap_{i}.png" if filename is None else f"{filename}_{i}.png"
+                savefile, savefile_infs = self.save_at_t(
+                    t, i, save_dir, filename, figsize, domain, feat_info, land
                 )
-                plot_utils.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
-                savefile_infs = {}
-                for name, fig_inf in figs.items():
-                    if fig_inf is not None and (feat_info == "all" or name in feat_info):
-                        savefile_inf = os.path.join(
-                            save_dir,
-                            f"snap_{name}_{i}.png" if filename is None else f"{filename}_{name}_{i}.png"
-                        )
-                        savefile_infs[name] = savefile_inf
-                        plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
-                frames.append(TimedFrame(t, savefile, **savefile_infs))
                 self.on_plot_generated(savefile, savefile_infs, i, t, total_plots)
                 i += 1
                 t += np.timedelta64(self.cfg["snapshot_interval"], "s")
         else:
+            # If the delta time between each snapshot is unknown, we'll just use the unique times
+            # from the particle files.
             for i in range(len(self.times)):
-                fig, _, figs, _ = self.plot_at_t(self.times[i], domain=domain, feat_info=feat_info)
-                savefile = os.path.join(
-                    save_dir, f"snap_{i}.png" if filename is None else f"{filename}_{i}.png"
+                savefile, savefile_infs = self.save_at_t(
+                    self.times[i], i, save_dir, filename, figsize, domain, feat_info, land
                 )
-                plot_utils.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
-                savefile_infs = {}
-                for name, fig_inf in figs.items():
-                    if fig_inf is not None and (feat_info == "all" or name in feat_info):
-                        savefile_inf = os.path.join(
-                            save_dir,
-                            f"snap_{name}_{i}.png" if filename is None else f"{filename}_{name}_{i}.png"
-                        )
-                        savefile_infs[name] = savefile_inf
-                        plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
-                frames.append(TimedFrame(self.times[i], savefile, **savefile_infs))
                 self.on_plot_generated(savefile, savefile_infs, i, self.times[i], len(self.times))
-        self.frames = frames
-        return frames
+        return self.frames
 
     def generate_gif(self, gif_path, gif_delay=25):
+        """Uses imagemagick to generate a gif of the main simulation plot."""
         input_paths = [str(frame.path) for frame in self.frames]
         sp_in = ["magick", "-delay", str(gif_delay)] + input_paths
         sp_in.append(str(gif_path))
@@ -403,3 +257,17 @@ class ParticleResult:
         stdout, stderr = magick_sp.communicate()
         print(f"magick ouptput: {(stdout, stderr)}", file=sys.stderr)
         return gif_path
+
+
+PLOT_FEATURE_SETS = {
+    "tj_plume_tracker": {
+        "coast": NanSeparatedFeature.get_sd_full_coastline(),
+        "station": StationFeature.get_sd_stations(),
+        "mouth": LatTrackedPointFeature.get_tijuana_mouth()
+    }
+}
+
+
+def add_feature_set_to_result(result: ParticleResult, set_name: str):
+    for key, value in PLOT_FEATURE_SETS[set_name].items():
+        result.add_plot_feature(value, name=key)

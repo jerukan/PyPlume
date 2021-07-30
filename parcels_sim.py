@@ -1,7 +1,6 @@
 from datetime import timedelta
 import importlib
 import math
-import os
 import sys
 
 import numpy as np
@@ -9,7 +8,7 @@ from parcels import ParticleSet, ErrorCode, AdvectionRK4, ScipyParticle, JITPart
 
 import utils
 from parcels_analysis import ParticleResult
-from parcels_kernels import ThreddsParticle, AgeParticle, DeleteOOB, DeleteParticle
+from parcels_kernels import DeleteParticle
 
 # ignore annoying deprecation warnings
 import warnings
@@ -69,7 +68,6 @@ def import_kernel_or_particle(name):
 
 
 class ParcelsSimulation:
-    MAX_V = 0.6
     PFILE_SAVE_DEFAULT = utils.FILES_ROOT / utils.PARTICLE_NETCDF_DIR
 
     def __init__(self, name, hfrgrid, cfg):

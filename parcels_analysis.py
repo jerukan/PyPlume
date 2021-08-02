@@ -4,7 +4,6 @@ import subprocess
 import sys
 
 import numpy as np
-from parcels import plotting
 from shapely.geometry import LineString
 import xarray as xr
 
@@ -188,7 +187,8 @@ class ParticleResult:
         return savefile, savefile_infs
 
     def generate_all_plots(
-        self, save_dir, filename=None, figsize=None, domain=None, feat_info="all", land=True
+        self, save_dir, filename=None, figsize=None, domain=None, feat_info="all", land=True,
+        clear_folder=False
     ):
         """
         Generates plots and then saves them
@@ -198,7 +198,8 @@ class ParticleResult:
              features to generate their own plots for
         """
         utils.create_path(save_dir)
-        utils.delete_all_pngs(save_dir)
+        if clear_folder:
+            utils.delete_all_pngs(save_dir)
         self.frames = []
         if self.cfg is not None:
             # The delta time between each snapshot is defined in the parcels config. This lets us avoid

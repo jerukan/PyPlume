@@ -206,13 +206,23 @@ def load_pts_mat(path, lat_ind, lon_ind):
     return yf, xf
 
 
-def load_geo_points(data_cfg: dict):
+def load_geo_points(path, **kwargs):
     """
     Loads a collection of (lat, lon) points from a given data configuration. Each different file
     type will have different ways of loading and different required parameters.
+
+    .mat file requirements:
+        lat_var: variable in the mat file representing the array of latitude values
+        lon_var: variable in the mat file representing the array of longitude values
     """
-    ext = os.path.splitext(data_cfg["path"])[1]
+    ext = os.path.splitext(path)[1]
     if ext == ".mat":
-        lats, lons = load_pts_mat(data_cfg["path"], data_cfg["lat_var"], data_cfg["lon_var"])
+        lat_var = kwargs.get("lat_var", None)
+        lon_var = kwargs.get("lon_var", None)
+        if lat_var is None:
+            pass  # TODO do some automatic finding here
+        if lon_var is None:
+            pass  # TODO do some automatic finding here
+        lats, lons = load_pts_mat(path, lat_var, lon_var)
         return lats, lons
     raise ValueError(f"Invalid extension {ext}")

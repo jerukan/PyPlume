@@ -8,7 +8,7 @@ import cartopy
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import numpy as np
-from parcels import FieldSet, ParticleSet, JITParticle, plotting
+from parcels import plotting
 import xarray as xr
 
 import utils
@@ -150,22 +150,6 @@ def scatter_particles_ax(ax, lats, lons, ages=None, agemax=None, part_size=DEFAU
         # plt.colorbar(sc)
 
 
-def draw_particles(lats, lons, ages, domain, land=True, savefile=None, vmax=None, part_size=DEFAULT_PARTICLE_SIZE, titlestr=None):
-    fig, ax = plot_particles(lats, lons, ages, domain, land=land, agemax=vmax, part_size=part_size, titlestr=titlestr)
-    draw_plt(savefile, fig)
-
-
-def plot_particles(lats, lons, ages, domain, land=True, agemax=None, part_size=DEFAULT_PARTICLE_SIZE, titlestr=None):
-    fig, ax = get_carree_axis(domain, land)
-    gl = get_carree_gl(ax)
-
-    scatter_particles_ax(ax, lats, lons, ages=ages, agemax=agemax, part_size=part_size)
-
-    plt.title(titlestr)
-
-    return fig, ax
-
-
 def draw_points_fieldset(lats, lons, show_time, hfrgrid, domain=None, line=False, savefile=None, part_size=DEFAULT_PARTICLE_SIZE):
     """
     Plot a bunch of points on top of a fieldset vector field. Option for plotting a line.
@@ -256,3 +240,56 @@ def generate_simulation_plots(name, pf, hfrgrid=None, output_dir=utils.PICUTRE_D
                 ax.plot(line_lons[j], line_lats[j])
         draw_plt(savefile=savefile, fig=fig, figsize=figsize)
     return plot_path
+
+
+def plot_particles(
+    lats, lons, ages=None, time=None, grid=None, domain=None, land=True, vmax=0.6, max_age=None,
+    s=20
+):
+    """
+    Plot a collection of particles.
+
+    Args:
+        lats
+        lons
+        ages
+        time (np.datetime64)
+        grid (HFRGrid)
+        s: size of the particles
+
+    Returns:
+        fig, ax
+    """
+    if grid is None and domain is None:
+        domain = {
+            "W": np.nanmin(lons),
+            "E": np.nanmax(lons),
+            "S": np.nanmin(lats),
+            "N": np.nanmax(lats),
+        }
+        domain = pad_domain(domain, 0.0005)
+    elif grid is not None and domain is None:
+        domain = grid.get_domain()
+    if grid is None:
+        fig, ax = get_carree_axis(domain, land=land)
+        get_carree_gl(ax)
+    else:
+        show_time = None if time is None else int((time - grid.times[0]) / np.timedelta64(1, "s"))
+        if show_time is not None and show_time < 0:
+            raise ValueError("Particle simulation time domain goes out of bounds")
+        _, fig, ax, _ = plotting.plotfield(
+            field=grid.fieldset.UV, show_time=show_time, domain=domain, land=land, vmin=0,
+            vmax=vmax, titlestr="Particles and "
+        )
+    sc = ax.scatter(lons, lats, c=ages, edgecolor="k", vmin=0, vmax=max_age, s=s)
+
+    if ages is not None:
+        cbar_ax = fig.add_axes([0.1, 0, 0.1, 0.1])
+        plt.colorbar(sc, cax=cbar_ax)
+        posn = ax.get_position()
+        cbar_ax.set_position([posn.x0 + posn.width + 0.14, posn.y0, 0.04, posn.height])
+        cbar_ax.get_yaxis().labelpad = 13
+        # super jank label the other colorbar since it's in plotting.plotfield
+        cbar_ax.set_ylabel("Age (days)\n\n\n\n\nVelocity (m/s)", rotation=270)
+
+    return fig, ax

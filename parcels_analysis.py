@@ -140,42 +140,13 @@ class ParticleResult:
         TODO when drawing land, prioritize coastline instead of using cartopy
 
         Args:
-            feat_info: set of features to draw (their names), or 'all' to draw every feature
+            feat_info [list]: set of features to draw (their names), or 'all' to draw every feature
         """
-        if self.grid is None and domain is None:
-            domain = {
-                "W": np.nanmin(self.lons),
-                "E": np.nanmax(self.lons),
-                "S": np.nanmin(self.lats),
-                "N": np.nanmax(self.lats),
-            }
-            domain = plot_utils.pad_domain(domain, 0.0005)
-        elif self.grid is not None and domain is None:
-            domain = self.grid.get_domain()
-        if self.grid is None:
-            fig, ax = plot_utils.get_carree_axis(domain, land=land)
-            plot_utils.get_carree_gl(ax)
-        else:
-            show_time = int((t - self.grid.times[0]) / np.timedelta64(1, "s"))
-            if show_time < 0:
-                raise ValueError("Particle simulation time domain goes out of bounds")
-            _, fig, ax, _ = plotting.plotfield(
-                field=self.grid.fieldset.UV, show_time=show_time, domain=domain, land=land, vmin=0,
-                vmax=0.6, titlestr="Particles and "
-            )
         mask = self.time_grid == t
-        sc = ax.scatter(
-            self.lons[mask], self.lats[mask], c=self.lifetimes[mask] / 86400, edgecolor="k", vmin=0,
-            vmax=self.max_life / 86400, s=20
+        fig, ax = plot_utils.plot_particles(
+            self.lats[mask], self.lons[mask], ages=self.lifetimes[mask] / 86400, time=t,
+            grid=self.grid, domain=domain, land=land, max_age=self.max_life / 86400
         )
-
-        cbar_ax = fig.add_axes([0.1, 0, 0.1, 0.1])
-        plt.colorbar(sc, cax=cbar_ax)
-        posn = ax.get_position()
-        cbar_ax.set_position([posn.x0 + posn.width + 0.14, posn.y0, 0.04, posn.height])
-        cbar_ax.get_yaxis().labelpad = 13
-        # super jank label the other colorbar since it's in plotting.plotfield
-        cbar_ax.set_ylabel("Age (days)\n\n\n\n\nVelocity (m/s)", rotation=270)
 
         figs = {}
         axs = {}

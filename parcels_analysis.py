@@ -164,10 +164,19 @@ class ParticleResult:
                 vmax=0.6, titlestr="Particles and "
             )
         mask = self.time_grid == t
-        ax.scatter(
+        sc = ax.scatter(
             self.lons[mask], self.lats[mask], c=self.lifetimes[mask] / 86400, edgecolor="k", vmin=0,
             vmax=self.max_life / 86400, s=20
         )
+
+        cbar_ax = fig.add_axes([0.1, 0, 0.1, 0.1])
+        plt.colorbar(sc, cax=cbar_ax)
+        posn = ax.get_position()
+        cbar_ax.set_position([posn.x0 + posn.width + 0.14, posn.y0, 0.04, posn.height])
+        cbar_ax.get_yaxis().labelpad = 13
+        # super jank label the other colorbar since it's in plotting.plotfield
+        cbar_ax.set_ylabel("Age (days)\n\n\n\n\nVelocity (m/s)", rotation=270)
+
         figs = {}
         axs = {}
         # get feature plots

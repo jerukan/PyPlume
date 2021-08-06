@@ -49,18 +49,19 @@ class ParticleResult:
             self.xrds = dataset
         else:
             raise TypeError(f"{dataset} is not a path or xarray dataset")
-        self.lats = self.xrds["lat"].values
-        self.lons = self.xrds["lon"].values
-        self.traj = self.xrds["trajectory"].values
-        self.time_grid = self.xrds["time"].values
-        times_unique = np.unique(self.time_grid)
+        self.data_vars = {}
+        self.non_vars = {}  # data variables with different dimensions than the dataset's
+        dim_set = set(self.xrds.dims.keys())
+        for var, arr in self.xrds.variables.items():
+            arr_dim_set = set(arr.dims)
+            if dim_set == arr_dim_set:
+                self.data_vars[var] = arr.values
+            else:
+                self.non_vars[var] = arr.values
+        # assumed to be in data_vars: trajectory, time, lat, lon, z
+        times_unique = np.unique(self.data_vars["time"])
         self.times = np.sort(times_unique[~np.isnan(times_unique)])
-        # not part of a normal particle
-        # TODO attrgetter shenanigans?
-        self.lifetimes = self.xrds["lifetime"].values
-        self.spawntimes = self.xrds["spawntime"].values
-        
-        self.max_life = np.nanmax(self.lifetimes)
+
         self.grid = None
         self.frames = None
         self.plot_features = {}
@@ -78,30 +79,29 @@ class ParticleResult:
         """
         if self.coastline is None:
             raise AttributeError("Coastline is not defined yet")
-        for i in range(self.lats.shape[0]):
-            nan_where = np.where(np.isnan(self.lats[i]))[0]
+        for i in range(self.data_vars["lat"].shape[0]):
+            nan_where = np.where(np.isnan(self.data_vars["lat"][i]))[0]
             # LineString can't handle nan values, filter them out
             if len(nan_where) > 0 and nan_where[0] > 1:
-                trajectory = LineString(np.array([self.lons[i][:nan_where[0]], self.lats[i][:nan_where[0]]]).T)
+                trajectory = LineString(np.array([self.data_vars["lon"][i][:nan_where[0]], self.data_vars["lat"][i][:nan_where[0]]]).T)
             elif len(nan_where) == 0:
-                trajectory = LineString(np.array([self.lons[i], self.lats[i]]).T)
+                trajectory = LineString(np.array([self.data_vars["lon"][i], self.data_vars["lat"][i]]).T)
             else:
                 # found an all nan particle (somehow)
                 continue
             if trajectory.intersects(self.coastline):
                 # the entire trajectory intersects with the coastline, find which timestamp it
                 # crosses and delete all data after that
-                for j in range(1, self.lats.shape[1]):
-                    if np.isnan(self.lons[i, j]):
+                for j in range(1, self.data_vars["lat"].shape[1]):
+                    if np.isnan(self.data_vars["lon"][i, j]):
                         break
-                    part_seg = LineString([(self.lons[i, j - 1], self.lats[i, j - 1]), (self.lons[i, j], self.lats[i, j])])
+                    part_seg = LineString([(self.data_vars["lon"][i, j - 1], self.data_vars["lat"][i, j - 1]), (self.data_vars["lon"][i, j], self.data_vars["lat"][i, j])])
                     if self.coastline.intersects(part_seg):
-                        self.lats[i, j:] = np.nan
-                        self.lons[i, j:] = np.nan
-                        self.traj[i, j:] = np.nan
-                        self.time_grid[i, j:] = np.datetime64("NaT")
-                        self.lifetimes[i, j:] = np.nan
-                        self.spawntimes[i, j:] = np.nan
+                        for var in self.data_vars.keys():
+                            if np.issubdtype(self.data_vars[var].dtype, np.datetime64):
+                                self.data_vars[var][i, j:] = np.datetime64("NaT")
+                            else:
+                                self.data_vars[var][i, j:] = np.nan
                         break
 
     def add_grid(self, grid: HFRGrid):
@@ -109,7 +109,7 @@ class ParticleResult:
         self.grid = grid
         gtimes, _, _ = grid.get_coords()
         # check if particle set is in-bounds of the given grid
-        if np.nanmin(self.times) < gtimes.min() or np.nanmax(self.times) > gtimes.max():
+        if np.nanmin(self.data_vars["time"]) < gtimes.min() or np.nanmax(self.data_vars["time"]) > gtimes.max():
             raise ValueError("Time out of bounds")
 
     def add_plot_feature(self, feature: ParticlePlotFeature, name=None):
@@ -121,14 +121,16 @@ class ParticleResult:
 
     def plot_feature(self, t: np.datetime64, feature: ParticlePlotFeature, ax, feat_info=True):
         """Plots a feature at a given time."""
-        mask = self.time_grid == t
-        curr_lats = self.lats[mask]
-        curr_lons = self.lons[mask]
-        age_max = np.nanmax(self.lifetimes) / 86400
+        mask = self.data_vars["time"] == t
+        curr_lats = self.data_vars["lat"][mask]
+        curr_lons = self.data_vars["lon"][mask]
+        ages = self.data_vars["lifetime"][mask] / 86400 if "lifetime" in self.data_vars else None
+        # TODO cache this
+        max_age = np.nanmax(self.data_vars["lifetime"]) / 86400  if "lifetime" in self.data_vars else None
         feature.plot_on_frame(ax, curr_lats, curr_lons)
         if feat_info:
             fig_inf, ax_inf = feature.generate_info_table(
-                curr_lats, curr_lons, lifetimes=self.lifetimes[mask], age_max=age_max
+                curr_lats, curr_lons, lifetimes=ages, age_max=max_age
             )
             return fig_inf, ax_inf
         return None, None
@@ -141,10 +143,13 @@ class ParticleResult:
         Args:
             feat_info [list]: set of features to draw (their names), or 'all' to draw every feature
         """
-        mask = self.time_grid == t
+        mask = self.data_vars["time"] == t
+        ages = self.data_vars["lifetime"][mask] / 86400 if "lifetime" in self.data_vars else None
+        # TODO cache this
+        max_age = np.nanmax(self.data_vars["lifetime"]) / 86400  if "lifetime" in self.data_vars else None
         fig, ax = plot_utils.plot_particles(
-            self.lats[mask], self.lons[mask], ages=self.lifetimes[mask] / 86400, time=t,
-            grid=self.grid, domain=domain, land=land, max_age=self.max_life / 86400
+            self.data_vars["lat"][mask], self.data_vars["lon"][mask], ages=ages, time=t,
+            grid=self.grid, domain=domain, land=land, max_age=max_age
         )
 
         figs = {}
@@ -238,6 +243,24 @@ class ParticleResult:
         stdout, stderr = magick_sp.communicate()
         print(f"magick ouptput: {(stdout, stderr)}", file=sys.stderr)
         return gif_path
+
+    def write_data(self, path=None, override=False):
+        """
+        Write postprocessed data to a new netcdf file.
+        If path is unspecified, it will override the original path the ParticleFile was
+        saved to (if a path was passed in).
+        """
+        if self.path is not None and path is None and not override:
+            if os.path.isfile(path):
+                raise FileExistsError(f"{path} already exists. Set override=True.")
+            raise FileExistsError(f"Unspecified path will override {path}. Set override=True.")
+        if self.path is None and path is None:
+            raise ValueError("No path specified and no previous path was passed in.")
+        new_ds = xr.Dataset(
+            data_vars={var: (self.xrds.dims, arr) for var, arr in self.data_vars.items()},
+            coords=self.xrds.coords, attrs=self.xrds.attrs
+        )
+        new_ds.to_netcdf(path=self.path if path is None else path)
 
 
 PLOT_FEATURE_SETS = {

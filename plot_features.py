@@ -20,8 +20,8 @@ class ParticlePlotFeature:
     Parcels simulation.
     """
     def __init__(self, lats, lons, labels=None, segments=False, track_dist=0, color=None):
-        self.lats = lats
-        self.lons = lons
+        self.lats = np.array(lats)
+        self.lons = np.array(lons)
         self.points = np.array([lats, lons]).T
         self.kdtree = scipy.spatial.KDTree(self.points)
         self.labels = labels
@@ -35,7 +35,7 @@ class ParticlePlotFeature:
         self.track_dist = track_dist
         self.color = color
 
-    def count_near(self, lats, lons):
+    def count_near(self, lats, lons, **kwargs):
         """
         Counts the number of particles close to each point in this feature.
 
@@ -47,28 +47,36 @@ class ParticlePlotFeature:
             np.ndarray: array with length equal to the number of points in this feature. each index
              represents the number of particles within tracking distance of that point.
         """
+        lats = np.array(lats)
+        lons = np.array(lons)
         counts = np.zeros(len(self.lats))
         for i, point in enumerate(self.points):
             close = utils.haversine(lats, point[0], lons, point[1]) <= self.track_dist
             counts[i] += close.sum()
         return counts
 
-    def get_closest_dist(self, lat, lon):
+    def get_closest_dists(self, lats, lons, **kwargs):
         """
-        Given a (lat, lon) point, return the on this feature closest to the point. If segments is
+        Given a lats, lons point, return the on this feature closest to the point. If segments is
         true, it will consider all the line segments too.
         """
-        point = Point(lon, lat)
-        # check distances to line segments
+        lats = np.array(lats)
+        lons = np.array(lons)
         if self.segments is not None:
-            seg_closest, _ = nearest_points(self.segments, point)
-            return utils.haversine(point.y, seg_closest.y, point.x, seg_closest.x)
+            dists = np.full(len(lats), np.nan)
+            for i, (lat, lon) in enumerate(zip(lats, lons)):
+                point = Point(lon, lat)
+                # check distances to line segments
+                if self.segments is not None:
+                    seg_closest, _ = nearest_points(self.segments, point)
+                    dists[i] = utils.haversine(point.y, seg_closest.y, point.x, seg_closest.x)
+            return dists
         # check distance to closest point
-        closest_idx = self.kdtree.query([lat, lon])[1]
-        pnt = self.points[closest_idx]
-        return utils.haversine(lat, pnt[0], lon, pnt[1])
+        closest_idxs = self.kdtree.query(np.array([lats, lons]).T)[1]
+        pnts = self.points[(closest_idxs)]
+        return utils.haversine(lats, pnts.T[0], lons, pnts.T[1])
 
-    def get_all_dists(self, lats, lons):
+    def get_all_dists(self, lats, lons, **kwargs):
         """
         Yes this will be inefficient
         Returns a 2-d array where each row is each input particle's distance is to a point
@@ -253,3 +261,37 @@ class LatTrackedPointFeature(ParticlePlotFeature):
     @classmethod
     def get_tijuana_mouth(cls):
         return cls(TIJUANA_MOUTH_POSITION[0], TIJUANA_MOUTH_POSITION[1], xlim=[-16, 4], ymax=0.1, show=False)
+
+
+class BuoyPathFeature(ParticlePlotFeature):
+    def __init__(self, lats, lons, times):
+        times = np.array(times, dtype=np.datetime64)
+        super().__init__(lats, lons, labels=times, segments=True)
+
+    def get_closest_dists(self, lats, lons, **kwargs):
+        """
+        Given a lats, lons point, return the on this feature closest to the point. If segments is
+        true, it will consider all the line segments too.
+        """
+        time = kwargs.get("time", None)
+        if time is None:
+            return super().get_closest_dists(lats, lons, **kwargs)
+        time_start_idx = None
+        for i in range(self.labels):
+            if time >= self.labels[i]:
+                time_start_idx = i
+        lats = np.array(lats)
+        lons = np.array(lons)
+        if self.segments is not None:
+            dists = np.full(len(lats), np.nan)
+            for i, (lat, lon) in enumerate(zip(lats, lons)):
+                point = Point(lon, lat)
+                # check distances to line segments
+                if self.segments is not None:
+                    seg_closest, _ = nearest_points(self.segments, point)
+                    dists[i] = utils.haversine(point.y, seg_closest.y, point.x, seg_closest.x)
+            return dists
+        # check distance to closest point
+        closest_idxs = self.kdtree.query(np.array([lats, lons]).T)[1]
+        pnts = self.points[(closest_idxs)]
+        return utils.haversine(lats, pnts.T[0], lons, pnts.T[1])

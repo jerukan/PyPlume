@@ -51,13 +51,13 @@ class ParticleResult:
             raise TypeError(f"{dataset} is not a path or xarray dataset")
         self.data_vars = {}
         self.non_vars = {}  # data variables with different dimensions than the dataset's
-        dim_set = set(self.xrds.dims.keys())
+        self.shape = self.xrds["trajectory"].shape
         for var, arr in self.xrds.variables.items():
-            arr_dim_set = set(arr.dims)
-            if dim_set == arr_dim_set:
-                self.data_vars[var] = arr.values
+            arr = arr.values
+            if self.shape == arr.shape:
+                self.data_vars[var] = arr
             else:
-                self.non_vars[var] = arr.values
+                self.non_vars[var] = arr
         # assumed to be in data_vars: trajectory, time, lat, lon, z
         times_unique = np.unique(self.data_vars["time"])
         self.times = np.sort(times_unique[~np.isnan(times_unique)])
@@ -243,6 +243,18 @@ class ParticleResult:
         stdout, stderr = magick_sp.communicate()
         print(f"magick ouptput: {(stdout, stderr)}", file=sys.stderr)
         return gif_path
+
+    def write_feature_dists(self, feat_names):
+        for feat_name in feat_names:
+            feat = self.plot_features[feat_name]
+            dists = np.zeros(self.shape, dtype=float)
+            for time in self.times:
+                mask = self.data_vars["time"] == time
+                dists_t = feat.get_closest_dists(
+                    self.data_vars["lat"][mask], self.data_vars["lon"][mask], time=time
+                )
+                dists[mask] = dists_t
+            self.data_vars[f"{feat_name}_distances"] = dists
 
     def write_data(self, path=None, override=False):
         """

@@ -10,7 +10,7 @@ from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
 
 from constants import *
-from parcels_utils import buoycsv_to_particleds
+from parcels_utils import buoycsv_to_particleds, BuoyPath
 import utils
 
 
@@ -264,34 +264,17 @@ class LatTrackedPointFeature(ParticlePlotFeature):
 
 
 class BuoyPathFeature(ParticlePlotFeature):
-    def __init__(self, lats, lons, times):
-        times = np.array(times, dtype=np.datetime64)
-        super().__init__(lats, lons, labels=times, segments=True)
+    def __init__(self, buoy_path):
+        self.buoy_path = buoy_path
+        super().__init__(buoy_path.lats, buoy_path.lons, labels=buoy_path.times, segments=True)
 
     def get_closest_dists(self, lats, lons, **kwargs):
-        """
-        Given a lats, lons point, return the on this feature closest to the point. If segments is
-        true, it will consider all the line segments too.
-        """
         time = kwargs.get("time", None)
         if time is None:
             return super().get_closest_dists(lats, lons, **kwargs)
-        time_start_idx = None
-        for i in range(self.labels):
-            if time >= self.labels[i]:
-                time_start_idx = i
-        lats = np.array(lats)
-        lons = np.array(lons)
-        if self.segments is not None:
-            dists = np.full(len(lats), np.nan)
-            for i, (lat, lon) in enumerate(zip(lats, lons)):
-                point = Point(lon, lat)
-                # check distances to line segments
-                if self.segments is not None:
-                    seg_closest, _ = nearest_points(self.segments, point)
-                    dists[i] = utils.haversine(point.y, seg_closest.y, point.x, seg_closest.x)
-            return dists
-        # check distance to closest point
-        closest_idxs = self.kdtree.query(np.array([lats, lons]).T)[1]
-        pnts = self.points[(closest_idxs)]
-        return utils.haversine(lats, pnts.T[0], lons, pnts.T[1])
+        buoy_lat, buoy_lon = self.buoy_path.get_interped_point(time)
+        return utils.haversine(lats, buoy_lat, lons, buoy_lon)
+
+    @classmethod
+    def from_csv(cls, path):
+        return cls(BuoyPath.from_csv(path))

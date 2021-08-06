@@ -20,6 +20,13 @@
 		"simulation_dt": 300,
 		"snapshot_interval": 3600
 	},
+	"postprocess_config": {
+		"coastline": {
+			"path": "matlab/coastline.mat",
+			"lat_var": "latz0",
+			"lon_var": "lonz0"
+		}
+	},
 	"plotting_config": {
 		"shown_domain": {
 			"S": 32.53,
@@ -28,11 +35,6 @@
 			"E": -117.105
 		},
 		"save_dir_snapshots": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/snapshots",
-		"coastline": {
-			"path": "matlab/coastline.mat",
-			"lat_var": "latz0",
-			"lon_var": "lonz0"
-		},
 		"plot_feature_set": "tj_plume_tracker",
 		"draw_coasts": false
 	}

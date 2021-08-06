@@ -266,3 +266,46 @@ class HFRGrid:
         if flat:
             return self.fieldset_flat.U[t, 0, lat, lon], self.fieldset_flat.V[t, 0, lat, lon]
         return self.fieldset.U[t, 0, lat, lon], self.fieldset.V[t, 0, lat, lon]
+
+
+class BuoyPath:
+    def __init__(self, lats, lons, times):
+        """Sorted by time"""
+        self.lats = np.array(lats)
+        self.lons = np.array(lons)
+        self.times = np.array(times)
+
+    def get_interped_point(self, time):
+        """
+        If a timestamp is between two buoy timestamps, linearly interpolate the position of the
+        buoy to get the position at the input time.
+        Other words, assumes buoy moves at constant speed between those 2 points.
+        """
+        if time < self.times[0] or time > self.times[-1]:
+            raise ValueError(f"{time} is out of bounds of the buoy path")
+        for i, t in enumerate(self.times):
+            if time < t:
+                idx = i - 1
+                break
+        if time == self.times[idx]:
+            return self.lats[idx], self.lons[idx]
+        start = self.times[idx]
+        end = self.times[idx + 1]
+        seconds = (time - start) / np.timedelta64(1, "s")
+        seconds_total = (end - start) / np.timedelta64(1, "s")
+        lat = self.lats[i] + (self.lats[i + 1] - self.lats[i]) * (seconds / seconds_total)
+        lon = self.lons[i] + (self.lons[i + 1] - self.lons[i]) * (seconds / seconds_total)
+        return lat, lon
+
+    @classmethod
+    def from_csv(cls, path, lat_key="latitude", lon_key="longitude", time_key="timestamp"):
+        """
+        Reads buoy position data from a csv
+        """
+        df = pd.read_csv(path)
+        # just in case for some reason it isn't already sorted by time
+        df = df.sort_values(time_key)
+        return cls(
+            df[lat_key].values, df[lon_key].values,
+            df[time_key].values.astype("datetime64[s]")
+        )

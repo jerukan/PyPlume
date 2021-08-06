@@ -22,10 +22,10 @@
 		"simulation_dt": 300,
 		"snapshot_interval": 7200
 	},
+	"postprocess_config": {},
 	"plotting_config": {
 		"shown_domain": null,
 		"save_dir_snapshots": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/snapshots",
-		"coastline": null,
 		"plot_feature_set": null,
 		"draw_coasts": true
 	}

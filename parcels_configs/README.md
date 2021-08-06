@@ -4,7 +4,7 @@ This is where the configs go.
 
 example layout:
 
-```json
+```yaml
 {
 	// make this unique to avoid any accidental overriding
 	"name": "name_of_config",
@@ -59,6 +59,20 @@ example layout:
 		// how often data is recorded to the particle file in seconds
 		"snapshot_interval": 10800,
 	},
+	// settings to modify the resulting ParticleFile from the simulation
+	"postprocess_config": {
+		// loads a coastline to detect collisions and delete particles that collide
+		"coastline": {
+			"path": "matlab/coastline.mat",
+			"lat_var": "latz0",
+			"lon_var": "lonz0"
+		},
+		// loads a buoy path to calculate deviation from the path for each particle
+		// the variable will be called "buoy_distances" in the netcdf file
+		"buoy": {
+			"path": "buoy_data/wavebuoy_704-02.csv"
+		}
+	},
 	// this plotting config is only relevant when save_snapshots is true
 	// if save_snapshots is false, this entire thing can just be null
 	"plotting_config": {
@@ -71,12 +85,6 @@ example layout:
 		},
 		// path to save the plots to
 		"save_dir_snapshots": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/snapshots",
-		// loads a coastline to detect collisions
-		"coastline": {
-			"path": "matlab/coastline.mat",
-			"lat_var": "latz0",
-			"lon_var": "lonz0"
-		},
 		// features to add to the plots (detailed coastline, a tracked location, etc). check the
 		// bottom of parcels_analysis.py for the available sets of features. details for each
 		// feature are found in plot_features.py

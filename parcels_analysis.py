@@ -127,7 +127,7 @@ class ParticleResult:
         ages = self.data_vars["lifetime"][mask] / 86400 if "lifetime" in self.data_vars else None
         # TODO cache this
         max_age = np.nanmax(self.data_vars["lifetime"]) / 86400  if "lifetime" in self.data_vars else None
-        feature.plot_on_frame(ax, curr_lats, curr_lons)
+        feature.plot_on_frame(ax, curr_lats, curr_lons, time=t)
         if feat_info:
             fig_inf, ax_inf = feature.generate_info_table(
                 curr_lats, curr_lons, lifetimes=ages, age_max=max_age

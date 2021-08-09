@@ -275,13 +275,16 @@ class BuoyPath:
         self.lons = np.array(lons)
         self.times = np.array(times)
 
+    def in_time_bounds(self, time):
+        return time >= self.times[0] and time <= self.times[-1]
+
     def get_interped_point(self, time):
         """
         If a timestamp is between two buoy timestamps, linearly interpolate the position of the
         buoy to get the position at the input time.
         Other words, assumes buoy moves at constant speed between those 2 points.
         """
-        if time < self.times[0] or time > self.times[-1]:
+        if not self.in_time_bounds(time):
             raise ValueError(f"{time} is out of bounds of the buoy path")
         for i, t in enumerate(self.times):
             if time < t:

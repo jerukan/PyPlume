@@ -264,9 +264,26 @@ class LatTrackedPointFeature(ParticlePlotFeature):
 
 
 class BuoyPathFeature(ParticlePlotFeature):
-    def __init__(self, buoy_path):
+    def __init__(self, buoy_path: BuoyPath, backstep_delta=None, backstep_count=0):
         self.buoy_path = buoy_path
+        self.backstep_count = backstep_count
+        self.backstep_delta = backstep_delta
         super().__init__(buoy_path.lats, buoy_path.lons, labels=buoy_path.times, segments=True)
+
+    def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
+        time = kwargs.get("time", None)
+        if time is None:
+            return super().plot_on_frame(ax, lats, lons, *args, **kwargs)
+        b_lats = []
+        b_lons = []
+        for i in range(self.backstep_count + 1):
+            curr_time = time - i * self.backstep_delta
+            if not self.buoy_path.in_time_bounds(curr_time):
+                break
+            b_lat, b_lon = self.buoy_path.get_interped_point(curr_time)
+            b_lats.append(b_lat)
+            b_lons.append(b_lon)
+        ax.plot(b_lons, b_lats)
 
     def get_closest_dists(self, lats, lons, **kwargs):
         time = kwargs.get("time", None)
@@ -276,5 +293,5 @@ class BuoyPathFeature(ParticlePlotFeature):
         return utils.haversine(lats, buoy_lat, lons, buoy_lon)
 
     @classmethod
-    def from_csv(cls, path):
-        return cls(BuoyPath.from_csv(path))
+    def from_csv(cls, path, **kwargs):
+        return cls(BuoyPath.from_csv(path), **kwargs)

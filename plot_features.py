@@ -10,7 +10,7 @@ from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
 
 from constants import *
-from parcels_utils import buoycsv_to_particleds, BuoyPath
+from parcels_utils import BuoyPath
 import utils
 
 
@@ -124,16 +124,6 @@ class ParticlePlotFeature:
             path = utils.MATLAB_DIR / SD_COASTLINE_FILENAME
         lats, lons = utils.load_pts_mat(path, "latz0", "lonz0")
         return cls(lats, lons, segments=True, track_dist=track_dist)
-
-    @classmethod
-    def get_from_buoy_data(cls, path):
-        # TODO probably a separate feature class that uses a timestamp to check distance to a
-        # particle (use interpolation, kdtree, stuff)
-        buoy_ds = buoycsv_to_particleds(path)
-        return cls(
-            buoy_ds["lat"].values[0], buoy_ds["lon"].values[0], labels=buoy_ds["time"].values[0],
-            segments=True
-        )
 
 
 class NanSeparatedFeature(ParticlePlotFeature):

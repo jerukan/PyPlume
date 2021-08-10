@@ -63,13 +63,12 @@ class InterpolationStep(GapfillStep):
     def process(
         self, u: np.ndarray, v: np.ndarray, target: HFRGrid, **kwargs
     ) -> Tuple[np.ndarray, np.ndarray]:
-        processed_refs = []
-        for ref in self.references:
+        for i, ref in enumerate(self.references):
             if isinstance(ref, HFRGrid):
-                processed_refs.append(ref)
-            elif isinstance(ref, str):
+                pass
+            elif isinstance(ref, (str, int)):
                 if os.path.isfile(ref):
-                    processed_refs.append(HFRGrid(ref))
+                    self.references[i] = HFRGrid(ref)
                 else:
                     # assume url, attempt to open with OPENDAP
                     times, lats, lons = target.get_coords()
@@ -80,7 +79,9 @@ class InterpolationStep(GapfillStep):
                     ds = thredds_utils.get_thredds_dataset(
                         ref, time_range, lat_range, lon_range, inclusive=True
                     )
-                    processed_refs.append(HFRGrid(ds))
+                    self.references[i] = HFRGrid(ds)
+            else:
+                raise TypeError(f"Unrecognized type for {ref}")
                         
         self.do_validation(target)
         invalid = utils.generate_mask_invalid(u)
@@ -91,7 +92,7 @@ class InterpolationStep(GapfillStep):
         target_interped_u = u.copy()
         target_interped_v = v.copy()
         invalid_interped = invalid.copy()
-        for ref in processed_refs:
+        for ref in self.references:
             invalid_pos_new = np.where(invalid_interped)
             num_invalid_new = int(invalid_interped.sum())
             arr_u = np.zeros(num_invalid_new)
@@ -191,7 +192,7 @@ class Gapfiller:
 
     def execute(self, target: HFRGrid) -> xr.Dataset:
         u = target.xrds["u"].values.copy()
-        v = target.xrds["u"].values.copy()
+        v = target.xrds["v"].values.copy()
         for step in self.steps:
             u, v = step.process(u, v, target)
 

@@ -5,7 +5,19 @@
 		"path": "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/hourly/RTV/HFRADAR_US_West_Coast_1km_Resolution_Hourly_RTV_best.ncd",
 		"time_range": ["2020-06-16T21", "2020-06-23T21"],
 		"lat_range": [32.524, 32.75],
-		"lon_range": [-117.32, -117.09]
+		"lon_range": [-117.32, -117.09],
+		"gapfill_steps": [
+			{
+				"name": "InterpolationStep",
+				"args": {
+					"references": [1, 0]
+				}
+			},
+			{
+				"name": "SmoothnStep",
+				"args": {}
+			}
+		]
 	},
 	"save_snapshots": true,
 	"parcels_config": {

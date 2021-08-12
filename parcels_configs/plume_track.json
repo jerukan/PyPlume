@@ -14,18 +14,14 @@
 		"repeat_dt": 3600,
 		"repetitions": -1,
 		"spawn_points": {
-			"path": "matlab/glist90zj_pts_position_spawn.mat",
-			"lat_var": "yf",
-			"lon_var": "xf"
+			"path": "matlab/glist90zj_pts_position_spawn.mat"
 		},
 		"simulation_dt": 300,
 		"snapshot_interval": 3600
 	},
 	"postprocess_config": {
 		"coastline": {
-			"path": "matlab/coastline.mat",
-			"lat_var": "latz0",
-			"lon_var": "lonz0"
+			"path": "matlab/coastline.mat"
 		}
 	},
 	"plotting_config": {

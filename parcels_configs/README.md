@@ -51,6 +51,8 @@ example layout:
 		# dimension of the matrices don't matter since the data is flattened
 		"spawn_points": {
 			"path": "matlab/glist90zj_pts_position_spawn.mat",
+			# if the mat file has more variables than just the two lists, I highly suggest
+			# specifying these variables to avoid unwanted behavior.
 			"lat_var": "yf",
 			"lon_var": "xf"
 		},

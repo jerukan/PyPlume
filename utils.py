@@ -185,7 +185,7 @@ def expand_time_rng(time_rng, precision="h"):
     return start_time, end_time
 
 
-def load_pts_mat(path, lat_ind, lon_ind):
+def load_pts_mat(path, lat_ind=None, lon_ind=None):
     """
     Loads points from a pts mat from the TJ Plume Tracker.
     Only points where both lat and lon are non-nan are returned.
@@ -197,6 +197,22 @@ def load_pts_mat(path, lat_ind, lon_ind):
         np.ndarray: [lats], [lons]
     """
     mat_data = scipy.io.loadmat(path)
+    if lat_ind is None:
+        for key in mat_data.keys():
+            if "y" in key.lower() or "lat" in key.lower():
+                lat_ind = key
+                print(f"Detected latitude key as {key}")
+                break
+    if lat_ind is None:
+        raise IndexError("No latitude or y key found in mat")
+    if lon_ind is None:
+        for key in mat_data.keys():
+            if "x" in key.lower() or "lon" in key.lower():
+                lon_ind = key
+                print(f"Detected longitude key as {key}")
+                break
+    if lon_ind is None:
+        raise IndexError("No longitude or x key found in mat")
     xf = mat_data[lon_ind].flatten()
     yf = mat_data[lat_ind].flatten()
     # filter out nan values
@@ -219,10 +235,6 @@ def load_geo_points(path, **kwargs):
     if ext == ".mat":
         lat_var = kwargs.get("lat_var", None)
         lon_var = kwargs.get("lon_var", None)
-        if lat_var is None:
-            pass  # TODO do some automatic finding here
-        if lon_var is None:
-            pass  # TODO do some automatic finding here
-        lats, lons = load_pts_mat(path, lat_var, lon_var)
+        lats, lons = load_pts_mat(path, lat_ind=lat_var, lon_ind=lon_var)
         return lats, lons
     raise ValueError(f"Invalid extension {ext}")

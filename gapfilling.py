@@ -46,12 +46,12 @@ class InterpolationStep(GapfillStep):
     def __init__(self, references=None):
         self.references = references
 
-    def do_validation(self, target):
+    def do_validation(self, target, loaded_references):
         targ_times, targ_lats, targ_lons = target.get_coords()
         targ_min = (targ_lats[0], targ_lons[0])
         targ_max = (targ_lats[-1], targ_lons[-1])
         # check references
-        for ref in self.references:
+        for ref in loaded_references:
             ref_times, ref_lats, ref_lons = ref.get_coords()
             lat_inbounds = (ref_lats[0] <= targ_min[0]) and (ref_lats[-1] >= targ_max[0])
             lon_inbounds = (ref_lons[0] <= targ_min[1]) and (ref_lons[-1] >= targ_max[1])
@@ -63,12 +63,13 @@ class InterpolationStep(GapfillStep):
     def process(
         self, u: np.ndarray, v: np.ndarray, target: HFRGrid, **kwargs
     ) -> Tuple[np.ndarray, np.ndarray]:
+        loaded_references = []
         for i, ref in enumerate(self.references):
             if isinstance(ref, HFRGrid):
                 pass
             elif isinstance(ref, (str, int)):
                 if os.path.isfile(ref):
-                    self.references[i] = HFRGrid(ref)
+                    loaded_references.append(HFRGrid(ref))
                 else:
                     # assume url, attempt to open with OPENDAP
                     times, lats, lons = target.get_coords()
@@ -79,11 +80,11 @@ class InterpolationStep(GapfillStep):
                     ds = thredds_utils.get_thredds_dataset(
                         ref, time_range, lat_range, lon_range, inclusive=True
                     )
-                    self.references[i] = HFRGrid(ds)
+                    loaded_references.append(HFRGrid(ds))
             else:
                 raise TypeError(f"Unrecognized type for {ref}")
                         
-        self.do_validation(target)
+        self.do_validation(target, loaded_references)
         invalid = utils.generate_mask_invalid(u)
         num_invalid = invalid.sum()
         print(f"total invalid values on target data: {num_invalid}")
@@ -92,7 +93,7 @@ class InterpolationStep(GapfillStep):
         target_interped_u = u.copy()
         target_interped_v = v.copy()
         invalid_interped = invalid.copy()
-        for ref in self.references:
+        for ref in loaded_references:
             invalid_pos_new = np.where(invalid_interped)
             num_invalid_new = int(invalid_interped.sum())
             arr_u = np.zeros(num_invalid_new)

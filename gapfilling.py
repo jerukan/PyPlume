@@ -44,7 +44,7 @@ def get_interped(i, target, ref, invalid_where):
 
 class InterpolationStep(GapfillStep):
     def __init__(self, references=None):
-        self.references = references
+        self.references = references if references is not None else []
 
     def do_validation(self, target, loaded_references):
         targ_times, targ_lats, targ_lons = target.get_coords()

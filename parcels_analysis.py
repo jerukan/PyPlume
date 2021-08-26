@@ -276,11 +276,6 @@ class ParticleResult:
 
 
 PLOT_FEATURE_SETS = {
-    "tj_plume_tracker": {
-        "coast": NanSeparatedFeature.get_sd_full_coastline(),
-        "station": StationFeature.get_sd_stations(),
-        "mouth": LatTrackedPointFeature.get_tijuana_mouth()
-    }
 }
 
 

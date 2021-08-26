@@ -20,7 +20,7 @@
 	"postprocess_config": {
 		"coastline": null,
 		"buoy": {
-			"path": "buoy_data/wavebuoy_704-02.csv"
+			"path": null
 		}
 	},
 	"plotting_config": null

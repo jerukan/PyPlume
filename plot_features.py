@@ -3,6 +3,9 @@ Collection of classes that represent plotted features in a given simulation.
 These features represent additional information to the simulation on top of the already plotted
 particle movements.
 """
+import os
+import sys
+
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.spatial
@@ -122,6 +125,9 @@ class ParticlePlotFeature:
         """A simplified SD coastline"""
         if path is None:
             path = utils.MATLAB_DIR / SD_COASTLINE_FILENAME
+        if not os.path.exists(path):
+            print(f"{path} does not exist", file=sys.stderr)
+            return None
         lats, lons = utils.load_pts_mat(path, "latz0", "lonz0")
         return cls(lats, lons, segments=True, track_dist=track_dist)
 
@@ -144,6 +150,9 @@ class NanSeparatedFeature(ParticlePlotFeature):
         """Gets the full detailed Tijuana coastline. Don't try get_all_dists"""
         if path is None:
             path = utils.MATLAB_DIR / SD_FULL_COASTLINE_FILENAME
+        if not os.path.exists(path):
+            print(f"{path} does not exist", file=sys.stderr)
+            return None
         points = scipy.io.loadmat(path)["OR2Mex"]
         lats = points.T[1]
         lons = points.T[0]
@@ -210,6 +219,9 @@ class StationFeature(ParticlePlotFeature):
         """Gets the stations in the SD area from the mat file."""
         if path is None:
             path = utils.MATLAB_DIR / SD_STATION_FILENAME
+        if not os.path.exists(path):
+            print(f"{path} does not exist", file=sys.stderr)
+            return None
         lats, lons = utils.load_pts_mat(path, "ywq", "xwq")
         return cls(lats, lons, SD_STATION_NAMES, track_dist=track_dist)
 
@@ -284,4 +296,7 @@ class BuoyPathFeature(ParticlePlotFeature):
 
     @classmethod
     def from_csv(cls, path, **kwargs):
+        if not os.path.exists(path):
+            print(f"{path} does not exist", file=sys.stderr)
+            return None
         return cls(BuoyPath.from_csv(path), **kwargs)

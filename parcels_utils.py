@@ -104,7 +104,35 @@ def clean_erddap_ds(ds):
     return clean_ds
 
 
-def xr_dataset_to_fieldset(xrds, copy=True, raw=True, mesh="spherical") -> FieldSet:
+def clean_dataset(path):
+    """Renames variable/coord keys in an NetCDF ocean current dataset"""
+    MAPPINGS = {
+        "depth": {"depth", "z"},
+        "lat": {"lat", "latitude", "y"},
+        "lon": {"lon", "longitude", "long", "x"},
+        "time": {"time", "t"},
+        "U": {"u", "water_u"},
+        "V": {"v", "water_v"}
+    }
+    if isinstance(path, xr.Dataset):
+        ds = path
+    else:
+        with xr.open_dataset(path) as opened:
+            ds = opened
+    rename_map = {}
+    for var in ds.variables.keys():
+        for match in MAPPINGS.keys():
+            if var.lower() in MAPPINGS[match]:
+                rename_map[var] = match
+    ds = ds.rename(rename_map)
+    if "depth" in ds["U"].dims:
+        ds["U"] = ds["U"].sel(depth=0)
+    if "depth" in ds["V"].dims:
+        ds["V"] = ds["V"].sel(depth=0)
+    return ds
+
+
+def xr_dataset_to_fieldset(xrds, copy=True, raw=True, **kwargs) -> FieldSet:
     """
     Creates a parcels FieldSet with an ocean current xarray Dataset.
     copy is true by default since Parcels has a habit of turning nan values into 0s.
@@ -122,14 +150,14 @@ def xr_dataset_to_fieldset(xrds, copy=True, raw=True, mesh="spherical") -> Field
         fieldset = FieldSet.from_data(
             {"U": ds["u"].values, "V": ds["v"].values},
             {"time": ds["time"].values, "lat": ds["lat"].values, "lon": ds["lon"].values},
-            mesh=mesh
+            **kwargs
         )
     else:
         fieldset = FieldSet.from_xarray_dataset(
                 ds,
                 dict(U="u", V="v"),
                 dict(lat="lat", lon="lon", time="time"),
-                mesh=mesh
+                **kwargs
             )
     fieldset.check_complete()
     return fieldset
@@ -151,7 +179,7 @@ class HFRGrid:
 
     TODO generate the mask of where data should be available
     """
-    def __init__(self, dataset, init_fs=True):
+    def __init__(self, dataset, init_fs=True, fs_kwargs=None):
         """
         Reads from a netcdf file containing ocean current data.
 
@@ -174,7 +202,10 @@ class HFRGrid:
         self.latKDTree = scipy.spatial.KDTree(np.array([self.lats]).T)
         self.lonKDTree = scipy.spatial.KDTree(np.array([self.lons]).T)
         if init_fs:
-            self.prep_fieldsets()
+            if fs_kwargs is None:
+                self.prep_fieldsets()
+            else:
+                self.prep_fieldsets(**fs_kwargs)
         else:
             self.fieldset = None
             self.fieldset_flat = None
@@ -182,12 +213,13 @@ class HFRGrid:
         self.u = None
         self.v = None
 
-
-    def prep_fieldsets(self):
+    def prep_fieldsets(self, **kwargs):
         # spherical mesh
-        self.fieldset = xr_dataset_to_fieldset(self.xrds)
+        kwargs["mesh"] = "spherical"
+        self.fieldset = xr_dataset_to_fieldset(self.xrds, **kwargs)
         # flat mesh
-        self.fieldset_flat = xr_dataset_to_fieldset(self.xrds, mesh="flat")
+        kwargs["mesh"] = "flat"
+        self.fieldset_flat = xr_dataset_to_fieldset(self.xrds, **kwargs)
 
     def get_coords(self) -> tuple:
         """

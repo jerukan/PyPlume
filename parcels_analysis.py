@@ -16,9 +16,12 @@ import utils
 
 class TimedFrame:
     """Class that stores information about a single simulation plot"""
-    def __init__(self, time, path, **kwargs):
+    def __init__(self, time, path, lats, lons, ages=None, **kwargs):
         self.time = time
         self.path = path
+        self.lats = list(lats)
+        self.lons = list(lons)
+        self.ages = [] if ages is None else list(ages)
         # path to other plots that display other information about the frame
         self.paths_inf = kwargs
 
@@ -188,7 +191,12 @@ class ParticleResult:
                 )
                 savefile_infs[name] = savefile_inf
                 plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
-        self.frames.append(TimedFrame(t, savefile, **savefile_infs))
+        lats, lons = self.get_points_at_t(t)
+        mask = self.data_vars["time"] == t  # lol idk just do it again
+        ages = None
+        if "lifetime" in self.data_vars:
+            ages = self.data_vars["lifetime"][mask]
+        self.frames.append(TimedFrame(t, savefile, lats, lons, ages=ages, **savefile_infs))
         return savefile, savefile_infs
 
     def generate_all_plots(
@@ -227,6 +235,32 @@ class ParticleResult:
                     self.times[i], i, save_dir, filename, figsize, domain, feat_info, land
                 )
                 self.on_plot_generated(savefile, savefile_infs, i, self.times[i], len(self.times))
+        return self.frames
+
+    def generate_all_positions(self):
+        self.frames = []
+        if self.cfg is not None:
+            t = self.times[0]
+            i = 0
+            while t <= self.times[-1]:
+                lats, lons = self.get_points_at_t(t)
+                mask = self.data_vars["time"] == t  # lol idk just do it again
+                ages = None
+                if "lifetime" in self.data_vars:
+                    ages = self.data_vars["lifetime"][mask]
+                self.frames.append(TimedFrame(t, None, lats, lons, ages=ages))
+                i += 1
+                t += np.timedelta64(self.cfg["snapshot_interval"], "s")
+        else:
+            # If the delta time between each snapshot is unknown, we'll just use the unique times
+            # from the particle files.
+            for i in range(len(self.times)):
+                lats, lons = self.get_points_at_t(self.times[i])
+                mask = self.data_vars["time"] == t  # lol idk just do it again
+                ages = None
+                if "lifetime" in self.data_vars:
+                    ages = self.data_vars["lifetime"][mask]
+                self.frames.append(TimedFrame(self.times[i], None, lats, lons, ages=ages))
         return self.frames
 
     def generate_gif(self, gif_path, gif_delay=25):
@@ -273,6 +307,10 @@ class ParticleResult:
             coords=self.xrds.coords, attrs=self.xrds.attrs
         )
         new_ds.to_netcdf(path=self.path if path is None else path)
+
+    def get_points_at_t(self, t: np.datetime64):
+        mask = self.data_vars["time"] == t
+        return self.data_vars["lat"][mask], self.data_vars["lon"][mask]
 
 
 PLOT_FEATURE_SETS = {

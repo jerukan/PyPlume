@@ -2,14 +2,14 @@
 	"name": "plume_track",
 	"netcdf_path": {
 		"type": "file",
-		"path": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/current_netcdfs/west_coast_1km_hourly/tj_plume_2020-02_interped.nc",
+		"path": "current_netcdfs/tj_plume_2020-02_ThreddsCode.USWC_1KM_HOURLY_interped.nc",
 		"gapfill_steps": []
 	},
 	"save_snapshots": true,
 	"parcels_config": {
-		"save_dir_pfile": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/particledata",
+		"save_dir_pfile": "particledata",
 		"particle_type": "ThreddsParticle",
-		"kernels": ["AdvectionRK4", "AgeParticle", "DeleteOOB", "DeleteAfter3Days", "RandomWalk"],
+		"kernels": ["AdvectionRK4", "AgeParticle", "DeleteAfter3Days"],
 		"time_range": ["2020-02-09T01:00", "2020-02-14T01:00"],
 		"repeat_dt": 3600,
 		"repetitions": -1,
@@ -31,7 +31,7 @@
 			"W": -117.162,
 			"E": -117.105
 		},
-		"save_dir_snapshots": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/snapshots",
+		"save_dir_snapshots": "snapshots",
 		"plot_feature_set": "tj_plume_tracker",
 		"draw_coasts": false
 	}

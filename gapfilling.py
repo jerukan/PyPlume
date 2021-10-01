@@ -66,7 +66,7 @@ class InterpolationStep(GapfillStep):
         loaded_references = []
         for i, ref in enumerate(self.references):
             if isinstance(ref, HFRGrid):
-                pass
+                loaded_references.append(ref)
             elif isinstance(ref, (str, int)):
                 if os.path.isfile(ref):
                     loaded_references.append(HFRGrid(ref))

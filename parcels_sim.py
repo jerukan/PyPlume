@@ -70,8 +70,8 @@ def import_kernel_or_particle(name):
     mod = importlib.import_module("parcels_kernels")
     try:
         return getattr(mod, name)
-    except AttributeError:
-        raise AttributeError(f"Kernel {name} not found in parcels_kernels.py")
+    except AttributeError as err:
+        raise AttributeError(f"Kernel {name} not found in parcels_kernels.py") from err
 
 
 class ParcelsSimulation:

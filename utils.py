@@ -11,7 +11,7 @@ import numpy as np
 import scipy.io
 import xarray as xr
 
-FILES_ROOT = Path("/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast")
+FILES_ROOT = Path("")
 PARCELS_CONFIGS_DIR = Path("parcels_configs")
 CURRENT_NETCDF_DIR = Path("current_netcdfs")
 PARTICLE_NETCDF_DIR = Path("particledata")

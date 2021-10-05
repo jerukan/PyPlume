@@ -29,6 +29,9 @@ example layout:
 		# List of kernels to add, can be built ins like AdvectionRK4
 		# or custom ones in parcels_kernels.py. Feel free to add new ones to the file.
 		"kernels": ["AdvectionRK4", "DeleteOOB", "RandomWalk"],
+		# Determines how to handle boundary conditions. By default, the zero-vectors at coastlines
+		# are interpolated linearly. Other options are "freeslip" and "partialslip".
+		"boundary": "freeslip",
 		# The start and end time of the simulation. START and END are special keywords that
 		# denote the start and end times of the used netcdf respectively.
 		# Integers will be treated as delta time in hours. For example, [6, "END"] will run the

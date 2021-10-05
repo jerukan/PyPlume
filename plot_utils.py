@@ -74,18 +74,17 @@ def generate_domain(datasets, padding=0.005):
 
 
 def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None, verbose=False):
+    """
+    Args:
+        figsize (tuple): (width, height) in inches (or was it the other way around?)
+    """
     if fig is None:
         if verbose:
             print("Figure not passed in, figure size unchanged", file=sys.stderr)
     else:
+        fig.patch.set_facecolor("w")
         plt.figure(fig.number)
         if figsize is not None:
-            fig.set_size_inches(figsize[0], figsize[1])
-    if figsize is not None:
-        if fig is None:
-            if verbose:
-                print("Figure not passed in, figure size unchanged", file=sys.stderr)
-        else:
             fig.set_size_inches(figsize[0], figsize[1])
     plt.draw()
     if show:

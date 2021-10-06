@@ -30,19 +30,19 @@ def RandomWalk(particle, fieldset, time):
     """
     Adds randomness to particle movement (doesn't actually work, ripped from the plume tracker).
     """
-    cv = 1e-5 * 3600
-    uerr = 200
-    th = 2 * math.pi * ParcelsRandom.random()
+    uerr = 5 / 100  # 5 cm/s uncertainty with radar
+    th = 2 * math.pi * ParcelsRandom.random()  # randomize angle of error
     u_, v_ = fieldset.UV[time, particle.depth, particle.lat, particle.lon]
-    # convert from degrees/s to m/s
-    u_conv = 1852 * 60 * math.cos(particle.lat * math.pi / 180)
-    v_conv = 1852 * 60
+    # convert from degrees to m
+    u_conv = 1852 * 60 * math.cos(particle.lat * math.pi / 180)  # lon convert
+    v_conv = 1852 * 60  # lat convert
     u_ *= u_conv
     v_ *= v_conv
     u_n = u_ + uerr * math.cos(th)
     v_n = v_ + uerr * math.sin(th)
-    dx = u_n * cv
-    dy = v_n * cv
+    dx = u_n * particle.dt
+    dy = v_n * particle.dt
+    # undo conversion
     dx /= u_conv
     dy /= v_conv
     particle.lon += dx
@@ -81,3 +81,15 @@ def DeleteParticle(particle, fieldset, time):
     # print(f"Particle [{particle.id}] lost "
     #       f"({particle.time}, {particle.depth}, {particle.lat}, {particle.lon})", file=sys.stderr)
     particle.delete()
+
+
+def WindModify3Percent(particle, fieldset, time):
+    wu = fieldset.WU[time, particle.depth, particle.lat, particle.lon]
+    wv = fieldset.WV[time, particle.depth, particle.lat, particle.lon]
+    # convert from degrees/s to m/s
+    u_conv = 1852 * 60 * math.cos(particle.lat * math.pi / 180)
+    v_conv = 1852 * 60
+    wu_conv = wu * 0.03 / u_conv
+    wv_conv = wv * 0.03 / v_conv
+    particle.lon += wu_conv * particle.dt
+    particle.lat += wv_conv * particle.dt

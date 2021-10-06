@@ -1,9 +1,9 @@
 {
-	"name": "hunington_spill_oct_elbow",
+	"name": "hunington_spill_newest",
 	"netcdf_path": {
 		"type": "thredds",
 		"path": "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd",
-		"time_range": ["2021-10-01", "2021-10-05T20:00:00"],
+		"time_range": ["2021-10-01", "END"],
 		"lat_range": [32.8, 34.2],
 		"lon_range": [-119, -117.4],
 		"gapfill_steps": []
@@ -13,15 +13,13 @@
 		"particle_type": "ThreddsParticle",
 		"kernels": ["AdvectionRK4", "AgeParticle", "RandomWalk"],
 		"boundary": "freeslip",
-		"time_range": ["2021-10-01T20:00", "2021-10-05T20:00"],
+		"time_range": ["2021-10-01T21:00", "END"],
 		"repeat_dt": 3600,
 		"repetitions": -1,
 		"spawn_points": [
-			[33.582222, -118.140833],
-			[33.683954, -118.097793],
-			[33.641948, -118.114273]
+            [33.6486, -118.1074]
 		],
-		"instances_per_spawn": 50,
+		"instances_per_spawn": 1,
 		"simulation_dt": 300,
 		"snapshot_interval": 3600
 	},

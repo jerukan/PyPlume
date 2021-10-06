@@ -95,7 +95,7 @@ class ParticlePlotFeature:
                 dists[i][j] = utils.haversine(self.lats[i], lats[j], self.lons[i], lons[j])
         return dists
 
-    def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
+    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
         """
         Plots onto a frame plot, with information on particles at that time passed in
 
@@ -139,7 +139,7 @@ class NanSeparatedFeature(ParticlePlotFeature):
     def __init__(self, lats, lons, **kwargs):
         super().__init__(lats, lons, segments=False, **kwargs)
 
-    def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
+    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
         lat_borders = np.split(self.lats, np.where(np.isnan(self.lats))[0])
         lon_borders = np.split(self.lons, np.where(np.isnan(self.lons))[0])
         for i in range(len(lat_borders)):
@@ -180,7 +180,7 @@ class StationFeature(ParticlePlotFeature):
         """Labels is required"""
         super().__init__(lats, lons, labels=labels, segments=False, **kwargs)
 
-    def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
+    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
         """Any point with points near them are colored red, otherwise they are blue."""
         counts = self.count_near(lats, lons)
         ax.scatter(
@@ -234,9 +234,9 @@ class LatTrackedPointFeature(ParticlePlotFeature):
         self.ymax = ymax
         self.show = show
 
-    def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
+    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
         if self.show:
-            super().plot_on_frame(ax, lats, lons, *args, **kwargs)
+            super().plot_on_frame(fig, ax, lats, lons, *args, **kwargs)
 
     def generate_info_table(self, lats, lons, *args, **kwargs):
         """
@@ -272,10 +272,10 @@ class BuoyPathFeature(ParticlePlotFeature):
         self.backstep_delta = backstep_delta
         super().__init__(buoy_path.lats, buoy_path.lons, labels=buoy_path.times, segments=True)
 
-    def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
+    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
         time = kwargs.get("time", None)
         if time is None:
-            return super().plot_on_frame(ax, lats, lons, *args, **kwargs)
+            return super().plot_on_frame(fig, ax, lats, lons, *args, **kwargs)
         b_lats = []
         b_lons = []
         for i in range(self.backstep_count + 1):
@@ -300,3 +300,11 @@ class BuoyPathFeature(ParticlePlotFeature):
             print(f"{path} does not exist", file=sys.stderr)
             return None
         return cls(BuoyPath.from_csv(path), **kwargs)
+
+
+class WindVectorFeature(ParticlePlotFeature):
+    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
+        if "wind" not in kwargs:
+            return
+        wind_u, wind_v = kwargs["wind"]  # tuple of u, v
+        wind_ax = fig.add_axes([0.1, 0, 0.1, 0.1])

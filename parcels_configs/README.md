@@ -59,6 +59,9 @@ example layout:
 			"lat_var": "yf",
 			"lon_var": "xf"
 		},
+		# Number of times per release to spawn particles from the defined spawn points.
+		# There is only a visual difference if there is randomness to particle movement.
+		"instances_per_spawn": 50,
 		# dt of the simulation in seconds
 		"simulation_dt": 300,
 		# how often data is recorded to the particle file in seconds

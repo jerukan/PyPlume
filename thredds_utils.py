@@ -158,6 +158,10 @@ def get_thredds_dataset(thredds_code, time_range, lat_range, lon_range,
     lat_range = (lat_range[0] - padding, lat_range[1] + padding)
     lon_range = (lon_range[0] - padding, lon_range[1] + padding)
     if not isinstance(time_range, slice):
+        if time_range[0] == "START":
+            time_range = (reg_data["time"].values[0], time_range[1])
+        if time_range[1] == "END":
+            time_range = (time_range[0], reg_data["time"].values[-1])
         time_slice = get_time_slice(time_range, inclusive=inclusive, ref_coords=reg_data["time"].values)
     else:
         time_slice = time_range

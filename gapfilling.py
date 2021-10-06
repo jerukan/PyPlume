@@ -192,15 +192,15 @@ class Gapfiller:
             self.steps.append(step)
 
     def execute(self, target: HFRGrid) -> xr.Dataset:
-        u = target.xrds["u"].values.copy()
-        v = target.xrds["v"].values.copy()
+        u = target.xrds["U"].values.copy()
+        v = target.xrds["V"].values.copy()
         for step in self.steps:
             u, v = step.process(u, v, target)
 
         # re-add coordinates, dimensions, and metadata to interpolated data
-        darr_u = utils.conv_to_dataarray(u, target.xrds["u"])
-        darr_v = utils.conv_to_dataarray(v, target.xrds["v"])
-        target_interped_xrds = target.xrds.drop_vars(["u", "v"]).assign(u=darr_u, v=darr_v)
+        darr_u = utils.conv_to_dataarray(u, target.xrds["U"])
+        darr_v = utils.conv_to_dataarray(v, target.xrds["V"])
+        target_interped_xrds = target.xrds.drop_vars(["U", "V"]).assign(U=darr_u, V=darr_v)
         return target_interped_xrds
 
     @classmethod

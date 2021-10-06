@@ -104,6 +104,9 @@ class ParcelsSimulation:
             repetitions = cfg["repetitions"]
             if repetitions * cfg["repeat_dt"] >= (t_end - t_start):
                 raise ValueError("Too many repetitions")
+        instances_per_spawn = cfg.get("instances_per_spawn", 1)
+        if instances_per_spawn >= 1:
+            spawn_points = np.tile(spawn_points, (instances_per_spawn, 1))
         num_spawns = len(spawn_points)
         # the total number of particles that will exist in the simulation
         total = repetitions * num_spawns

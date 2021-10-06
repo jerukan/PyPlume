@@ -148,18 +148,18 @@ def xr_dataset_to_fieldset(xrds, copy=True, raw=True, **kwargs) -> FieldSet:
         ds = xrds
     if raw:
         fieldset = FieldSet.from_data(
-            {"U": ds["u"].values, "V": ds["v"].values},
+            {"U": ds["U"].values, "V": ds["V"].values},
             {"time": ds["time"].values, "lat": ds["lat"].values, "lon": ds["lon"].values},
             **kwargs
         )
     else:
         fieldset = FieldSet.from_xarray_dataset(
                 ds,
-                dict(U="u", V="v"),
+                dict(U="U", V="V"),
                 dict(lat="lat", lon="lon", time="time"),
                 **kwargs
             )
-    fieldset.check_complete()
+    # fieldset.check_complete()
     return fieldset
 
 
@@ -195,23 +195,35 @@ class HFRGrid:
             self.xrds = dataset
         else:
             raise TypeError(f"{dataset} is not a path or xarray dataset")
+        self.xrds = clean_dataset(self.xrds)
         self.times = self.xrds["time"].values
         self.lats = self.xrds["lat"].values
         self.lons = self.xrds["lon"].values
         self.timeKDTree = scipy.spatial.KDTree(np.array([self.times]).T)
         self.latKDTree = scipy.spatial.KDTree(np.array([self.lats]).T)
         self.lonKDTree = scipy.spatial.KDTree(np.array([self.lons]).T)
+        self.fs_kwargs = fs_kwargs if fs_kwargs is not None else {}
         if init_fs:
-            if fs_kwargs is None:
-                self.prep_fieldsets()
-            else:
-                self.prep_fieldsets(**fs_kwargs)
+            self.prep_fieldsets(**self.fs_kwargs)
         else:
             self.fieldset = None
             self.fieldset_flat = None
         # for caching
         self.u = None
         self.v = None
+        self.modified = False
+
+    def modify_with_wind(self, dataset, ratio=1):
+        if len(dataset["U"].shape) == 1:
+            # time only dimension
+            for i, t in enumerate(self.xrds["time"]):
+                wind_uv = dataset.sel(time=t.values, method="nearest")
+                wu = wind_uv["U"].values.item()
+                wv = wind_uv["V"].values.item()
+                self.xrds["U"][i] += wu * ratio
+                self.xrds["V"][i] += wv * ratio
+            self.prep_fieldsets(**self.fs_kwargs)
+            self.modified = True
 
     def prep_fieldsets(self, **kwargs):
         # spherical mesh
@@ -276,12 +288,16 @@ class HFRGrid:
             _, lat_idx, lon_idx = self.get_closest_index(None, lat, lon)
         else:
             t_idx, lat_idx, lon_idx = self.get_closest_index(t, lat, lon)
-        # cache the whole array because isel is slow when doing it individually
-        if self.u is None:
-            self.u = self.xrds["u"].values
-        if self.v is None:
-            self.v = self.xrds["v"].values
+        self.check_cache()
         return self.u[t_idx, lat_idx, lon_idx], self.v[t_idx, lat_idx, lon_idx]
+    
+    def check_cache(self):
+        # cache the whole array because isel is slow when doing it individually
+        if self.u is None or self.modified:
+            self.u = self.xrds["U"].values
+        if self.v is None or self.modified:
+            self.v = self.xrds["V"].values
+        self.modified = False
 
     def get_fs_current(self, t, lat, lon, flat=True):
         """

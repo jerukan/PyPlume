@@ -122,7 +122,7 @@ class ParticleResult:
         else:
             self.plot_features[name] = feature
 
-    def plot_feature(self, t: np.datetime64, feature: ParticlePlotFeature, ax, feat_info=True):
+    def plot_feature(self, t: np.datetime64, feature: ParticlePlotFeature, fig, ax, feat_info=True):
         """Plots a feature at a given time."""
         mask = self.data_vars["time"] == t
         curr_lats = self.data_vars["lat"][mask]
@@ -130,7 +130,7 @@ class ParticleResult:
         ages = self.data_vars["lifetime"][mask] / 86400 if "lifetime" in self.data_vars else None
         # TODO cache this
         max_age = np.nanmax(self.data_vars["lifetime"]) / 86400  if "lifetime" in self.data_vars else None
-        feature.plot_on_frame(ax, curr_lats, curr_lons, time=t)
+        feature.plot_on_frame(fig, ax, curr_lats, curr_lons, time=t)
         if feat_info:
             fig_inf, ax_inf = feature.generate_info_table(
                 curr_lats, curr_lons, lifetimes=ages, age_max=max_age
@@ -160,7 +160,7 @@ class ParticleResult:
         # get feature plots
         for name, feature in self.plot_features.items():
             fig_inf, ax_inf = self.plot_feature(
-                t, feature, ax, feat_info=(feat_info == "all" or name in feat_info)
+                t, feature, fig, ax, feat_info=(feat_info == "all" or name in feat_info)
             )
             figs[name] = fig_inf
             axs[name] = ax_inf

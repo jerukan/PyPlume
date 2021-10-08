@@ -5,7 +5,6 @@
 		"path": "current_netcdfs/tj_plume_2020-02_ThreddsCode.USWC_1KM_HOURLY_interped.nc",
 		"gapfill_steps": []
 	},
-	"save_snapshots": true,
 	"parcels_config": {
 		"save_dir_pfile": "particledata",
 		"particle_type": "ThreddsParticle",
@@ -14,6 +13,7 @@
 		"time_range": ["2020-02-09T01:00", "2020-02-14T01:00"],
 		"repeat_dt": 3600,
 		"repetitions": -1,
+		"instances_per_spawn": 1,
 		"spawn_points": {
 			"path": "matlab/glist90zj_pts_position_spawn.mat"
 		},
@@ -25,6 +25,7 @@
 			"path": "matlab/coastline.mat"
 		}
 	},
+	"save_snapshots": true,
 	"plotting_config": {
 		"shown_domain": {
 			"S": 32.35,

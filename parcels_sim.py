@@ -91,6 +91,11 @@ def import_kernel_or_particle(name):
         raise AttributeError(f"Kernel {name} not found in parcels_kernels.py") from err
 
 
+def insert_default_values(self, cfg):
+    # TODO implement
+    pass
+
+
 class ParcelsSimulation:
     PFILE_SAVE_DEFAULT = utils.FILES_ROOT / utils.PARTICLE_NETCDF_DIR
 

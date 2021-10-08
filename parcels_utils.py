@@ -104,8 +104,14 @@ def clean_erddap_ds(ds):
     return clean_ds
 
 
-def clean_dataset(path):
-    """Renames variable/coord keys in an NetCDF ocean current dataset"""
+def rename_dataset_vars(path):
+    """
+    Renames variable/coord keys in an NetCDF ocean current dataset.
+    If the data has a depth dimension, it will be removed.
+
+    Args:
+        path (path-like or xr.Dataset)
+    """
     MAPPINGS = {
         "depth": {"depth", "z"},
         "lat": {"lat", "latitude", "y"},
@@ -195,7 +201,7 @@ class HFRGrid:
             self.xrds = dataset
         else:
             raise TypeError(f"{dataset} is not a path or xarray dataset")
-        self.xrds = clean_dataset(self.xrds)
+        self.xrds = rename_dataset_vars(self.xrds)
         self.times = self.xrds["time"].values
         self.lats = self.xrds["lat"].values
         self.lons = self.xrds["lon"].values
@@ -213,7 +219,14 @@ class HFRGrid:
         self.v = None
         self.modified = False
 
-    def modify_with_wind(self, dataset, ratio=1):
+    def modify_with_wind(self, dataset, ratio=1.0):
+        """
+        Directly modify the ocean vector dataset and update the fieldsets.
+
+        Args:
+            dataset (xr.Dataset)
+            ratio (float): percentage of how much of the wind vectors to add to the ocean currents
+        """
         if len(dataset["U"].shape) == 1:
             # time only dimension
             for i, t in enumerate(self.xrds["time"]):
@@ -224,6 +237,25 @@ class HFRGrid:
                 self.xrds["V"][i] += wv * ratio
             self.prep_fieldsets(**self.fs_kwargs)
             self.modified = True
+        elif len(dataset["U"].shape) == 3:
+            print("Ocean current vector modifications with wind vectors must be done"
+                " individually. This may take a while.", file=sys.stderr)
+            # assume dataset has renamed time, lat, lon dimensions
+            # oh god why
+            for i, t in enumerate(self.xrds["time"]):
+                for j, lat in enumerate(self.xrds["lat"]):
+                    for k, lon in enumerate(self.xrds["lon"]):
+                        wind_uv = dataset.sel(
+                            time=t.values, lat=lat.values, lon=lon.values, method="nearest"
+                        )
+                        wu = wind_uv["U"].values.item()
+                        wv = wind_uv["V"].values.item()
+                        self.xrds["U"][i, j, k] += wu * ratio
+                        self.xrds["V"][i, j, k] += wv * ratio
+            self.prep_fieldsets(**self.fs_kwargs)
+            self.modified = True
+        else:
+            raise ValueError("dataset vectors don't have a dimension of 1 or 3")
 
     def prep_fieldsets(self, **kwargs):
         # spherical mesh

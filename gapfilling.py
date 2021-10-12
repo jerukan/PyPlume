@@ -43,6 +43,9 @@ def get_interped(i, target, ref, invalid_where):
 
 
 class InterpolationStep(GapfillStep):
+    """
+    Uses linear interpolation
+    """
     def __init__(self, references=None):
         self.references = references if references is not None else []
 
@@ -114,6 +117,13 @@ class InterpolationStep(GapfillStep):
 
 
 class SmoothnStep(GapfillStep):
+    """
+    PLS and smoothing with DCT shenanigans
+
+    uses the matlab engine and smoothn.m
+    https://www.mathworks.com/help/matlab/matlab-engine-for-python.html
+    https://www.mathworks.com/matlabcentral/fileexchange/25634-smoothn
+    """
     def __init__(self, mask=None):
         if mask is not None:
             self.mask = HFRGrid(mask) if not isinstance(mask, HFRGrid) else mask
@@ -191,11 +201,11 @@ class Gapfiller:
                 raise TypeError(f"{step} is not a proper gapfilling step.")
             self.steps.append(step)
 
-    def execute(self, target: HFRGrid) -> xr.Dataset:
+    def execute(self, target: HFRGrid, **kwargs) -> xr.Dataset:
         u = target.xrds["U"].values.copy()
         v = target.xrds["V"].values.copy()
         for step in self.steps:
-            u, v = step.process(u, v, target)
+            u, v = step.process(u, v, target, **kwargs)
 
         # re-add coordinates, dimensions, and metadata to interpolated data
         darr_u = utils.conv_to_dataarray(u, target.xrds["U"])

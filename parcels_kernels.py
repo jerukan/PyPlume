@@ -1,6 +1,7 @@
 """Create custom particle classes and kernels inside here"""
 import math
 from operator import attrgetter
+import sys
 
 import numpy as np
 from parcels import JITParticle, Variable
@@ -28,7 +29,10 @@ def AgeParticle(particle, fieldset, time):
 
 def RandomWalk(particle, fieldset, time):
     """
-    Adds randomness to particle movement (doesn't actually work, ripped from the plume tracker).
+    Adds random noise to particle movement (ripped from the plume tracker).
+
+    I'm not entirely sure what's up with the units or something, but 5 cm/s error barely
+    adds any randomness to the movement. Maybe something is wrong.
     """
     uerr = 5 / 100  # 5 cm/s uncertainty with radar
     th = 2 * math.pi * ParcelsRandom.random()  # randomize angle of error
@@ -78,12 +82,17 @@ def DeleteAfter3Days(particle, fieldset, time):
 
 def DeleteParticle(particle, fieldset, time):
     """Deletes a particle. Mainly for use with the recovery kernel."""
-    # print(f"Particle [{particle.id}] lost "
-    #       f"({particle.time}, {particle.depth}, {particle.lat}, {particle.lon})", file=sys.stderr)
+    particle.delete()
+
+
+def DeleteParticleVerbose(particle, fieldset, time):
+    print(f"Particle [{particle.id}] lost "
+          f"({particle.time}, {particle.depth}, {particle.lat}, {particle.lon})", file=sys.stderr)
     particle.delete()
 
 
 def WindModify3Percent(particle, fieldset, time):
+    """please dont use this yet idk what im doing"""
     wu = fieldset.WU[time, particle.depth, particle.lat, particle.lon]
     wv = fieldset.WV[time, particle.depth, particle.lat, particle.lon]
     # convert from degrees/s to m/s

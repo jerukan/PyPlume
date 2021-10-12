@@ -1,3 +1,6 @@
+"""
+Classes and methods directly related to setting up Parcels simulations and running them.
+"""
 from datetime import timedelta
 import importlib
 import math
@@ -76,6 +79,7 @@ def create_with_pattern(point, pattern):
 
 
 def import_kernel_or_particle(name):
+    """Returns class instances by name"""
     if name == "AdvectionRK4":
         return AdvectionRK4
     if name == "AdvectionRK45":

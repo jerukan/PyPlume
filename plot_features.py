@@ -1,5 +1,10 @@
 """
 Collection of classes that represent plotted features in a given simulation.
+
+If you want to add additional stuff to the generated plots, this is the place to do so.
+Create a new class that extends ParticlePlotFeature to customize what is plotted on top of
+the particle frames.
+
 These features represent additional information to the simulation on top of the already plotted
 particle movements.
 """

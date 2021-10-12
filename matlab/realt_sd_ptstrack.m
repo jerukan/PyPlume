@@ -232,11 +232,14 @@ ntotalpt = length(x_);
 
 rand('state', sum(100 * clock));
 th = 2 * pi * rand(ntotalpt, 1);
+% uerr = 5 cm/s
 u_n = u_ + uerr * cos(th);
 v_n = v_ + uerr * sin(th);
 
 umg = abs(u_n + 1i * v_n);
 uag = atan2(v_n, u_n);
+% cv = 1e-5*3600;
+% converts centimeters to km, multiply by hour
 dx = u_n * cv;
 dy = v_n * cv;
 [x_n, y_n] = km2lonlat(x_, y_, dx, dy);

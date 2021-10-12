@@ -19,7 +19,7 @@
 		"time_range": ["START", "END"],
 		"repeat_dt": -1,
 		"repetitions": -1,
-        "instances_per_spawn": 1,
+        "instances_per_spawn": 10,
 		"spawn_points": [
             {
                 "label": "RADARSAT2",

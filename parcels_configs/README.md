@@ -13,11 +13,11 @@ example layout:
 	"netcdf_path": {
 		"type": "<file> or <thredds>",
 		"path": "path/to/file/or/url.nc",
-		### start of thredds only settings ###
+		##### start of thredds only settings #####
 		"time_range": ["2020-06-16T21", "2020-06-23T21"],
 		"lat_range": [32.524, 32.75],
 		"lon_range": [-117.32, -117.09],
-		### end of thredds only settings ###
+		###### end of thredds only settings ######
 		# if there is a need to use any built in gapfillers, specify them here
 		# check gapfilling.py for available gapfillers and arguments
 		"gapfill_steps": [
@@ -60,15 +60,15 @@ example layout:
 		"boundary": "freeslip",
 		# The start and end time of the simulation. START and END are special keywords that
 		# denote the start and end times of the used NetCDF respectively.
-		### IMPORTANT NOTE ###
+		###### IMPORTANT NOTE ######
 		# if particles are scheduled to released individually, START will use the
 		# earliest time a particle is released instead of the start of the NetCDF. It is highly
 		# recommended to use START to avoid out of bounds errors.
-		######################
+		### END OF IMPORTANT NOTE ###
 		# Integers will be treated as delta time in hours. For example, [6, "END"] will run the
 		# simulation from 6 hours before the end until the end
 		"time_range": ["2020-07-16T00", "END"],
-		### repetition settings ###
+		########## repetition settings ##########
 		# The number of times to release the particles. If repeat_dt is 0 or less, this parameter
 		# is ignored.
 		"repetitions": 5,  # default -1
@@ -80,7 +80,7 @@ example layout:
 		# There is only a visual difference if there is randomness to particle movement.
 		"instances_per_spawn": 50,  # default 1
 		# spawn points can be either loaded in straight as a 2d list of (lat, lon) pairs
-		### end of repetition settings ###
+		####### end of repetition settings #######
 		"spawn_points": [
 			[32.551707, -117.138],
 			[32.557, -117.138],
@@ -94,13 +94,13 @@ example layout:
 				# when to release the particle. defaults to the start of the simulation.
 				# can be set to START if you really want to
 				"release": "2021-10-01T21:00",
-				### spawn repetition settings ###
+				######## spawn repetition settings ########
 				# if any of these settings are missing or null, they automatically default to the
 				# outer settings defined above
 				"repetitions": 5,  # default: from outer settings
 				"repeat_dt": 14400,  # default: from outer settings
 				"instances_per_spawn": 50,  # default: from outer settings
-				### end of spawn repetition settings ###
+				##### end of spawn repetition settings #####
 				# optional, specifies if a single point should be spawned in a pattern instead
 				# this example spawns particles in a 3x3 grid around specified point
 				# maybe there will be documentation on this lol

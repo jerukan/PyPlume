@@ -6,7 +6,7 @@ from enum import Enum, unique
 import numpy as np
 import xarray as xr
 
-import utils
+import src.utils as utils
 
 
 NUM_CHUNKS = 50  # xarray dask chunks, mainly for the stupid big datasets

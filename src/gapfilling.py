@@ -7,9 +7,9 @@ import matlab.engine
 import numpy as np
 import xarray as xr
 
-import utils
-from parcels_utils import HFRGrid
-import thredds_utils
+import src.utils as utils
+from src.parcels_utils import HFRGrid
+import src.thredds_utils as thredds_utils
 
 
 class GapfillStep(ABC):
@@ -173,7 +173,7 @@ class SmoothnStep(GapfillStep):
             target_smoothed_v[i] = v_array
 
         if self.mask is not None:
-            no_data = utils.generate_mask_none(self.mask.xrds["u"].values)
+            no_data = utils.generate_mask_none(self.mask.xrds["U"].values)
             no_data = np.tile(no_data, (target.xrds["time"].size, 1, 1))
             target_smoothed_u[no_data] = np.nan
             target_smoothed_v[no_data] = np.nan

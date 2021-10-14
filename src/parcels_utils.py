@@ -13,9 +13,9 @@ from parcels import FieldSet, plotting
 import scipy.spatial
 import xarray as xr
 
-import plot_utils
-import thredds_utils
-import utils
+import src.plot_utils as plot_utils
+import src.thredds_utils as thredds_utils
+import src.utils as utils
 
 
 def arrays_to_particleds(time, lat, lon) -> xr.Dataset:

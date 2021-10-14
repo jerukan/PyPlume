@@ -9,9 +9,9 @@ import sys
 import numpy as np
 from parcels import ParticleSet, ErrorCode, AdvectionRK4, AdvectionRK45, ScipyParticle, JITParticle
 
-import utils
-from parcels_analysis import ParticleResult
-from parcels_kernels import DeleteParticle
+import src.utils as utils
+from src.parcels_analysis import ParticleResult
+from src.parcels_kernels import DeleteParticle
 
 # ignore annoying deprecation warnings
 import warnings
@@ -88,7 +88,7 @@ def import_kernel_or_particle(name):
         return ScipyParticle
     if name == "JITParticle":
         return JITParticle
-    mod = importlib.import_module("parcels_kernels")
+    mod = importlib.import_module("src.parcels_kernels")
     try:
         return getattr(mod, name)
     except AttributeError as err:

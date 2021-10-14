@@ -11,11 +11,11 @@ import numpy as np
 from shapely.geometry import LineString
 import xarray as xr
 
-from constants import *
-from parcels_utils import HFRGrid
-from plot_features import *
-import plot_utils
-import utils
+from src.constants import *
+from src.parcels_utils import HFRGrid
+from src.plot_features import *
+import src.plot_utils as plot_utils
+import src.utils as utils
 
 
 class TimedFrame:

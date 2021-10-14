@@ -1,3 +1,7 @@
+"""
+Everything in this file is related to processing the NetCDF file created by a Parcels particle
+file.
+"""
 from pathlib import Path
 import os
 import subprocess
@@ -7,11 +11,11 @@ import numpy as np
 from shapely.geometry import LineString
 import xarray as xr
 
-from constants import *
-from parcels_utils import HFRGrid
-from plot_features import *
-import plot_utils
-import utils
+from src.constants import *
+from src.parcels_utils import HFRGrid
+from src.plot_features import *
+import src.plot_utils as plot_utils
+import src.utils as utils
 
 
 class TimedFrame:
@@ -21,8 +25,9 @@ class TimedFrame:
         self.path = path
         self.lats = list(lats)
         self.lons = list(lons)
+        # optional data if it doesn't exist
         self.ages = [] if ages is None else list(ages)
-        # path to other plots that display other information about the frame
+        # path to other plots that display other features about the frame
         self.paths_feat = kwargs
 
     def __repr__(self):
@@ -54,7 +59,7 @@ class ParticleResult:
             raise TypeError(f"{dataset} is not a path or xarray dataset")
         self.data_vars = {}
         self.non_vars = {}  # data variables with different dimensions than the dataset's
-        self.shape = self.xrds["trajectory"].shape
+        self.shape = self.xrds["trajectory"].shape  # use trajectory var as reference
         for var, arr in self.xrds.variables.items():
             arr = arr.values
             if self.shape == arr.shape:

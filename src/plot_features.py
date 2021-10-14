@@ -1,5 +1,10 @@
 """
 Collection of classes that represent plotted features in a given simulation.
+
+If you want to add additional stuff to the generated plots, this is the place to do so.
+Create a new class that extends ParticlePlotFeature to customize what is plotted on top of
+the particle frames.
+
 These features represent additional information to the simulation on top of the already plotted
 particle movements.
 """
@@ -12,9 +17,9 @@ import scipy.spatial
 from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
 
-from constants import *
-from parcels_utils import BuoyPath
-import utils
+from src.constants import *
+from src.parcels_utils import BuoyPath
+import src.utils as utils
 
 
 class ParticlePlotFeature:

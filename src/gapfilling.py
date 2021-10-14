@@ -7,9 +7,9 @@ import matlab.engine
 import numpy as np
 import xarray as xr
 
-import utils
-from parcels_utils import HFRGrid
-import thredds_utils
+import src.utils as utils
+from src.parcels_utils import HFRGrid
+import src.thredds_utils as thredds_utils
 
 
 class GapfillStep(ABC):
@@ -43,6 +43,9 @@ def get_interped(i, target, ref, invalid_where):
 
 
 class InterpolationStep(GapfillStep):
+    """
+    Uses linear interpolation
+    """
     def __init__(self, references=None):
         self.references = references if references is not None else []
 
@@ -114,6 +117,13 @@ class InterpolationStep(GapfillStep):
 
 
 class SmoothnStep(GapfillStep):
+    """
+    PLS and smoothing with DCT shenanigans
+
+    uses the matlab engine and smoothn.m
+    https://www.mathworks.com/help/matlab/matlab-engine-for-python.html
+    https://www.mathworks.com/matlabcentral/fileexchange/25634-smoothn
+    """
     def __init__(self, mask=None):
         if mask is not None:
             self.mask = HFRGrid(mask) if not isinstance(mask, HFRGrid) else mask
@@ -163,7 +173,7 @@ class SmoothnStep(GapfillStep):
             target_smoothed_v[i] = v_array
 
         if self.mask is not None:
-            no_data = utils.generate_mask_none(self.mask.xrds["u"].values)
+            no_data = utils.generate_mask_none(self.mask.xrds["U"].values)
             no_data = np.tile(no_data, (target.xrds["time"].size, 1, 1))
             target_smoothed_u[no_data] = np.nan
             target_smoothed_v[no_data] = np.nan
@@ -191,11 +201,11 @@ class Gapfiller:
                 raise TypeError(f"{step} is not a proper gapfilling step.")
             self.steps.append(step)
 
-    def execute(self, target: HFRGrid) -> xr.Dataset:
+    def execute(self, target: HFRGrid, **kwargs) -> xr.Dataset:
         u = target.xrds["U"].values.copy()
         v = target.xrds["V"].values.copy()
         for step in self.steps:
-            u, v = step.process(u, v, target)
+            u, v = step.process(u, v, target, **kwargs)
 
         # re-add coordinates, dimensions, and metadata to interpolated data
         darr_u = utils.conv_to_dataarray(u, target.xrds["U"])

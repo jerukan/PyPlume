@@ -36,14 +36,11 @@ def RandomWalk(particle, fieldset, time):
     """
     uerr = 5 / 100  # 5 cm/s uncertainty with radar
     th = 2 * math.pi * ParcelsRandom.random()  # randomize angle of error
-    u_, v_ = fieldset.UV[time, particle.depth, particle.lat, particle.lon]
     # convert from degrees to m
     u_conv = 1852 * 60 * math.cos(particle.lat * math.pi / 180)  # lon convert
     v_conv = 1852 * 60  # lat convert
-    u_ *= u_conv
-    v_ *= v_conv
-    u_n = u_ + uerr * math.cos(th)
-    v_n = v_ + uerr * math.sin(th)
+    u_n = uerr * math.cos(th)
+    v_n = uerr * math.sin(th)
     dx = u_n * particle.dt
     dy = v_n * particle.dt
     # undo conversion

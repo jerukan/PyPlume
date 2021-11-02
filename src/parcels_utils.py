@@ -138,7 +138,7 @@ def rename_dataset_vars(path):
     return ds
 
 
-def xr_dataset_to_fieldset(xrds, copy=True, raw=True, **kwargs) -> FieldSet:
+def xr_dataset_to_fieldset(xrds, copy=True, raw=True, complete=True, **kwargs) -> FieldSet:
     """
     Creates a parcels FieldSet with an ocean current xarray Dataset.
     copy is true by default since Parcels has a habit of turning nan values into 0s.
@@ -165,7 +165,8 @@ def xr_dataset_to_fieldset(xrds, copy=True, raw=True, **kwargs) -> FieldSet:
                 dict(lat="lat", lon="lon", time="time"),
                 **kwargs
             )
-    # fieldset.check_complete()
+    if complete:
+        fieldset.check_complete()
     return fieldset
 
 
@@ -185,23 +186,16 @@ class HFRGrid:
 
     TODO generate the mask of where data should be available
     """
-    def __init__(self, dataset, init_fs=True, fs_kwargs=None):
+    def __init__(self, dataset, init_fs=True, fields=None, fs_kwargs=None):
         """
         Reads from a netcdf file containing ocean current data.
 
         Args:
             dataset (path-like or xr.Dataset): represents the netcdf ocean current data.
+            fields (list[parcels.Field])
         """
-        if isinstance(dataset, (Path, str)):
-            self.path = dataset
-            with xr.open_dataset(dataset) as ds:
-                self.xrds = ds
-        elif isinstance(dataset, xr.Dataset):
-            self.path = None
-            self.xrds = dataset
-        else:
-            raise TypeError(f"{dataset} is not a path or xarray dataset")
-        self.xrds = rename_dataset_vars(self.xrds)
+        self.xrds = rename_dataset_vars(utils.open_ds_if_path(dataset))
+        self.fields = fields
         self.times = self.xrds["time"].values
         self.lats = self.xrds["lat"].values
         self.lons = self.xrds["lon"].values
@@ -258,12 +252,24 @@ class HFRGrid:
             raise ValueError("dataset vectors don't have a dimension of 1 or 3")
 
     def prep_fieldsets(self, **kwargs):
-        # spherical mesh
-        kwargs["mesh"] = "spherical"
-        self.fieldset = xr_dataset_to_fieldset(self.xrds, **kwargs)
-        # flat mesh
-        kwargs["mesh"] = "flat"
-        self.fieldset_flat = xr_dataset_to_fieldset(self.xrds, **kwargs)
+        if self.fields is not None:
+            # spherical mesh
+            kwargs["mesh"] = "spherical"
+            self.fieldset = xr_dataset_to_fieldset(self.xrds, complete=False, **kwargs)
+            [self.fieldset.add_field(fld) for fld in self.fields]
+            self.fieldset.check_complete()
+            # flat mesh
+            kwargs["mesh"] = "flat"
+            self.fieldset_flat = xr_dataset_to_fieldset(self.xrds, complete=False, **kwargs)
+            [self.fieldset_flat.add_field(fld) for fld in self.fields]
+            self.fieldset_flat.check_complete()
+        else:
+            # spherical mesh
+            kwargs["mesh"] = "spherical"
+            self.fieldset = xr_dataset_to_fieldset(self.xrds, **kwargs)
+            # flat mesh
+            kwargs["mesh"] = "flat"
+            self.fieldset_flat = xr_dataset_to_fieldset(self.xrds, **kwargs)
 
     def get_coords(self) -> tuple:
         """

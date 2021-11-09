@@ -71,7 +71,7 @@ def DeleteOOB(particle, fieldset, time):
 
 
 def DeleteAfter3Days(particle, fieldset, time):
-    """Deletes a particle after 3 days (should probably rename this for that)"""
+    """Deletes a particle after 3 days"""
     LIFETIME = 259200
     if particle.lifetime > LIFETIME:
         particle.delete()
@@ -102,19 +102,14 @@ def WindModify3Percent(particle, fieldset, time):
 
 
 def AdvectionRK4BorderCheck(particle, fieldset, time):
-    u1 = fieldset.CU[particle]
-    v1 = fieldset.CV[particle]
+    (u1, v1) = fieldset.CUV[particle]
     if math.fabs(u1) > 0 or math.fabs(v1) > 0:
-        print("?????????????")
         lon1, lat1 = (particle.lon + u1*.5*particle.dt, particle.lat + v1*.5*particle.dt)
-        u2 = fieldset.CU[time + .5 * particle.dt, particle.depth, lat1, lon1, particle]
-        v2 = fieldset.CV[time + .5 * particle.dt, particle.depth, lat1, lon1, particle]
+        u2, v2 = fieldset.CUV[time + .5 * particle.dt, particle.depth, lat1, lon1, particle]
         lon2, lat2 = (particle.lon + u2*.5*particle.dt, particle.lat + v2*.5*particle.dt)
-        u3 = fieldset.CU[time + .5 * particle.dt, particle.depth, lat2, lon2, particle]
-        v3 = fieldset.CV[time + .5 * particle.dt, particle.depth, lat2, lon2, particle]
+        u3, v3 = fieldset.CUV[time + .5 * particle.dt, particle.depth, lat2, lon2, particle]
         lon3, lat3 = (particle.lon + u3*particle.dt, particle.lat + v3*particle.dt)
-        u4 = fieldset.CU[time + particle.dt, particle.depth, lat3, lon3, particle]
-        v4 = fieldset.CV[time + particle.dt, particle.depth, lat3, lon3, particle]
+        u4, v4 = fieldset.CUV[time + particle.dt, particle.depth, lat3, lon3, particle]
         particle.lon += (u1 + 2*u2 + 2*u3 + u4) / 6. * particle.dt
         particle.lat += (v1 + 2*v2 + 2*v3 + v4) / 6. * particle.dt
     else:

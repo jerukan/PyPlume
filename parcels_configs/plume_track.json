@@ -8,8 +8,8 @@
 	"parcels_config": {
 		"save_dir_pfile": "particledata",
 		"particle_type": "ThreddsParticle",
-		"boundary": "freeslip",
-		"kernels": ["AdvectionRK4", "AgeParticle", "DeleteAfter3Days", "RandomWalk"],
+		"boundary": "free",
+		"kernels": ["AdvectionRK4", "AgeParticle", "RandomWalk"],
 		"time_range": ["2020-02-09T01:00", "2020-02-14T01:00"],
 		"repeat_dt": 3600,
 		"repetitions": -1,
@@ -22,15 +22,14 @@
 	},
 	"postprocess_config": {
 		"coastline": {
-			"path": "matlab/coastline.mat"
 		}
 	},
 	"save_snapshots": true,
 	"plotting_config": {
 		"shown_domain": {
-			"S": 32.35,
-			"N": 32.7,
-			"W": -117.25,
+			"S": 32.53,
+			"N": 32.585,
+			"W": -117.162,
 			"E": -117.105
 		},
 		"save_dir_snapshots": "snapshots",

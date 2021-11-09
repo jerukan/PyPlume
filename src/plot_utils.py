@@ -173,7 +173,7 @@ def plot_particles(
         if show_time is not None and show_time < 0:
             raise ValueError("Particle simulation time domain goes out of bounds")
         _, fig, ax, _ = plotting.plotfield(
-            field=grid.fieldset.UV, show_time=show_time, domain=domain, land=land, vmin=0,
+            field=grid.fieldset.CUV, show_time=show_time, domain=domain, land=land, vmin=0,
             vmax=vmax, titlestr="Particles and "
         )
     sc = ax.scatter(lons, lats, c=ages, edgecolor="k", vmin=0, vmax=max_age, s=s)

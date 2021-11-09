@@ -9,7 +9,7 @@ import sys
 
 import numpy as np
 import pandas as pd
-from parcels import FieldSet, plotting
+from parcels import FieldSet, plotting, Field, VectorField
 import scipy.spatial
 import xarray as xr
 
@@ -251,17 +251,25 @@ class HFRGrid:
         else:
             raise ValueError("dataset vectors don't have a dimension of 1 or 3")
 
+    def add_field(self, fieldset, field, name=None):
+        if isinstance(field, VectorField):
+            fieldset.add_vector_field(field)
+        elif isinstance(field, Field):
+            fieldset.add_field(field, name=name)
+        else:
+            raise TypeError(f"{field} is not a valid field or vector field")
+
     def prep_fieldsets(self, **kwargs):
         if self.fields is not None:
             # spherical mesh
             kwargs["mesh"] = "spherical"
             self.fieldset = xr_dataset_to_fieldset(self.xrds, complete=False, **kwargs)
-            [self.fieldset.add_field(fld) for fld in self.fields]
+            [self.add_field(self.fieldset, fld) for fld in self.fields]
             self.fieldset.check_complete()
             # flat mesh
             kwargs["mesh"] = "flat"
             self.fieldset_flat = xr_dataset_to_fieldset(self.xrds, complete=False, **kwargs)
-            [self.fieldset_flat.add_field(fld) for fld in self.fields]
+            [self.add_field(self.fieldset, fld) for fld in self.fields]
             self.fieldset_flat.check_complete()
         else:
             # spherical mesh
@@ -278,16 +286,21 @@ class HFRGrid:
         """
         return self.times, self.lats, self.lons
 
-    def get_domain(self) -> dict:
+    def get_domain(self, dtype='float32') -> dict:
         """
+        Args:
+            dtype: specify what type to convert the coordinates to. The data is normally stored in
+             float64, but parcels converts them to float32, causing some rounding errors and domain
+             errors in specific cases.
+
         Returns:
             dict
         """
         return {
-            "S": self.lats[0],
-            "N": self.lats[-1],
-            "W": self.lons[0],
-            "E": self.lons[-1],
+            "S": self.lats.astype(dtype)[0],
+            "N": self.lats.astype(dtype)[-1],
+            "W": self.lons.astype(dtype)[0],
+            "E": self.lons.astype(dtype)[-1],
         }  # mainly for use with showing a FieldSet and restricting domain
 
     def get_closest_index(self, t=None, lat=None, lon=None):

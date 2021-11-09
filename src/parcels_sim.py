@@ -11,7 +11,7 @@ from parcels import ParticleSet, ErrorCode, AdvectionRK4, AdvectionRK45, ScipyPa
 
 import src.utils as utils
 from src.parcels_analysis import ParticleResult
-from src.parcels_kernels import DeleteParticle
+from src.parcels_kernels import DeleteParticle, DeleteParticleVerbose
 
 # ignore annoying deprecation warnings
 import warnings
@@ -258,7 +258,7 @@ class ParcelsSimulation:
             self.kernel,
             runtime=timedelta(seconds=runtime),
             dt=timedelta(seconds=self.cfg["simulation_dt"]),
-            recovery={ErrorCode.ErrorOutOfBounds: DeleteParticle},
+            recovery={ErrorCode.ErrorOutOfBounds: DeleteParticleVerbose},
             output_file=self.pfile
         )
 

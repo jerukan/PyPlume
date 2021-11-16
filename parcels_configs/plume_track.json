@@ -1,9 +1,10 @@
 {
 	"name": "plume_track",
-	"netcdf_path": {
-		"type": "file",
-		"path": "current_netcdfs/tj_plume_2020-02_ThreddsCode.USWC_1KM_HOURLY_interped.nc",
-		"gapfill_steps": []
+	"netcdf_data": {
+		"ocean": {
+			"path": "current_netcdfs/tj_plume_2020-02_ThreddsCode.USWC_1KM_HOURLY_interped.nc",
+			"gapfill_steps": []
+		}
 	},
 	"parcels_config": {
 		"save_dir_pfile": "particledata",

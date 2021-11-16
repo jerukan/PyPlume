@@ -1,12 +1,13 @@
 {
 	"name": "buoy_track_704_02",
-	"netcdf_path": {
-		"type": "thredds",
-		"path": "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd",
-		"time_range": ["2019-08-16", "2019-08-23"],
-		"lat_range": [27, 33],
-		"lon_range": [-120, -114],
-		"gapfill_steps": []
+	"netcdf_data": {
+		"ocean": {
+			"path": "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd",
+			"time_range": ["2019-08-16", "2019-08-23"],
+			"lat_range": [27, 33],
+			"lon_range": [-120, -114],
+			"gapfill_steps": []
+		}
 	},
 	"save_snapshots": true,
 	"parcels_config": {

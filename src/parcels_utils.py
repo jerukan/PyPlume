@@ -1,6 +1,7 @@
 """
 A collection of methods wrapping OceanParcels functionalities.
 """
+import os
 import sys
 
 import numpy as np
@@ -165,15 +166,17 @@ def xr_dataset_to_fieldset(xrds, copy=True, raw=True, complete=True, **kwargs) -
     return fieldset
 
 
-def read_netcdf_info(**netcdf_cfg):
+def read_netcdf_info(netcdf_cfg):
     cfg = utils.get_path_cfg(netcdf_cfg)
-    if "type" not in cfg or cfg["type"] == "file":
-        # if type not specified or something, just try to open it
-        with xr.open_dataset(netcdf_cfg["path"]) as ds:
+    if os.path.exists(cfg["path"]):
+        # check if url
+        with xr.open_dataset(cfg["path"]) as ds:
             return ds
-    if cfg["type"] == "thredds":
-        return thredds_utils.get_thredds_dataset(netcdf_cfg["path"], netcdf_cfg["time_range"],
-            netcdf_cfg["lat_range"], netcdf_cfg["lon_range"], inclusive=True)
+    # attempt to retrieve data from thredds
+    # ranges of data are required due to the size of data
+    return thredds_utils.get_thredds_dataset(
+        cfg["path"], cfg["time_range"], cfg["lat_range"], cfg["lon_range"], inclusive=True
+    )
 
 
 class HFRGrid:

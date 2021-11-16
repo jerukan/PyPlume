@@ -23,17 +23,14 @@
 		"snapshot_interval": 3600
 	},
 	"postprocess_config": {
-		"coastline": null,
-		"buoy": {
-			"path": "buoy_data/wavebuoy_704-02.csv"
-		}
+		"buoy": "buoy_data/wavebuoy_704-02.csv"
 	},
 	"plotting_config": {
 		"shown_domain": {
 			"S": 32.35,
-		    "N": 32.9,
-		    "W": -117.85,
-		    "E": -117.55
+			"N": 32.9,
+			"W": -117.85,
+			"E": -117.55
 		},
 		"save_dir_snapshots": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/snapshots",
 		"plot_feature_set": null,

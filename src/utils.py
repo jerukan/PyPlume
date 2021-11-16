@@ -247,3 +247,14 @@ def load_geo_points(path, **kwargs):
         lats, lons = load_pts_mat(path, lat_ind=lat_var, lon_ind=lon_var)
         return lats, lons
     raise ValueError(f"Invalid extension {ext}")
+
+
+def get_path_cfg(path, **kwargs):
+    """Utility to check if just a path was passed in or a path and its kwargs."""
+    if isinstance(path, (str, Path)):
+        return {"path": path, **kwargs}
+    if isinstance(path, dict):
+        if "path" in path:
+            return {**path, **kwargs}
+        raise KeyError(f"key 'path' not in path config")
+    raise TypeError(f"{path} is not a proper path or config")

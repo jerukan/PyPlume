@@ -14,16 +14,11 @@
 		"repeat_dt": 3600,
 		"repetitions": -1,
 		"instances_per_spawn": 1,
-		"spawn_points": {
-			"path": "matlab/glist90zj_pts_position_spawn.mat"
-		},
+		"spawn_points": "matlab/glist90zj_pts_position_spawn.mat",
 		"simulation_dt": 300,
 		"snapshot_interval": 3600
 	},
-	"postprocess_config": {
-		"coastline": {
-		}
-	},
+	"postprocess_config": {},
 	"save_snapshots": true,
 	"plotting_config": {
 		"shown_domain": {

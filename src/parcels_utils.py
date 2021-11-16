@@ -1,19 +1,14 @@
 """
 A collection of methods wrapping OceanParcels functionalities.
 """
-import datetime
-from pathlib import Path
-import os
-import subprocess
 import sys
 
 import numpy as np
 import pandas as pd
-from parcels import FieldSet, plotting, Field, VectorField
+from parcels import FieldSet, Field, VectorField
 import scipy.spatial
 import xarray as xr
 
-import src.plot_utils as plot_utils
 import src.thredds_utils as thredds_utils
 import src.utils as utils
 
@@ -170,11 +165,13 @@ def xr_dataset_to_fieldset(xrds, copy=True, raw=True, complete=True, **kwargs) -
     return fieldset
 
 
-def read_netcdf_info(netcdf_cfg):
-    if netcdf_cfg["type"] == "file":
+def read_netcdf_info(**netcdf_cfg):
+    cfg = utils.get_path_cfg(netcdf_cfg)
+    if "type" not in cfg or cfg["type"] == "file":
+        # if type not specified or something, just try to open it
         with xr.open_dataset(netcdf_cfg["path"]) as ds:
             return ds
-    if netcdf_cfg["type"] == "thredds":
+    if cfg["type"] == "thredds":
         return thredds_utils.get_thredds_dataset(netcdf_cfg["path"], netcdf_cfg["time_range"],
             netcdf_cfg["lat_range"], netcdf_cfg["lon_range"], inclusive=True)
 

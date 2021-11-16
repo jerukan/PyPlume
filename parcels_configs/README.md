@@ -2,34 +2,40 @@
 
 This is where the configs go.
 
+**Note many of the options in the config are optional.**
+
 example layout:
 
 ```yaml
 {
   # make this unique to avoid any accidental overriding
   "name": "name_of_config",
-  # information about the ocean vector field that is loaded into a Parcels field
+  # information about the various vector field that is loaded into a Parcels field
   # all U and V components MUST be in m/s
-  "netcdf_path": {
-    "type": "<file> or <thredds>",
-    "path": "path/to/file/or/url.nc",
-    ##### start of thredds only settings #####
-    "time_range": ["2020-06-16T21", "2020-06-23T21"],
-    "lat_range": [32.524, 32.75],
-    "lon_range": [-117.32, -117.09],
-    ###### end of thredds only settings ######
-    # if there is a need to use any built in gapfillers, specify them here
-    # check gapfilling.py for available gapfillers and arguments
-    "gapfill_steps": [
-      {
-        "name": "InterpolationStep",
-        "args": {
-          "references": ["USWC_2KM_HOURLY", "USWC_6KM_HOURLY"]
+  # available fields to input into simulation:
+  # [ocean, wind, alongshore]
+  "netcdf_data": {
+    # ocean vector field
+    "ocean": {
+      "path": "path/to/file/or/url.nc",
+      ##### start of thredds only settings #####
+      "time_range": ["2020-06-16T21", "2020-06-23T21"],
+      "lat_range": [32.524, 32.75],
+      "lon_range": [-117.32, -117.09],
+      ###### end of thredds only settings ######
+      # if there is a need to use any built in gapfillers, specify them here
+      # check gapfilling.py for available gapfillers and arguments
+      "gapfill_steps": [
+        {
+          "name": "InterpolationStep",
+          "args": {
+            "references": ["USWC_2KM_HOURLY", "USWC_6KM_HOURLY"]
+          }
         }
-      }
-    ],
+      ]
+    },
     # specify wind data to modify the behavior of particle advection
-    "wind_data": {
+    "wind": {
       # uniform or vector field wind datasets can be passed in
       # currently only supports inputting NetCDF files with U and V components in m/s
       # if the wind data is in different units or measured by heading + magnitude, you must

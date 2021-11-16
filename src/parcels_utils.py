@@ -1,19 +1,15 @@
 """
 A collection of methods wrapping OceanParcels functionalities.
 """
-import datetime
-from pathlib import Path
 import os
-import subprocess
 import sys
 
 import numpy as np
 import pandas as pd
-from parcels import FieldSet, plotting
+from parcels import FieldSet, Field, VectorField
 import scipy.spatial
 import xarray as xr
 
-import src.plot_utils as plot_utils
 import src.thredds_utils as thredds_utils
 import src.utils as utils
 
@@ -138,7 +134,7 @@ def rename_dataset_vars(path):
     return ds
 
 
-def xr_dataset_to_fieldset(xrds, copy=True, raw=True, **kwargs) -> FieldSet:
+def xr_dataset_to_fieldset(xrds, copy=True, raw=True, complete=True, **kwargs) -> FieldSet:
     """
     Creates a parcels FieldSet with an ocean current xarray Dataset.
     copy is true by default since Parcels has a habit of turning nan values into 0s.
@@ -165,17 +161,22 @@ def xr_dataset_to_fieldset(xrds, copy=True, raw=True, **kwargs) -> FieldSet:
                 dict(lat="lat", lon="lon", time="time"),
                 **kwargs
             )
-    # fieldset.check_complete()
+    if complete:
+        fieldset.check_complete()
     return fieldset
 
 
 def read_netcdf_info(netcdf_cfg):
-    if netcdf_cfg["type"] == "file":
-        with xr.open_dataset(netcdf_cfg["path"]) as ds:
+    cfg = utils.get_path_cfg(netcdf_cfg)
+    if os.path.exists(cfg["path"]):
+        # check if url
+        with xr.open_dataset(cfg["path"]) as ds:
             return ds
-    if netcdf_cfg["type"] == "thredds":
-        return thredds_utils.get_thredds_dataset(netcdf_cfg["path"], netcdf_cfg["time_range"],
-            netcdf_cfg["lat_range"], netcdf_cfg["lon_range"], inclusive=True)
+    # attempt to retrieve data from thredds
+    # ranges of data are required due to the size of data
+    return thredds_utils.get_thredds_dataset(
+        cfg["path"], cfg["time_range"], cfg["lat_range"], cfg["lon_range"], inclusive=True
+    )
 
 
 class HFRGrid:
@@ -185,23 +186,16 @@ class HFRGrid:
 
     TODO generate the mask of where data should be available
     """
-    def __init__(self, dataset, init_fs=True, fs_kwargs=None):
+    def __init__(self, dataset, init_fs=True, fields=None, fs_kwargs=None):
         """
         Reads from a netcdf file containing ocean current data.
 
         Args:
             dataset (path-like or xr.Dataset): represents the netcdf ocean current data.
+            fields (list[parcels.Field])
         """
-        if isinstance(dataset, (Path, str)):
-            self.path = dataset
-            with xr.open_dataset(dataset) as ds:
-                self.xrds = ds
-        elif isinstance(dataset, xr.Dataset):
-            self.path = None
-            self.xrds = dataset
-        else:
-            raise TypeError(f"{dataset} is not a path or xarray dataset")
-        self.xrds = rename_dataset_vars(self.xrds)
+        self.xrds = rename_dataset_vars(utils.open_ds_if_path(dataset))
+        self.fields = fields
         self.times = self.xrds["time"].values
         self.lats = self.xrds["lat"].values
         self.lons = self.xrds["lon"].values
@@ -257,13 +251,33 @@ class HFRGrid:
         else:
             raise ValueError("dataset vectors don't have a dimension of 1 or 3")
 
+    def add_field(self, fieldset, field, name=None):
+        if isinstance(field, VectorField):
+            fieldset.add_vector_field(field)
+        elif isinstance(field, Field):
+            fieldset.add_field(field, name=name)
+        else:
+            raise TypeError(f"{field} is not a valid field or vector field")
+
     def prep_fieldsets(self, **kwargs):
-        # spherical mesh
-        kwargs["mesh"] = "spherical"
-        self.fieldset = xr_dataset_to_fieldset(self.xrds, **kwargs)
-        # flat mesh
-        kwargs["mesh"] = "flat"
-        self.fieldset_flat = xr_dataset_to_fieldset(self.xrds, **kwargs)
+        if self.fields is not None:
+            # spherical mesh
+            kwargs["mesh"] = "spherical"
+            self.fieldset = xr_dataset_to_fieldset(self.xrds, complete=False, **kwargs)
+            [self.add_field(self.fieldset, fld) for fld in self.fields]
+            self.fieldset.check_complete()
+            # flat mesh
+            kwargs["mesh"] = "flat"
+            self.fieldset_flat = xr_dataset_to_fieldset(self.xrds, complete=False, **kwargs)
+            [self.add_field(self.fieldset, fld) for fld in self.fields]
+            self.fieldset_flat.check_complete()
+        else:
+            # spherical mesh
+            kwargs["mesh"] = "spherical"
+            self.fieldset = xr_dataset_to_fieldset(self.xrds, **kwargs)
+            # flat mesh
+            kwargs["mesh"] = "flat"
+            self.fieldset_flat = xr_dataset_to_fieldset(self.xrds, **kwargs)
 
     def get_coords(self) -> tuple:
         """
@@ -272,16 +286,21 @@ class HFRGrid:
         """
         return self.times, self.lats, self.lons
 
-    def get_domain(self) -> dict:
+    def get_domain(self, dtype='float32') -> dict:
         """
+        Args:
+            dtype: specify what type to convert the coordinates to. The data is normally stored in
+             float64, but parcels converts them to float32, causing some rounding errors and domain
+             errors in specific cases.
+
         Returns:
             dict
         """
         return {
-            "S": self.lats[0],
-            "N": self.lats[-1],
-            "W": self.lons[0],
-            "E": self.lons[-1],
+            "S": self.lats.astype(dtype)[0],
+            "N": self.lats.astype(dtype)[-1],
+            "W": self.lons.astype(dtype)[0],
+            "E": self.lons.astype(dtype)[-1],
         }  # mainly for use with showing a FieldSet and restricting domain
 
     def get_closest_index(self, t=None, lat=None, lon=None):

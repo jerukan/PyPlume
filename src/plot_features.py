@@ -301,10 +301,7 @@ class BuoyPathFeature(ParticlePlotFeature):
 
     @classmethod
     def from_csv(cls, path, **kwargs):
-        if not os.path.exists(path):
-            print(f"{path} does not exist", file=sys.stderr)
-            return None
-        return cls(BuoyPath.from_csv(path), **kwargs)
+        return cls(BuoyPath.from_csv(**utils.get_path_cfg(path)), **kwargs)
 
 
 class WindVectorFeature(ParticlePlotFeature):

@@ -184,7 +184,7 @@ class SmoothnStep(GapfillStep):
 
 
 def import_gapfill_step(name):
-    mod = importlib.import_module("gapfilling")
+    mod = importlib.import_module("src.gapfilling")
     try:
         return getattr(mod, name)
     except AttributeError:

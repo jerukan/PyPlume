@@ -11,7 +11,7 @@ from parcels import ParticleSet, ErrorCode, AdvectionRK4, AdvectionRK45, ScipyPa
 
 import src.utils as utils
 from src.parcels_analysis import ParticleResult
-from src.parcels_kernels import DeleteParticle
+from src.parcels_kernels import DeleteParticle, DeleteParticleVerbose
 
 # ignore annoying deprecation warnings
 import warnings
@@ -110,8 +110,8 @@ class ParcelsSimulation:
         self.times, _, _ = hfrgrid.get_coords()
 
         # load spawn points
-        if isinstance(cfg["spawn_points"], dict):
-            lats, lons = utils.load_geo_points(**cfg["spawn_points"])
+        if isinstance(cfg["spawn_points"], (str, dict)):
+            lats, lons = utils.load_geo_points(**utils.get_path_cfg(cfg["spawn_points"]))
             spawn_points = np.array([lats, lons]).T
         elif isinstance(cfg["spawn_points"], (list, np.ndarray)):
             spawn_points = cfg["spawn_points"]
@@ -258,7 +258,7 @@ class ParcelsSimulation:
             self.kernel,
             runtime=timedelta(seconds=runtime),
             dt=timedelta(seconds=self.cfg["simulation_dt"]),
-            recovery={ErrorCode.ErrorOutOfBounds: DeleteParticle},
+            recovery={ErrorCode.ErrorOutOfBounds: DeleteParticleVerbose},
             output_file=self.pfile
         )
 

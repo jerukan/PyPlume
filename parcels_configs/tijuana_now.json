@@ -20,7 +20,7 @@
 		]
 	},
 	"parcels_config": {
-		"save_dir_pfile": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/particledata",
+		"save_dir_pfile": "particledata",
 		"particle_type": "ThreddsParticle",
 		"kernels": ["AdvectionRK4", "AgeParticle", "DeleteOOB"],
 		"time_range": ["START", "END"],
@@ -44,7 +44,7 @@
 	"save_snapshots": true,
 	"plotting_config": {
 		"shown_domain": null,
-		"save_dir_snapshots": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/snapshots",
+		"save_dir_snapshots": "snapshots",
 		"plot_feature_set": null,
 		"draw_coasts": true
 	}

@@ -10,12 +10,13 @@
 	},
 	"save_snapshots": true,
 	"parcels_config": {
-		"save_dir_pfile": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/particledata",
+		"save_dir_pfile": "particledata",
 		"particle_type": "ThreddsParticle",
 		"kernels": ["AdvectionRK4", "AgeParticle"],
 		"time_range": ["2019-08-16T22:01:42", "2019-08-22T10:01:21"],
 		"repeat_dt": -1,
 		"repetitions": -1,
+		"instances_per_spawn": 1,
 		"spawn_points": [
 			[32.76992, -117.71452]
 		],
@@ -32,7 +33,7 @@
 			"W": -117.85,
 			"E": -117.55
 		},
-		"save_dir_snapshots": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/snapshots",
+		"save_dir_snapshots": "snapshots",
 		"plot_feature_set": null,
 		"draw_coasts": true
 	}

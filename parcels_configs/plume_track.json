@@ -23,10 +23,10 @@
   "save_snapshots": true,
   "plotting_config": {
     "shown_domain": {
-      "S": 32.53,
-      "N": 32.585,
-      "W": -117.162,
-      "E": -117.105
+      "S": 32.525,
+      "N": 32.7,
+      "W": -117.27,
+      "E": -117.09
     },
     "save_dir_snapshots": "snapshots",
     "plot_feature_set": "tj_plume_tracker",

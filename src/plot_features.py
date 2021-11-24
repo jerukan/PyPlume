@@ -249,7 +249,7 @@ class LatTrackedPointFeature(ParticlePlotFeature):
         point.
         """
         dists = self.get_all_dists(lats, lons)[0]
-        north = lats < self.lats[0]
+        north = lats > self.lats[0]
         dists[north] = -dists[north]
         fig = plt.figure()
         ax = fig.add_subplot()
@@ -268,6 +268,77 @@ class LatTrackedPointFeature(ParticlePlotFeature):
     @classmethod
     def get_tijuana_mouth(cls):
         return cls(TIJUANA_MOUTH_POSITION[0], TIJUANA_MOUTH_POSITION[1], xlim=[-16, 4], ymax=0.1, show=False)
+
+
+class NearcoastDensityFeature(ParticlePlotFeature):
+    """A single point that tracks how northward/southward the particles around it are."""
+    def __init__(self, origin, stations, coastline, xlim=None, ymax=None, **kwargs):
+        """
+        origin is a single point
+        Assume point collections are [[lats], [lons]]
+
+        track_dist: max distance to be considered as a nearcoast particle
+        """
+        self.origin_lat = origin[0]
+        self.origin_lon = origin[1]
+        super().__init__([self.origin_lat], [self.origin_lon], **kwargs)
+        self.station_lats = stations[0]
+        self.station_lons = stations[1]
+        self.coast_lats = coastline[0]
+        self.coast_lons = coastline[1]
+        self.coastline = LineString(np.array([self.coast_lons, self.coast_lats]).T)
+        self.xlim = xlim
+        self.ymax = ymax
+
+    def generate_info_table(self, lats, lons, *args, **kwargs):
+        """
+        Generates a histogram showing the distribution of meridional distances from the single
+        point.
+        """
+        coast_dists = np.empty(len(lats))
+        for i, (lat, lon) in enumerate(zip(lats, lons)):
+            _, coast_nearest = nearest_points(Point(lon, lat), self.coastline)
+            coast_dists[i] = utils.haversine(coast_nearest.y, lat, coast_nearest.x, lon)
+        dists = self.get_all_dists(lats, lons)[0]
+        station_dists = self.get_all_dists(self.station_lats, self.station_lons)[0]
+        # things north of the origin will appear on the left
+        stations_north = self.station_lats > self.lats[0]
+        station_dists[stations_north] = -station_dists[stations_north]
+        station_dists /= 1000
+        north = lats > self.lats[0]
+        dists[north] = -dists[north]
+        dists /= 1000
+        # hack to prevent non-nearcoast particles from showing
+        dists[coast_dists > self.track_dist] = self.xlim[1] + 1
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        bins = np.linspace(self.xlim[0], self.xlim[1], 40)
+        bins = np.append(bins, self.xlim[1] + 1)
+        ax.hist(dists, bins=bins, density=True)
+        ax.scatter(x=station_dists, y=np.full(station_dists.shape, 0.01), c='k', edgecolor='y')
+        ax.set_xlim(self.xlim)
+        if self.ymax is not None:
+            ax.set_ylim([0, self.ymax])
+        fig.canvas.draw()
+        # matplotlib uses a funny hyphen that doesn't work
+        labels = [abs(float(item.get_text().replace("−", "-"))) for item in ax.get_xticklabels()]
+        ax.set_xticklabels(labels)
+        plt.figtext(0.5, -0.01, '(North) ------ Distance from point (km) ------ (South)', horizontalalignment='center') 
+        fig.set_size_inches(6.1, 2.5)
+        return fig, ax
+
+    @classmethod
+    def get_tijuana_mouth(cls):
+        path = utils.MATLAB_DIR / SD_STATION_FILENAME
+        st_lats, st_lons = utils.load_pts_mat(path, "ywq", "xwq")
+        path = utils.MATLAB_DIR / SD_COASTLINE_FILENAME
+        c_lats, c_lons = utils.load_pts_mat(path, "latz0", "lonz0")
+        return cls(
+            [TIJUANA_MOUTH_POSITION[0], TIJUANA_MOUTH_POSITION[1]],
+            [st_lats, st_lons],
+            [c_lats, c_lons],
+            xlim=[-16, 4], ymax=1, track_dist=900
+        )
 
 
 class BuoyPathFeature(ParticlePlotFeature):

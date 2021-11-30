@@ -302,21 +302,28 @@ class NearcoastDensityFeature(ParticlePlotFeature):
         dists = self.get_all_dists(lats, lons)[0]
         station_dists = self.get_all_dists(self.station_lats, self.station_lons)[0]
         # things north of the origin will appear on the left
+        # calculate station distances
         stations_north = self.station_lats > self.lats[0]
         station_dists[stations_north] = -station_dists[stations_north]
         station_dists /= 1000
+        # find which particles are north relative to origin and set them negative
         north = lats > self.lats[0]
         dists[north] = -dists[north]
         dists /= 1000
+        nearcoast = coast_dists <= self.track_dist
+        if self.xlim is None:
+            xlim = [dists[nearcoast].min(), dists[nearcoast].max()]
+        else:
+            xlim = self.xlim
         # hack to prevent non-nearcoast particles from showing
-        dists[coast_dists > self.track_dist] = self.xlim[1] + 1
+        dists[~nearcoast] = xlim[1] + 1
         fig = plt.figure()
         ax = fig.add_subplot()
-        bins = np.linspace(self.xlim[0], self.xlim[1], 40)
+        bins = np.linspace(xlim[0], xlim[1], 30)
         bins = np.append(bins, self.xlim[1] + 1)
         ax.hist(dists, bins=bins, density=True)
         ax.scatter(x=station_dists, y=np.full(station_dists.shape, 0.01), c='k', edgecolor='y')
-        ax.set_xlim(self.xlim)
+        ax.set_xlim(xlim)
         if self.ymax is not None:
             ax.set_ylim([0, self.ymax])
         fig.canvas.draw()

@@ -322,7 +322,7 @@ class NearcoastDensityFeature(ParticlePlotFeature):
         bins = np.linspace(xlim[0], xlim[1], 30)
         bins = np.append(bins, self.xlim[1] + 1)
         ax.hist(dists, bins=bins, density=True)
-        ax.scatter(x=station_dists, y=np.full(station_dists.shape, 0.01), c='k', edgecolor='y')
+        ax.scatter(x=station_dists, y=np.full(station_dists.shape, 0.01), c='k', edgecolor='y', zorder=1000)
         ax.set_xlim(xlim)
         if self.ymax is not None:
             ax.set_ylim([0, self.ymax])

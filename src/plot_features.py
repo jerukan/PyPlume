@@ -335,8 +335,12 @@ class NearcoastDensityFeature(ParticlePlotFeature):
         return fig, ax
 
     @classmethod
-    def get_tijuana_mouth(cls):
-        path = utils.MATLAB_DIR / SD_STATION_FILENAME
+    def get_tijuana_mouth(cls, path=None):
+        if path is None:
+            path = utils.MATLAB_DIR / SD_STATION_FILENAME
+        if not os.path.exists(path):
+            print(f"{path} does not exist", file=sys.stderr)
+            return None
         st_lats, st_lons = utils.load_pts_mat(path, "ywq", "xwq")
         path = utils.MATLAB_DIR / SD_COASTLINE_FILENAME
         c_lats, c_lons = utils.load_pts_mat(path, "latz0", "lonz0")

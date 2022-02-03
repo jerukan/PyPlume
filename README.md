@@ -56,7 +56,7 @@ following the instructions from the link
 
 ## Last notes
 
-any other dependencies (mostly extra netcdf and .mat files) can be downloaded from the Microsoft
-Teams Trajectories topic files (`parcels_westcoast`).
+any other dependencies (mostly extra netcdf and .mat files) can be downloaded from the
+[Microsoft Teams Trajectories topic files](https://ucsdcloud.sharepoint.com/:f:/r/sites/HFRdataanalysis/Shared%20Documents/Trajectories/parcels_westcoast?csf=1&web=1&e=sOQuyY) (`parcels_westcoast`).
 
 Or maybe I'll stick them onto a google drive idk

@@ -2,8 +2,22 @@
   "name": "plume_track",
   "netcdf_data": {
     "ocean": {
-      "path": "current_netcdfs/tj_plume_2020-02_ThreddsCode.USWC_1KM_HOURLY_interped.nc",
-      "gapfill_steps": []
+      "path": "USWC_1KM_HOURLY",
+      "time_range": ["2020-02-09T01:00", "2020-02-14T01:00"],
+      "lat_range": [32.525, 32.7],
+      "lon_range": [-117.27, -117.09],
+      "gapfill_steps": [
+        {
+          "name": "InterpolationStep",
+          "args": {
+            "references": ["USWC_2KM_HOURLY", "USWC_6KM_HOURLY"]
+          }
+        },
+        {
+          "name": "SmoothnStep",
+          "args": {}
+        }
+      ]
     }
   },
   "parcels_config": {

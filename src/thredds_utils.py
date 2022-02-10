@@ -9,7 +9,9 @@ import xarray as xr
 import src.utils as utils
 
 
-NUM_CHUNKS = 50  # xarray dask chunks, mainly for the stupid big datasets
+# xarray dask chunks, mainly for the stupid big datasets
+# CHUNK_SIZE = 50
+CHUNK_SIZE = "100MB"
 
 
 @unique
@@ -63,12 +65,12 @@ def retrieve_dataset(thredds_code):
         thredds_code = thredds_urls[ThreddsCode[thredds_code]]
     # url passed in
     if isinstance(thredds_code, str):
-        return xr.open_dataset(thredds_code, chunks={"time": NUM_CHUNKS})
+        return xr.open_dataset(thredds_code, chunks={"time": CHUNK_SIZE})
     if thredds_code not in thredds_data or thredds_data[thredds_code] is None:
         print(f"Data for type {thredds_code} not loaded yet. Loading from...")
         print(thredds_urls[thredds_code])
         thredds_data[thredds_code] = xr.open_dataset(
-            thredds_urls[thredds_code], chunks={"time": NUM_CHUNKS}
+            thredds_urls[thredds_code], chunks={"time": CHUNK_SIZE}
         )
     return thredds_data[thredds_code]
 

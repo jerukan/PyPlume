@@ -142,6 +142,7 @@ def xr_dataset_to_fieldset(xrds, copy=True, raw=True, complete=True, **kwargs) -
     Args:
         xrds (xr.Dataset)
         copy (bool)
+        raw (bool): if True, all the data is immediately loaded
         mesh (str): spherical or flat
     """
     if copy:

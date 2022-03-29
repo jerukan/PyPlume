@@ -1,0 +1,90 @@
+{
+  "netcdf_data": {
+    "ocean": {
+      "path": "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd",
+      "time_range": ["2021-10-01", "2021-10-09"],
+      "lat_range": [32, 34.2],
+      "lon_range": [-119, -117.4],
+      "gapfill_steps": []
+    },
+    "wind": {
+      "path": "current_netcdfs/ndbc_46025_wind.nc",
+      "ratio": 0.03,
+      "add_to_field_directly": true
+    },
+    "alongshore": "current_netcdfs/socal_alongshore.nc"
+  },
+  "parcels_config": {
+    "particle_type": "ThreddsParticle",
+    "kernels": ["AdvectionRK4BorderCheck", "AgeParticle", "RandomWalk"],
+    "boundary": null,
+    "time_range": ["START", "END"],
+    "repeat_dt": -1,
+    "repetitions": -1,
+    "instances_per_spawn": 10,
+    "spawn_points": [
+      {
+        "label": "RADARSAT2",
+        "point": [33.2588, -117.84455],
+        "release": "2021-10-06T13:42",
+        "pattern": {
+          "type": "grid",
+          "args": {
+            "size": 3,
+            "gapsize": 0.01
+          }
+        }
+      },
+      {
+        "label": "ICEYE",
+        "point": [33.36458, -117.86774],
+        "release": "2021-10-05T17:37",
+        "pattern": {
+          "type": "grid",
+          "args": {
+            "size": 3,
+            "gapsize": 0.01
+          }
+        }
+      },
+      {
+        "label": "SENTINEL1B",
+        "point": [33.59522, -117.93936],
+        "release": "2021-10-03T01:49",
+        "pattern": {
+          "type": "grid",
+          "args": {
+            "size": 3,
+            "gapsize": 0.01
+          }
+        }
+      },
+      {
+        "label": "SENTINEL1A",
+        "point": [33.63992, -118.08946],
+        "release": "2021-10-02T01:58",
+        "pattern": {
+          "type": "grid",
+          "args": {
+            "size": 3,
+            "gapsize": 0.01
+          }
+        }
+      }
+    ],
+    "simulation_dt": 300,
+    "snapshot_interval": 3600
+  },
+  "postprocess_config": {},
+  "save_snapshots": true,
+  "plotting_config": {
+    "shown_domain": {
+      "S": 33,
+      "N": 34,
+      "W": -118.5,
+      "E": -117.4
+    },
+    "save_dir_snapshots": "snapshots",
+    "draw_coasts": true
+  }
+}

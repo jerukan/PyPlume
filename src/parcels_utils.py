@@ -1,21 +1,17 @@
 """
 A collection of methods wrapping OceanParcels functionalities.
 """
-import datetime
-from pathlib import Path
 import os
-import subprocess
 import sys
 
 import numpy as np
 import pandas as pd
-from parcels import FieldSet, plotting
+from parcels import FieldSet, Field, VectorField
 import scipy.spatial
 import xarray as xr
 
-import plot_utils
-import thredds_utils
-import utils
+import src.thredds_utils as thredds_utils
+import src.utils as utils
 
 
 def arrays_to_particleds(time, lat, lon) -> xr.Dataset:
@@ -104,7 +100,41 @@ def clean_erddap_ds(ds):
     return clean_ds
 
 
-def xr_dataset_to_fieldset(xrds, copy=True, raw=True, mesh="spherical") -> FieldSet:
+def rename_dataset_vars(path):
+    """
+    Renames variable/coord keys in an NetCDF ocean current dataset.
+    If the data has a depth dimension, it will be removed.
+
+    Args:
+        path (path-like or xr.Dataset)
+    """
+    MAPPINGS = {
+        "depth": {"depth", "z"},
+        "lat": {"lat", "latitude", "y"},
+        "lon": {"lon", "longitude", "long", "x"},
+        "time": {"time", "t"},
+        "U": {"u", "water_u"},
+        "V": {"v", "water_v"}
+    }
+    if isinstance(path, xr.Dataset):
+        ds = path
+    else:
+        with xr.open_dataset(path) as opened:
+            ds = opened
+    rename_map = {}
+    for var in ds.variables.keys():
+        for match in MAPPINGS.keys():
+            if var.lower() in MAPPINGS[match]:
+                rename_map[var] = match
+    ds = ds.rename(rename_map)
+    if "depth" in ds["U"].dims:
+        ds["U"] = ds["U"].sel(depth=0)
+    if "depth" in ds["V"].dims:
+        ds["V"] = ds["V"].sel(depth=0)
+    return ds
+
+
+def xr_dataset_to_fieldset(xrds, copy=True, raw=True, complete=True, **kwargs) -> FieldSet:
     """
     Creates a parcels FieldSet with an ocean current xarray Dataset.
     copy is true by default since Parcels has a habit of turning nan values into 0s.
@@ -112,6 +142,7 @@ def xr_dataset_to_fieldset(xrds, copy=True, raw=True, mesh="spherical") -> Field
     Args:
         xrds (xr.Dataset)
         copy (bool)
+        raw (bool): if True, all the data is immediately loaded
         mesh (str): spherical or flat
     """
     if copy:
@@ -120,28 +151,33 @@ def xr_dataset_to_fieldset(xrds, copy=True, raw=True, mesh="spherical") -> Field
         ds = xrds
     if raw:
         fieldset = FieldSet.from_data(
-            {"U": ds["u"].values, "V": ds["v"].values},
+            {"U": ds["U"].values, "V": ds["V"].values},
             {"time": ds["time"].values, "lat": ds["lat"].values, "lon": ds["lon"].values},
-            mesh=mesh
+            **kwargs
         )
     else:
         fieldset = FieldSet.from_xarray_dataset(
                 ds,
-                dict(U="u", V="v"),
+                dict(U="U", V="V"),
                 dict(lat="lat", lon="lon", time="time"),
-                mesh=mesh
+                **kwargs
             )
-    fieldset.check_complete()
+    if complete:
+        fieldset.check_complete()
     return fieldset
 
 
 def read_netcdf_info(netcdf_cfg):
-    if netcdf_cfg["type"] == "file":
-        with xr.open_dataset(netcdf_cfg["path"]) as ds:
+    cfg = utils.get_path_cfg(netcdf_cfg)
+    if os.path.exists(cfg["path"]):
+        # check if url
+        with xr.open_dataset(cfg["path"]) as ds:
             return ds
-    if netcdf_cfg["type"] == "thredds":
-        return thredds_utils.get_thredds_dataset(netcdf_cfg["path"], netcdf_cfg["time_range"],
-            netcdf_cfg["lat_range"], netcdf_cfg["lon_range"], inclusive=True)
+    # attempt to retrieve data from thredds
+    # ranges of data are required due to the size of data
+    return thredds_utils.get_thredds_dataset(
+        cfg["path"], cfg["time_range"], cfg["lat_range"], cfg["lon_range"], inclusive=True
+    )
 
 
 class HFRGrid:
@@ -151,43 +187,98 @@ class HFRGrid:
 
     TODO generate the mask of where data should be available
     """
-    def __init__(self, dataset, init_fs=True):
+    def __init__(self, dataset, init_fs=True, fields=None, fs_kwargs=None):
         """
         Reads from a netcdf file containing ocean current data.
 
         Args:
             dataset (path-like or xr.Dataset): represents the netcdf ocean current data.
+            fields (list[parcels.Field])
         """
-        if isinstance(dataset, (Path, str)):
-            self.path = dataset
-            with xr.open_dataset(dataset) as ds:
-                self.xrds = ds
-        elif isinstance(dataset, xr.Dataset):
-            self.path = None
-            self.xrds = dataset
-        else:
-            raise TypeError(f"{dataset} is not a path or xarray dataset")
+        self.xrds = rename_dataset_vars(utils.open_ds_if_path(dataset))
+        self.fields = fields
         self.times = self.xrds["time"].values
         self.lats = self.xrds["lat"].values
         self.lons = self.xrds["lon"].values
         self.timeKDTree = scipy.spatial.KDTree(np.array([self.times]).T)
         self.latKDTree = scipy.spatial.KDTree(np.array([self.lats]).T)
         self.lonKDTree = scipy.spatial.KDTree(np.array([self.lons]).T)
+        self.fs_kwargs = fs_kwargs if fs_kwargs is not None else {}
         if init_fs:
-            self.prep_fieldsets()
+            self.prep_fieldsets(**self.fs_kwargs)
         else:
             self.fieldset = None
             self.fieldset_flat = None
         # for caching
         self.u = None
         self.v = None
+        self.modified = False
 
+    def modify_with_wind(self, dataset, ratio=1.0):
+        """
+        Directly modify the ocean vector dataset and update the fieldsets.
 
-    def prep_fieldsets(self):
-        # spherical mesh
-        self.fieldset = xr_dataset_to_fieldset(self.xrds)
-        # flat mesh
-        self.fieldset_flat = xr_dataset_to_fieldset(self.xrds, mesh="flat")
+        Args:
+            dataset (xr.Dataset)
+            ratio (float): percentage of how much of the wind vectors to add to the ocean currents
+        """
+        if len(dataset["U"].shape) == 1:
+            # time only dimension
+            for i, t in enumerate(self.xrds["time"]):
+                wind_uv = dataset.sel(time=t.values, method="nearest")
+                wu = wind_uv["U"].values.item()
+                wv = wind_uv["V"].values.item()
+                self.xrds["U"][i] += wu * ratio
+                self.xrds["V"][i] += wv * ratio
+            self.prep_fieldsets(**self.fs_kwargs)
+            self.modified = True
+        elif len(dataset["U"].shape) == 3:
+            print("Ocean current vector modifications with wind vectors must be done"
+                " individually. This may take a while.", file=sys.stderr)
+            # assume dataset has renamed time, lat, lon dimensions
+            # oh god why
+            for i, t in enumerate(self.xrds["time"]):
+                for j, lat in enumerate(self.xrds["lat"]):
+                    for k, lon in enumerate(self.xrds["lon"]):
+                        wind_uv = dataset.sel(
+                            time=t.values, lat=lat.values, lon=lon.values, method="nearest"
+                        )
+                        wu = wind_uv["U"].values.item()
+                        wv = wind_uv["V"].values.item()
+                        self.xrds["U"][i, j, k] += wu * ratio
+                        self.xrds["V"][i, j, k] += wv * ratio
+            self.prep_fieldsets(**self.fs_kwargs)
+            self.modified = True
+        else:
+            raise ValueError("dataset vectors don't have a dimension of 1 or 3")
+
+    def add_field(self, fieldset, field, name=None):
+        if isinstance(field, VectorField):
+            fieldset.add_vector_field(field)
+        elif isinstance(field, Field):
+            fieldset.add_field(field, name=name)
+        else:
+            raise TypeError(f"{field} is not a valid field or vector field")
+
+    def prep_fieldsets(self, **kwargs):
+        if self.fields is not None:
+            # spherical mesh
+            kwargs["mesh"] = "spherical"
+            self.fieldset = xr_dataset_to_fieldset(self.xrds, complete=False, **kwargs)
+            [self.add_field(self.fieldset, fld) for fld in self.fields]
+            self.fieldset.check_complete()
+            # flat mesh
+            kwargs["mesh"] = "flat"
+            self.fieldset_flat = xr_dataset_to_fieldset(self.xrds, complete=False, **kwargs)
+            [self.add_field(self.fieldset, fld) for fld in self.fields]
+            self.fieldset_flat.check_complete()
+        else:
+            # spherical mesh
+            kwargs["mesh"] = "spherical"
+            self.fieldset = xr_dataset_to_fieldset(self.xrds, **kwargs)
+            # flat mesh
+            kwargs["mesh"] = "flat"
+            self.fieldset_flat = xr_dataset_to_fieldset(self.xrds, **kwargs)
 
     def get_coords(self) -> tuple:
         """
@@ -196,16 +287,21 @@ class HFRGrid:
         """
         return self.times, self.lats, self.lons
 
-    def get_domain(self) -> dict:
+    def get_domain(self, dtype='float32') -> dict:
         """
+        Args:
+            dtype: specify what type to convert the coordinates to. The data is normally stored in
+             float64, but parcels converts them to float32, causing some rounding errors and domain
+             errors in specific cases.
+
         Returns:
             dict
         """
         return {
-            "S": self.lats[0],
-            "N": self.lats[-1],
-            "W": self.lons[0],
-            "E": self.lons[-1],
+            "S": self.lats.astype(dtype)[0],
+            "N": self.lats.astype(dtype)[-1],
+            "W": self.lons.astype(dtype)[0],
+            "E": self.lons.astype(dtype)[-1],
         }  # mainly for use with showing a FieldSet and restricting domain
 
     def get_closest_index(self, t=None, lat=None, lon=None):
@@ -244,12 +340,16 @@ class HFRGrid:
             _, lat_idx, lon_idx = self.get_closest_index(None, lat, lon)
         else:
             t_idx, lat_idx, lon_idx = self.get_closest_index(t, lat, lon)
-        # cache the whole array because isel is slow when doing it individually
-        if self.u is None:
-            self.u = self.xrds["u"].values
-        if self.v is None:
-            self.v = self.xrds["v"].values
+        self.check_cache()
         return self.u[t_idx, lat_idx, lon_idx], self.v[t_idx, lat_idx, lon_idx]
+    
+    def check_cache(self):
+        # cache the whole array because isel is slow when doing it individually
+        if self.u is None or self.modified:
+            self.u = self.xrds["U"].values
+        if self.v is None or self.modified:
+            self.v = self.xrds["V"].values
+        self.modified = False
 
     def get_fs_current(self, t, lat, lon, flat=True):
         """

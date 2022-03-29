@@ -1,3 +1,7 @@
+"""
+Everything in this file is related to processing the NetCDF file created by a Parcels particle
+file.
+"""
 from pathlib import Path
 import os
 import subprocess
@@ -7,20 +11,24 @@ import numpy as np
 from shapely.geometry import LineString
 import xarray as xr
 
-from constants import *
-from parcels_utils import HFRGrid
-from plot_features import *
-import plot_utils
-import utils
+from src.constants import *
+from src.parcels_utils import HFRGrid
+from src.plot_features import *
+import src.plot_utils as plot_utils
+import src.utils as utils
 
 
 class TimedFrame:
     """Class that stores information about a single simulation plot"""
-    def __init__(self, time, path, **kwargs):
+    def __init__(self, time, path, lats, lons, ages=None, **kwargs):
         self.time = time
         self.path = path
-        # path to other plots that display other information about the frame
-        self.paths_inf = kwargs
+        self.lats = list(lats)
+        self.lons = list(lons)
+        # optional data if it doesn't exist
+        self.ages = [] if ages is None else list(ages)
+        # path to other plots that display other features about the frame
+        self.paths_feat = kwargs
 
     def __repr__(self):
         return f"([{self.path}] at [{self.time}])"
@@ -51,7 +59,7 @@ class ParticleResult:
             raise TypeError(f"{dataset} is not a path or xarray dataset")
         self.data_vars = {}
         self.non_vars = {}  # data variables with different dimensions than the dataset's
-        self.shape = self.xrds["trajectory"].shape
+        self.shape = self.xrds["trajectory"].shape  # use trajectory var as reference
         for var, arr in self.xrds.variables.items():
             arr = arr.values
             if self.shape == arr.shape:
@@ -119,7 +127,7 @@ class ParticleResult:
         else:
             self.plot_features[name] = feature
 
-    def plot_feature(self, t: np.datetime64, feature: ParticlePlotFeature, ax, feat_info=True):
+    def plot_feature(self, t: np.datetime64, feature: ParticlePlotFeature, fig, ax, feat_info=True):
         """Plots a feature at a given time."""
         mask = self.data_vars["time"] == t
         curr_lats = self.data_vars["lat"][mask]
@@ -127,12 +135,12 @@ class ParticleResult:
         ages = self.data_vars["lifetime"][mask] / 86400 if "lifetime" in self.data_vars else None
         # TODO cache this
         max_age = np.nanmax(self.data_vars["lifetime"]) / 86400  if "lifetime" in self.data_vars else None
-        feature.plot_on_frame(ax, curr_lats, curr_lons, time=t)
+        feature.plot_on_frame(fig, ax, curr_lats, curr_lons, time=t)
         if feat_info:
-            fig_inf, ax_inf = feature.generate_info_table(
+            fig_feat, ax_feat = feature.generate_info_table(
                 curr_lats, curr_lons, lifetimes=ages, age_max=max_age
             )
-            return fig_inf, ax_inf
+            return fig_feat, ax_feat
         return None, None
 
     def plot_at_t(self, t: np.datetime64, domain=None, feat_info="all", land=True):
@@ -156,14 +164,14 @@ class ParticleResult:
         axs = {}
         # get feature plots
         for name, feature in self.plot_features.items():
-            fig_inf, ax_inf = self.plot_feature(
-                t, feature, ax, feat_info=(feat_info == "all" or name in feat_info)
+            fig_feat, ax_feat = self.plot_feature(
+                t, feature, fig, ax, feat_info=(feat_info == "all" or name in feat_info)
             )
-            figs[name] = fig_inf
-            axs[name] = ax_inf
+            figs[name] = fig_feat
+            axs[name] = ax_feat
         return fig, ax, figs, axs
 
-    def on_plot_generated(self, savefile, savefile_infs, i, t, total):
+    def on_plot_generated(self, savefile, savefile_feats, i, t, total):
         """
         An overridable hook just in case you want something to happen between plot generations
         in generate_all_plots or something.
@@ -178,18 +186,23 @@ class ParticleResult:
             save_dir, f"snap_{i}.png" if filename is None else f"{filename}_{i}.png"
         )
         plot_utils.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
-        savefile_infs = {}
+        savefile_feats = {}
         # plot and save every desired feature
-        for name, fig_inf in figs.items():
-            if fig_inf is not None and (feat_info == "all" or name in feat_info):
-                savefile_inf = os.path.join(
+        for name, fig_feat in figs.items():
+            if fig_feat is not None and (feat_info == "all" or name in feat_info):
+                savefile_feat = os.path.join(
                     save_dir,
                     f"snap_{name}_{i}.png" if filename is None else f"{filename}_{name}_{i}.png"
                 )
-                savefile_infs[name] = savefile_inf
-                plot_utils.draw_plt(savefile=savefile_inf, fig=fig_inf, figsize=figsize)
-        self.frames.append(TimedFrame(t, savefile, **savefile_infs))
-        return savefile, savefile_infs
+                savefile_feats[name] = savefile_feat
+                plot_utils.draw_plt(savefile=savefile_feat, fig=fig_feat, figsize=figsize)
+        lats, lons = self.get_points_at_t(t)
+        mask = self.data_vars["time"] == t  # lol idk just do it again
+        ages = None
+        if "lifetime" in self.data_vars:
+            ages = self.data_vars["lifetime"][mask]
+        self.frames.append(TimedFrame(t, savefile, lats, lons, ages=ages, **savefile_feats))
+        return savefile, savefile_feats
 
     def generate_all_plots(
         self, save_dir, filename=None, figsize=None, domain=None, feat_info="all", land=True,
@@ -213,20 +226,46 @@ class ParticleResult:
             t = self.times[0]
             i = 0
             while t <= self.times[-1]:
-                savefile, savefile_infs = self.save_at_t(
+                savefile, savefile_feats = self.save_at_t(
                     t, i, save_dir, filename, figsize, domain, feat_info, land
                 )
-                self.on_plot_generated(savefile, savefile_infs, i, t, total_plots)
+                self.on_plot_generated(savefile, savefile_feats, i, t, total_plots)
                 i += 1
                 t += np.timedelta64(self.cfg["snapshot_interval"], "s")
         else:
             # If the delta time between each snapshot is unknown, we'll just use the unique times
             # from the particle files.
             for i in range(len(self.times)):
-                savefile, savefile_infs = self.save_at_t(
+                savefile, savefile_feats = self.save_at_t(
                     self.times[i], i, save_dir, filename, figsize, domain, feat_info, land
                 )
-                self.on_plot_generated(savefile, savefile_infs, i, self.times[i], len(self.times))
+                self.on_plot_generated(savefile, savefile_feats, i, self.times[i], len(self.times))
+        return self.frames
+
+    def generate_all_positions(self):
+        self.frames = []
+        if self.cfg is not None:
+            t = self.times[0]
+            i = 0
+            while t <= self.times[-1]:
+                lats, lons = self.get_points_at_t(t)
+                mask = self.data_vars["time"] == t  # lol idk just do it again
+                ages = None
+                if "lifetime" in self.data_vars:
+                    ages = self.data_vars["lifetime"][mask]
+                self.frames.append(TimedFrame(t, None, lats, lons, ages=ages))
+                i += 1
+                t += np.timedelta64(self.cfg["snapshot_interval"], "s")
+        else:
+            # If the delta time between each snapshot is unknown, we'll just use the unique times
+            # from the particle files.
+            for i in range(len(self.times)):
+                lats, lons = self.get_points_at_t(self.times[i])
+                mask = self.data_vars["time"] == t  # lol idk just do it again
+                ages = None
+                if "lifetime" in self.data_vars:
+                    ages = self.data_vars["lifetime"][mask]
+                self.frames.append(TimedFrame(self.times[i], None, lats, lons, ages=ages))
         return self.frames
 
     def generate_gif(self, gif_path, gif_delay=25):
@@ -274,8 +313,17 @@ class ParticleResult:
         )
         new_ds.to_netcdf(path=self.path if path is None else path)
 
+    def get_points_at_t(self, t: np.datetime64):
+        mask = self.data_vars["time"] == t
+        return self.data_vars["lat"][mask], self.data_vars["lon"][mask]
+
 
 PLOT_FEATURE_SETS = {
+    "tj_plume_tracker": {
+        "coast": NanSeparatedFeature.get_sd_full_coastline(),
+        "station": StationFeature.get_sd_stations(),
+        "mouth": NearcoastDensityFeature.get_tijuana_mouth()
+    }
 }
 
 

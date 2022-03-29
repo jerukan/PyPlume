@@ -11,13 +11,22 @@ import numpy as np
 import scipy.io
 import xarray as xr
 
-FILES_ROOT = Path("/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast")
+FILES_ROOT = Path("")
 PARCELS_CONFIGS_DIR = Path("parcels_configs")
 CURRENT_NETCDF_DIR = Path("current_netcdfs")
 PARTICLE_NETCDF_DIR = Path("particledata")
 WAVEBUOY_DATA_DIR = Path("buoy_data")
 MATLAB_DIR = Path("matlab")
 PICUTRE_DIR = Path("snapshots")
+
+
+def open_ds_if_path(dataset) -> xr.Dataset:
+    if isinstance(dataset, (Path, str)):
+        with xr.open_dataset(dataset) as ds:
+            return ds
+    elif isinstance(dataset, xr.Dataset):
+        return dataset
+    raise TypeError(f"{dataset} is not a path or xarray dataset")
 
 
 def haversine(lat1, lat2, lon1, lon2):
@@ -53,7 +62,7 @@ def create_path(path_str, iterate=False):
         path = Path(path_base + f"-{num}")
         num += 1
     try:
-        path.mkdir(parents=True, exist_ok=True)
+        path.mkdir(parents=True)
     except FileExistsError:
         pass
     return path
@@ -238,3 +247,14 @@ def load_geo_points(path, **kwargs):
         lats, lons = load_pts_mat(path, lat_ind=lat_var, lon_ind=lon_var)
         return lats, lons
     raise ValueError(f"Invalid extension {ext}")
+
+
+def get_path_cfg(path, **kwargs):
+    """Utility to check if just a path was passed in or a path and its kwargs."""
+    if isinstance(path, (str, Path)):
+        return {"path": path, **kwargs}
+    if isinstance(path, dict):
+        if "path" in path:
+            return {**path, **kwargs}
+        raise KeyError(f"key 'path' not in path config")
+    raise TypeError(f"{path} is not a proper path or config")

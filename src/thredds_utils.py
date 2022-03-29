@@ -1,43 +1,53 @@
 """
-TODO add support to get regions other than just US west coast
+Support and utilities for retrieving datsets servers that have OPENDAP access.
 """
-import os
+from enum import Enum, unique
 
 import numpy as np
 import xarray as xr
 
-import utils
+import src.utils as utils
 
-USWC_6KM_HOURLY = 0
-USWC_2KM_HOURLY = 1
-USWC_1KM_HOURLY = 2
-USWC_500M_HOURLY = 3
-USEC_6KM_HOURLY = 4
-USEC_2KM_HOURLY = 5
-USEC_1KM_HOURLY = 6
 
-DATA_HYCOMFORE = 12
+# xarray dask chunks, mainly for the stupid big datasets
+# CHUNK_SIZE = 50
+CHUNK_SIZE = "100MB"
 
-NUM_CHUNKS = 50
+
+@unique
+class ThreddsCode(Enum):
+    """Constants for different data sources"""
+    USWC_6KM_HOURLY = 0
+    USWC_2KM_HOURLY = 1
+    USWC_1KM_HOURLY = 2
+    USWC_500M_HOURLY = 3
+    USEC_6KM_HOURLY = 4
+    USEC_2KM_HOURLY = 5
+    USEC_1KM_HOURLY = 6
+    DATA_HYCOMFORE = 12  # hycom forecast data for the east coast, 3 hour intervals
+
 
 thredds_names = {
-    USWC_6KM_HOURLY: "US west coast 6km hourly",
-    USWC_2KM_HOURLY: "US west coast 2km hourly",
-    USWC_1KM_HOURLY: "US west coast 1km hourly",
-    USWC_500M_HOURLY: "US west coast 500m hourly",
-    USEC_6KM_HOURLY: "US east and gulf coast 6km hourly",
-    USEC_2KM_HOURLY: "US east and gulf coast 2km hourly",
-    USEC_1KM_HOURLY: "US east and gulf coast 1km hourly",
+    ThreddsCode.USWC_6KM_HOURLY: "US west coast 6km hourly",
+    ThreddsCode.USWC_2KM_HOURLY: "US west coast 2km hourly",
+    ThreddsCode.USWC_1KM_HOURLY: "US west coast 1km hourly",
+    ThreddsCode.USWC_500M_HOURLY: "US west coast 500m hourly",
+    ThreddsCode.USEC_6KM_HOURLY: "US east and gulf coast 6km hourly",
+    ThreddsCode.USEC_2KM_HOURLY: "US east and gulf coast 2km hourly",
+    ThreddsCode.USEC_1KM_HOURLY: "US east and gulf coast 1km hourly",
+    ThreddsCode.DATA_HYCOMFORE: "East coast HYCOM forecast",
 }
 
+
 thredds_urls = {
-    USWC_6KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd",
-    USWC_2KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/2km/hourly/RTV/HFRADAR_US_West_Coast_2km_Resolution_Hourly_RTV_best.ncd",
-    USWC_1KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/hourly/RTV/HFRADAR_US_West_Coast_1km_Resolution_Hourly_RTV_best.ncd",
-    USWC_500M_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/500m/hourly/RTV/HFRADAR_US_West_Coast_500m_Resolution_Hourly_RTV_best.ncd",
-    USEC_6KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/6km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_6km_Resolution_Hourly_RTV_best.ncd",
-    USEC_2KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/2km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_2km_Resolution_Hourly_RTV_best.ncd",
-    USEC_1KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/1km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_1km_Resolution_Hourly_RTV_best.ncd",
+    ThreddsCode.USWC_6KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd",
+    ThreddsCode.USWC_2KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/2km/hourly/RTV/HFRADAR_US_West_Coast_2km_Resolution_Hourly_RTV_best.ncd",
+    ThreddsCode.USWC_1KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/hourly/RTV/HFRADAR_US_West_Coast_1km_Resolution_Hourly_RTV_best.ncd",
+    ThreddsCode.USWC_500M_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/500m/hourly/RTV/HFRADAR_US_West_Coast_500m_Resolution_Hourly_RTV_best.ncd",
+    ThreddsCode.USEC_6KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/6km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_6km_Resolution_Hourly_RTV_best.ncd",
+    ThreddsCode.USEC_2KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/2km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_2km_Resolution_Hourly_RTV_best.ncd",
+    ThreddsCode.USEC_1KM_HOURLY: "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/1km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_1km_Resolution_Hourly_RTV_best.ncd",
+    ThreddsCode.DATA_HYCOMFORE: "https://tds.hycom.org/thredds/dodsC/GLBy0.08/expt_93.0/FMRC/GLBy0.08_930_FMRC_best.ncd",
 }
 
 # do not access this dict directly, only load datasets when they are needed
@@ -51,14 +61,16 @@ def retrieve_dataset(thredds_code):
 
     TODO check if the thredds server is down so it doesn't get stuck
     """
+    if thredds_code in ThreddsCode.__members__:
+        thredds_code = thredds_urls[ThreddsCode[thredds_code]]
     # url passed in
     if isinstance(thredds_code, str):
-        return xr.open_dataset(thredds_code, chunks={"time": NUM_CHUNKS})
+        return xr.open_dataset(thredds_code, chunks={"time": CHUNK_SIZE})
     if thredds_code not in thredds_data or thredds_data[thredds_code] is None:
         print(f"Data for type {thredds_code} not loaded yet. Loading from...")
         print(thredds_urls[thredds_code])
         thredds_data[thredds_code] = xr.open_dataset(
-            thredds_urls[thredds_code], chunks={"time": NUM_CHUNKS}
+            thredds_urls[thredds_code], chunks={"time": CHUNK_SIZE}
         )
     return thredds_data[thredds_code]
 
@@ -148,6 +160,10 @@ def get_thredds_dataset(thredds_code, time_range, lat_range, lon_range,
     lat_range = (lat_range[0] - padding, lat_range[1] + padding)
     lon_range = (lon_range[0] - padding, lon_range[1] + padding)
     if not isinstance(time_range, slice):
+        if time_range[0] == "START":
+            time_range = (reg_data["time"].values[0], time_range[1])
+        if time_range[1] == "END":
+            time_range = (time_range[0], reg_data["time"].values[-1])
         time_slice = get_time_slice(time_range, inclusive=inclusive, ref_coords=reg_data["time"].values)
     else:
         time_slice = time_range

@@ -1,38 +1,49 @@
 {
-	"name": "plume_track",
-	"netcdf_path": {
-		"type": "file",
-		"path": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/current_netcdfs/west_coast_1km_hourly/tj_plume_2020-02_interped.nc",
-		"gapfill_steps": []
-	},
-	"save_snapshots": true,
-	"parcels_config": {
-		"save_dir_pfile": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/particledata",
-		"particle_type": "ThreddsParticle",
-		"kernels": ["AdvectionRK4", "AgeParticle", "DeleteOOB", "DeleteAfter3Days", "RandomWalk"],
-		"time_range": ["2020-02-09T01:00", "2020-02-14T01:00"],
-		"repeat_dt": 3600,
-		"repetitions": -1,
-		"spawn_points": {
-			"path": "matlab/glist90zj_pts_position_spawn.mat"
-		},
-		"simulation_dt": 300,
-		"snapshot_interval": 3600
-	},
-	"postprocess_config": {
-		"coastline": {
-			"path": "matlab/coastline.mat"
-		}
-	},
-	"plotting_config": {
-		"shown_domain": {
-			"S": 32.53,
-			"N": 32.585,
-			"W": -117.162,
-			"E": -117.105
-		},
-		"save_dir_snapshots": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/snapshots",
-		"plot_feature_set": "tj_plume_tracker",
-		"draw_coasts": false
-	}
+  "name": "plume_track",
+  "netcdf_data": {
+    "ocean": {
+      "path": "USWC_1KM_HOURLY",
+      "time_range": ["2020-02-09T01:00", "2020-02-14T01:00"],
+      "lat_range": [32.525, 32.7],
+      "lon_range": [-117.27, -117.09],
+      "gapfill_steps": [
+        {
+          "name": "InterpolationStep",
+          "args": {
+            "references": ["USWC_2KM_HOURLY", "USWC_6KM_HOURLY"]
+          }
+        },
+        {
+          "name": "SmoothnStep",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "parcels_config": {
+    "save_dir_pfile": "particledata",
+    "particle_type": "ThreddsParticle",
+    "boundary": "free",
+    "kernels": ["AdvectionRK4", "AgeParticle", "RandomWalk"],
+    "time_range": ["2020-02-09T01:00", "2020-02-14T01:00"],
+    "repeat_dt": 3600,
+    "repetitions": -1,
+    "instances_per_spawn": 1,
+    "spawn_points": "matlab/glist90zj_pts_position_spawn.mat",
+    "simulation_dt": 300,
+    "snapshot_interval": 3600
+  },
+  "postprocess_config": {},
+  "save_snapshots": true,
+  "plotting_config": {
+    "shown_domain": {
+      "S": 32.525,
+      "N": 32.7,
+      "W": -117.27,
+      "E": -117.09
+    },
+    "save_dir_snapshots": "snapshots",
+    "plot_feature_set": "tj_plume_tracker",
+    "draw_coasts": false
+  }
 }

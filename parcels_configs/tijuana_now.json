@@ -1,50 +1,52 @@
 {
-	"name": "tijuana_now",
-	"netcdf_path": {
-		"type": "thredds",
-		"path": "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/hourly/RTV/HFRADAR_US_West_Coast_1km_Resolution_Hourly_RTV_best.ncd",
-		"time_range": ["2020-06-16T21", "2020-06-23T21"],
-		"lat_range": [32.524, 32.75],
-		"lon_range": [-117.32, -117.09],
-		"gapfill_steps": [
-			{
-				"name": "InterpolationStep",
-				"args": {
-					"references": [1, 0]
-				}
-			},
-			{
-				"name": "SmoothnStep",
-				"args": {}
-			}
-		]
-	},
-	"save_snapshots": true,
-	"parcels_config": {
-		"save_dir_pfile": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/particledata",
-		"particle_type": "ThreddsParticle",
-		"kernels": ["AdvectionRK4", "AgeParticle", "DeleteOOB"],
-		"time_range": ["START", "END"],
-		"repeat_dt": 7200,
-		"repetitions": -1,
-		"spawn_points": [
-			[32.551707, -117.138],
-			[32.557, -117.138]
-		],
-		"simulation_dt": 300,
-		"snapshot_interval": 7200
-	},
-	"postprocess_config": {
-		"coastline": {
-			"path": "matlab/coastline.mat",
-			"lat_var": "latz0",
-			"lon_var": "lonz0"
-		}
-	},
-	"plotting_config": {
-		"shown_domain": null,
-		"save_dir_snapshots": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/snapshots",
-		"plot_feature_set": null,
-		"draw_coasts": true
-	}
+  "name": "tijuana_now",
+  "netcdf_data": {
+    "ocean": {
+      "path": "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/hourly/RTV/HFRADAR_US_West_Coast_1km_Resolution_Hourly_RTV_best.ncd",
+      "time_range": ["2020-06-16T21", "2020-06-23T21"],
+      "lat_range": [32.524, 32.75],
+      "lon_range": [-117.32, -117.09],
+      "gapfill_steps": [
+        {
+          "name": "InterpolationStep",
+          "args": {
+            "references": ["USWC_2KM_HOURLY", "USWC_6KM_HOURLY"]
+          }
+        },
+        {
+          "name": "SmoothnStep",
+          "args": {}
+        }
+      ]
+    }
+  },
+  "parcels_config": {
+    "save_dir_pfile": "particledata",
+    "particle_type": "ThreddsParticle",
+    "kernels": ["AdvectionRK4", "AgeParticle", "DeleteOOB"],
+    "time_range": ["START", "END"],
+    "repeat_dt": 7200,
+    "repetitions": -1,
+    "instances_per_spawn": 1,
+    "spawn_points": [
+      [32.551707, -117.138],
+      [32.557, -117.138]
+    ],
+    "simulation_dt": 300,
+    "snapshot_interval": 7200
+  },
+  "postprocess_config": {
+    "coastline": {
+      "path": "matlab/coastline.mat",
+      "lat_var": "latz0",
+      "lon_var": "lonz0"
+    }
+  },
+  "save_snapshots": true,
+  "plotting_config": {
+    "shown_domain": null,
+    "save_dir_snapshots": "snapshots",
+    "plot_feature_set": null,
+    "draw_coasts": true
+  }
 }

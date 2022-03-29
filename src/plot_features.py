@@ -1,17 +1,25 @@
 """
 Collection of classes that represent plotted features in a given simulation.
+
+If you want to add additional stuff to the generated plots, this is the place to do so.
+Create a new class that extends ParticlePlotFeature to customize what is plotted on top of
+the particle frames.
+
 These features represent additional information to the simulation on top of the already plotted
 particle movements.
 """
+import os
+import sys
+
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.spatial
 from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
 
-from constants import *
-from parcels_utils import BuoyPath
-import utils
+from src.constants import *
+from src.parcels_utils import BuoyPath
+import src.utils as utils
 
 
 class ParticlePlotFeature:
@@ -92,7 +100,7 @@ class ParticlePlotFeature:
                 dists[i][j] = utils.haversine(self.lats[i], lats[j], self.lons[i], lons[j])
         return dists
 
-    def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
+    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
         """
         Plots onto a frame plot, with information on particles at that time passed in
 
@@ -122,6 +130,9 @@ class ParticlePlotFeature:
         """A simplified SD coastline"""
         if path is None:
             path = utils.MATLAB_DIR / SD_COASTLINE_FILENAME
+        if not os.path.exists(path):
+            print(f"{path} does not exist", file=sys.stderr)
+            return None
         lats, lons = utils.load_pts_mat(path, "latz0", "lonz0")
         return cls(lats, lons, segments=True, track_dist=track_dist)
 
@@ -133,7 +144,7 @@ class NanSeparatedFeature(ParticlePlotFeature):
     def __init__(self, lats, lons, **kwargs):
         super().__init__(lats, lons, segments=False, **kwargs)
 
-    def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
+    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
         lat_borders = np.split(self.lats, np.where(np.isnan(self.lats))[0])
         lon_borders = np.split(self.lons, np.where(np.isnan(self.lons))[0])
         for i in range(len(lat_borders)):
@@ -144,6 +155,9 @@ class NanSeparatedFeature(ParticlePlotFeature):
         """Gets the full detailed Tijuana coastline. Don't try get_all_dists"""
         if path is None:
             path = utils.MATLAB_DIR / SD_FULL_COASTLINE_FILENAME
+        if not os.path.exists(path):
+            print(f"{path} does not exist", file=sys.stderr)
+            return None
         points = scipy.io.loadmat(path)["OR2Mex"]
         lats = points.T[1]
         lons = points.T[0]
@@ -171,7 +185,7 @@ class StationFeature(ParticlePlotFeature):
         """Labels is required"""
         super().__init__(lats, lons, labels=labels, segments=False, **kwargs)
 
-    def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
+    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
         """Any point with points near them are colored red, otherwise they are blue."""
         counts = self.count_near(lats, lons)
         ax.scatter(
@@ -210,6 +224,9 @@ class StationFeature(ParticlePlotFeature):
         """Gets the stations in the SD area from the mat file."""
         if path is None:
             path = utils.MATLAB_DIR / SD_STATION_FILENAME
+        if not os.path.exists(path):
+            print(f"{path} does not exist", file=sys.stderr)
+            return None
         lats, lons = utils.load_pts_mat(path, "ywq", "xwq")
         return cls(lats, lons, SD_STATION_NAMES, track_dist=track_dist)
 
@@ -222,9 +239,9 @@ class LatTrackedPointFeature(ParticlePlotFeature):
         self.ymax = ymax
         self.show = show
 
-    def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
+    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
         if self.show:
-            super().plot_on_frame(ax, lats, lons, *args, **kwargs)
+            super().plot_on_frame(fig, ax, lats, lons, *args, **kwargs)
 
     def generate_info_table(self, lats, lons, *args, **kwargs):
         """
@@ -232,7 +249,7 @@ class LatTrackedPointFeature(ParticlePlotFeature):
         point.
         """
         dists = self.get_all_dists(lats, lons)[0]
-        north = lats < self.lats[0]
+        north = lats > self.lats[0]
         dists[north] = -dists[north]
         fig = plt.figure()
         ax = fig.add_subplot()
@@ -253,6 +270,88 @@ class LatTrackedPointFeature(ParticlePlotFeature):
         return cls(TIJUANA_MOUTH_POSITION[0], TIJUANA_MOUTH_POSITION[1], xlim=[-16, 4], ymax=0.1, show=False)
 
 
+class NearcoastDensityFeature(ParticlePlotFeature):
+    """A single point that tracks how northward/southward the particles around it are."""
+    def __init__(self, origin, stations, coastline, xlim=None, ymax=None, **kwargs):
+        """
+        origin is a single point
+        Assume point collections are [[lats], [lons]]
+
+        track_dist: max distance to be considered as a nearcoast particle
+        """
+        self.origin_lat = origin[0]
+        self.origin_lon = origin[1]
+        super().__init__([self.origin_lat], [self.origin_lon], **kwargs)
+        self.station_lats = stations[0]
+        self.station_lons = stations[1]
+        self.coast_lats = coastline[0]
+        self.coast_lons = coastline[1]
+        self.coastline = LineString(np.array([self.coast_lons, self.coast_lats]).T)
+        self.xlim = xlim
+        self.ymax = ymax
+
+    def generate_info_table(self, lats, lons, *args, **kwargs):
+        """
+        Generates a histogram showing the distribution of meridional distances from the single
+        point.
+        """
+        coast_dists = np.empty(len(lats))
+        for i, (lat, lon) in enumerate(zip(lats, lons)):
+            _, coast_nearest = nearest_points(Point(lon, lat), self.coastline)
+            coast_dists[i] = utils.haversine(coast_nearest.y, lat, coast_nearest.x, lon)
+        dists = self.get_all_dists(lats, lons)[0]
+        station_dists = self.get_all_dists(self.station_lats, self.station_lons)[0]
+        # things north of the origin will appear on the left
+        # calculate station distances
+        stations_north = self.station_lats > self.lats[0]
+        station_dists[stations_north] = -station_dists[stations_north]
+        station_dists /= 1000
+        # find which particles are north relative to origin and set them negative
+        north = lats > self.lats[0]
+        dists[north] = -dists[north]
+        dists /= 1000
+        nearcoast = coast_dists <= self.track_dist
+        if self.xlim is None:
+            xlim = [dists[nearcoast].min(), dists[nearcoast].max()]
+        else:
+            xlim = self.xlim
+        # hack to prevent non-nearcoast particles from showing
+        dists[~nearcoast] = xlim[1] + 1
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        bins = np.linspace(xlim[0], xlim[1], 30)
+        bins = np.append(bins, self.xlim[1] + 1)
+        ax.hist(dists, bins=bins, density=True)
+        ax.scatter(x=station_dists, y=np.full(station_dists.shape, 0.01), c='k', edgecolor='y', zorder=1000)
+        ax.set_xlim(xlim)
+        if self.ymax is not None:
+            ax.set_ylim([0, self.ymax])
+        fig.canvas.draw()
+        # matplotlib uses a funny hyphen that doesn't work
+        labels = [abs(float(item.get_text().replace("−", "-"))) for item in ax.get_xticklabels()]
+        ax.set_xticklabels(labels)
+        plt.figtext(0.5, -0.01, '(North) ------ Distance from point (km) ------ (South)', horizontalalignment='center') 
+        fig.set_size_inches(6.1, 2.5)
+        return fig, ax
+
+    @classmethod
+    def get_tijuana_mouth(cls, path=None):
+        if path is None:
+            path = utils.MATLAB_DIR / SD_STATION_FILENAME
+        if not os.path.exists(path):
+            print(f"{path} does not exist", file=sys.stderr)
+            return None
+        st_lats, st_lons = utils.load_pts_mat(path, "ywq", "xwq")
+        path = utils.MATLAB_DIR / SD_COASTLINE_FILENAME
+        c_lats, c_lons = utils.load_pts_mat(path, "latz0", "lonz0")
+        return cls(
+            [TIJUANA_MOUTH_POSITION[0], TIJUANA_MOUTH_POSITION[1]],
+            [st_lats, st_lons],
+            [c_lats, c_lons],
+            xlim=[-16, 4], ymax=1, track_dist=900
+        )
+
+
 class BuoyPathFeature(ParticlePlotFeature):
     def __init__(self, buoy_path: BuoyPath, backstep_delta=None, backstep_count=0):
         self.buoy_path = buoy_path
@@ -260,10 +359,10 @@ class BuoyPathFeature(ParticlePlotFeature):
         self.backstep_delta = backstep_delta
         super().__init__(buoy_path.lats, buoy_path.lons, labels=buoy_path.times, segments=True)
 
-    def plot_on_frame(self, ax, lats, lons, *args, **kwargs):
+    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
         time = kwargs.get("time", None)
         if time is None:
-            return super().plot_on_frame(ax, lats, lons, *args, **kwargs)
+            return super().plot_on_frame(fig, ax, lats, lons, *args, **kwargs)
         b_lats = []
         b_lons = []
         for i in range(self.backstep_count + 1):
@@ -284,4 +383,12 @@ class BuoyPathFeature(ParticlePlotFeature):
 
     @classmethod
     def from_csv(cls, path, **kwargs):
-        return cls(BuoyPath.from_csv(path), **kwargs)
+        return cls(BuoyPath.from_csv(**utils.get_path_cfg(path)), **kwargs)
+
+
+class WindVectorFeature(ParticlePlotFeature):
+    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
+        if "wind" not in kwargs:
+            return
+        wind_u, wind_v = kwargs["wind"]  # tuple of u, v
+        wind_ax = fig.add_axes([0.1, 0, 0.1, 0.1])

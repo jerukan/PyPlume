@@ -9,21 +9,16 @@ A collection of notebooks with the purpose of taking ocean current data from the
 It is highly recommended to use [Conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html)
 to set up the Python environment, since OceanParcels is only actively updated on conda-forge.
 
-If you are on macOS, the easiest way to install the dependencies is with the spec file.
-```shell
-conda create --name <env> --file spec-file-osx-64.txt
-```
-
-If you are any other platform, you can use the other environment YAML, though it's not guranteed
-to work.
+The easiest way to install the dependencies is with the `environment.yml` file.
 ```shell
 conda env create -f environment.yml
 ```
+This will create a Conda environment named `py3-parcels`.
 
-To make the Conda environment useable in Jupyter, just run
+To make the Conda environment useable in Jupyter, run these two commands
 ```shell
-conda activate <env-name>
-python -m ipykernel install --user --name <env-name> --display-name "Display name"
+conda activate py3-parcels
+python -m ipykernel install --user --name py3-parcels --display-name "py3-parcels"
 ```
 
 ## Using the notebooks

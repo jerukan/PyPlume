@@ -1,27 +1,23 @@
 {
-	"name": "buoy_track_704_02",
-	"netcdf_path": {
-		"type": "file",
-		"path": "current_netcdfs/hycom_mwbproj.nc",
-		"gapfill_steps": []
+	"name": "hycom_mwb",
+	"netcdf_data": {
+		"ocean": {
+      "path": "current_netcdfs/hycom_mwbproj.nc"
+    }
 	},
 	"save_snapshots": false,
 	"parcels_config": {
 		"save_dir_pfile": "particledata",
 		"particle_type": "ThreddsParticle",
 		"kernels": ["AdvectionRK4", "AgeParticle"],
-		"time_range": ["2019-08-16T22:01:42", "2019-08-22T10:01:21"],
+		"time_range": ["168", "END"],
 		"repeat_dt": -1,
 		"repetitions": -1,
-		"spawn_points": null,
+		"instances_per_spawn": 1,
+		"spawn_points": "spawn_points_mats/seeds_keywest.mat",
 		"simulation_dt": 300,
 		"snapshot_interval": 3600
 	},
-	"postprocess_config": {
-		"coastline": null,
-		"buoy": {
-			"path": null
-		}
-	},
+	"postprocess_config": null,
 	"plotting_config": null
 }

@@ -1,12 +1,13 @@
+% Script to plot the particledata from HYCOM simulations specifcally.
+% Requires some additional file dependencies.
 
-
-savepath = '/Users/alliho/Documents/SIO/parcels_projects/MWB_trajectory_project/figs/'
+savepath = 'snapshots/';
 saveopt = 'time';
 
 
 
 %% LOAD TRAJECTORIES + HYCOM
-fpath = '/Users/alliho/Documents/SIO/parcels_projects/parcels-westcoast-master/particledata/';
+fpath = 'particledata/';
 fname = 'particle_mwb_trajectories.nc';
 
 
@@ -22,16 +23,16 @@ traj.t = traj.time;
 traj.time =  traj.time(:,1);
 traj.time = traj.time./(60*60*24) + traj.tu;
 traj.t0 = traj.time(1);
-traj.seeds = 1:size(traj.lat,2)
+traj.seeds = 1:size(traj.lat,2);
 
-traj = rmfield(traj, 'z')
+traj = rmfield(traj, 'z');
 
 if contains(fpath, 'parcels-westcoast-master')
     traj.lon = traj.lon-360;
 end
 
     
-fpath = '/Users/alliho/Documents/SIO/parcels_projects/parcels-westcoast-master/current_netcdfs/HYCOM_forecast/';
+fpath = 'current_netcdfs/';
 fname = 'hycom_mwbproj.nc';
 
 hyc = load_any_nc([fpath fname]);
@@ -104,7 +105,7 @@ plot(coastlon, coastlat, 'k-', 'LineWidth',1);
 
 ylim([22 35]);
 xlim([-85 -75]);
-title({['trajectories']; [datestr(traj.time(1)) ' to ' datestr(traj.time(end))]})
+title({['trajectories']; [datestr(traj.time(1)) ' to ' datestr(traj.time(end))]});
 
 % -------------------------------------------------------------------------
 subplot(3,2,6); 

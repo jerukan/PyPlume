@@ -16,6 +16,8 @@ matlab/support_data/*
 buoy_data/
 # ignore vector field data
 current_netcdfs/
+# MATLAB autosave stuff
+*.asv
 
 ### JupyterNotebooks ###
 .ipynb_checkpoints

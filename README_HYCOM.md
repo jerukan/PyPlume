@@ -10,28 +10,28 @@ Original instructions by Alli Ho (from https://www.evernote.com/l/AklscPbkj1xIV6
 Set up conda environment
 1. Follow tutorial https://oceanparcels.org/#installing (steps summarized below)
 	- Create a conda environment containing Parcels and all necessary dependencies
-        ```
+        ```shell
         conda activate root  # Linux / macOS
         activate root        # Windows
-        conda create -n py3_parcels -c conda-forge parcels jupyter cartopy ffmpeg
+        conda env create -f environment.yml
         ```
-        This worked for me: 
-        ```
-        conda create -n py3_parcels -c conda-forge python=3.6 parcels jupyter cartopy ffmpeg
+        If the environment creation didn't work, specify the required packages instead 
+        ```shell
+        conda create -n py3-parcels -c conda-forge python=3.6 parcels jupyter cartopy ffmpeg
         ```
 	- Activate new Parcels environment
-        ```
-        conda activate py3_parcels
+        ```shell
+        conda activate py3-parcels
         ```
 	- Download examples to test install
-        ```
+        ```shell
         parcels_get_examples parcels_examples
         ```
 	- Run the example
+        ```shell
+        cd parcels_examples
+        python example_peninsula.py --fieldset 100 100
         ```
-	  cd parcels_examples
-	  python example_peninsula.py --fieldset 100 100
-      ```
 
 ## 2. SETTING UP MWB TRAJECTORY PROJECT / GETTING JERRY’S PARCELS-WESTCOAST
 ---
@@ -65,14 +65,16 @@ Default plot (below) made with `asesstrajectories.m` in folder `matlabanalysis`,
 ## OPTIONAL
 ---
 Installation:
-- Use dependencies in Jerry spec file (see readme):
+- Use dependencies in Jerry environment file (see readme):
 ```
-conda create --name <env> --file spec-file-osx-64.txt
+conda env create -f environment.yml
 ```
 - This worked for me:
 ```
-conda create -n py3_parcels_westcoast -c conda-forge parcels jupyter cartopy ffmpeg --file spec-file-osx-64.txt
+conda create -n py3-parcels -c conda-forge parcels jupyter cartopy ffmpeg --file spec-file-osx-64.txt
 ```
 
 ---
 Updated 08-24-2021 by Alli Ho
+
+Updated 03-31-2022 by Jerry Yan

@@ -1,5 +1,6 @@
 % Script to plot the particledata from HYCOM simulations specifcally.
-% Requires some additional file dependencies.
+% Requires some additional file dependencies (coastlines.mat is needed).
+% If anyone knows where to find the coastline data, please tell me.
 
 savepath = 'snapshots/';
 saveopt = 'time';
@@ -32,7 +33,7 @@ if contains(fpath, 'parcels-westcoast-master')
 end
 
     
-fpath = 'current_netcdfs/';
+fpath = 'current_netcdfs/HYCOM_forecast/';
 fname = 'hycom_mwbproj.nc';
 
 hyc = load_any_nc([fpath fname]);
@@ -105,7 +106,7 @@ plot(coastlon, coastlat, 'k-', 'LineWidth',1);
 
 ylim([22 35]);
 xlim([-85 -75]);
-title({['trajectories']; [datestr(traj.time(1)) ' to ' datestr(traj.time(end))]});
+title({['trajectories']; [datestr(traj.time(1)) ' to ' datestr(traj.time(end))]})
 
 % -------------------------------------------------------------------------
 subplot(3,2,6); 
@@ -146,4 +147,3 @@ title(['t_{end} = ' datestr(traj.time(end))])
 % -------------------------------------------------------------------------
 
 
-savejpg(gcf, ['trajectories_' datestr(traj.time(1))], savepath, saveopt)

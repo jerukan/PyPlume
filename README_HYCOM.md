@@ -35,7 +35,7 @@ Set up conda environment
 
 ## 2. SETTING UP MWB TRAJECTORY PROJECT / GETTING JERRY’S PARCELS-WESTCOAST
 ---
-Option 1: Download zip file: 
+Option 1: Download zip file: https://drive.google.com/file/d/14k51esx5iqsUd7w9F3TS6D0dyU7rTaL-/view?usp=sharing
 
 Option 2: Clone from Jerry’s repo on Gitlab: https://seachest.ucsd.edu/jeyan/parcels-westcoast/-/tree/hycom
 

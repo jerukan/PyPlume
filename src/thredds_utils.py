@@ -1,7 +1,7 @@
 """
 Support and utilities for retrieving datsets servers that have OPENDAP access.
 """
-from enum import Enum, unique
+from enum import Enum, unique, auto
 
 import numpy as np
 import xarray as xr
@@ -17,14 +17,21 @@ CHUNK_SIZE = "100MB"
 @unique
 class ThreddsCode(Enum):
     """Constants for different data sources"""
-    USWC_6KM_HOURLY = 0
-    USWC_2KM_HOURLY = 1
-    USWC_1KM_HOURLY = 2
-    USWC_500M_HOURLY = 3
-    USEC_6KM_HOURLY = 4
-    USEC_2KM_HOURLY = 5
-    USEC_1KM_HOURLY = 6
-    DATA_HYCOMFORE = 12  # hycom forecast data for the east coast, 3 hour intervals
+    USWC_6KM_HOURLY = auto()
+    USWC_2KM_HOURLY = auto()
+    USWC_1KM_HOURLY = auto()
+    USWC_500M_HOURLY = auto()
+    USEC_6KM_HOURLY = auto()
+    USEC_2KM_HOURLY = auto()
+    USEC_1KM_HOURLY = auto()
+    DATA_HYCOMFORE = auto()  # hycom forecast data for the east coast, 3 hour intervals
+
+
+UCSD_HFR_CODES = {
+    ThreddsCode.USWC_6KM_HOURLY, ThreddsCode.USWC_2KM_HOURLY, ThreddsCode.USWC_1KM_HOURLY,
+    ThreddsCode.USWC_500M_HOURLY, ThreddsCode.USEC_6KM_HOURLY, ThreddsCode.USEC_2KM_HOURLY,
+    ThreddsCode.USEC_1KM_HOURLY
+}
 
 
 thredds_names = {
@@ -55,24 +62,135 @@ thredds_urls = {
 # functions like a cache
 thredds_data = {}
 
-def retrieve_dataset(thredds_code):
+
+def rename_dataset_vars(path):
+    """
+    Renames variable/coord keys in an NetCDF ocean current dataset.
+    If the data has a depth dimension, it will be removed.
+
+    Args:
+        path (path-like or xr.Dataset)
+    """
+    MAPPINGS = {
+        "depth": {"depth", "z"},
+        "lat": {"lat", "latitude", "y"},
+        "lon": {"lon", "longitude", "long", "x"},
+        "time": {"time", "t"},
+        "U": {"u", "water_u"},
+        "V": {"v", "water_v"}
+    }
+    if isinstance(path, xr.Dataset):
+        ds = path
+    else:
+        with xr.open_dataset(path) as opened:
+            ds = opened
+    rename_map = {}
+    for var in ds.variables.keys():
+        for match in MAPPINGS.keys():
+            if var.lower() in MAPPINGS[match]:
+                rename_map[var] = match
+    ds = ds.rename(rename_map)
+    return ds
+
+
+def drop_depth(ds):
+    """
+    Depth will still be a coordinate in the whole dataset, but the U and V
+    velocity data will not have depth information anymore.
+    """
+    if "depth" in ds["U"].dims:
+        ds["U"] = ds["U"].sel(depth=0)
+    if "depth" in ds["V"].dims:
+        ds["V"] = ds["V"].sel(depth=0)
+    return ds
+
+
+def preprocess_thredds_dataset(ds, thredds_code):
+    """
+    Once the data is loaded into memory from some source (internet or local),
+    some of the variables/coordinates of the dataset itself might not be
+    in the correct format the simulation will read it in.
+
+    Units might be incorrect or the 'latitude' variable might have a different
+    name. This method serves to standardize these inconsistencies.
+    """
+    if thredds_code in UCSD_HFR_CODES:
+        return rename_dataset_vars(ds)
+    if thredds_code == ThreddsCode.DATA_HYCOMFORE:
+        # This particular HYCOM forecast data has different units of time, where
+        # it is "hours since <time from a week ago> UTC", which has to be converted
+        # to propert datetime values
+        # hacky way of getting the time origin of the data
+        t0 = np.datetime64(ds.time.units[12:35])
+        tmp = ds["time"].data
+        ds["t0"] = np.timedelta64(t0 - np.datetime64("0000-01-01T00:00:00.000"), "h") / np.timedelta64(1, "D")
+        # replace time coordinate data with actual datetimes
+        ds = ds.assign_coords(time=(t0 + np.array(tmp, dtype="timedelta64[h]")))
+        # modify metadata
+        ds["time"].attrs["long_name"] = "Forecast time"
+        ds["time"].attrs["standard_name"] = "time"
+        ds["time"].attrs["_CoordinateAxisType"] = "Time"
+        ds["tau"].attrs["units"] = "hours since " + ds["tau"].time_origin
+        # drop depth data
+        ds = ds.sel(depth=0)
+        ds = drop_depth(rename_dataset_vars(ds))
+        return ds
+    if thredds_code == "some other code that needs to be preprocessed...":
+        # implement other cases here if needed
+        return ...
+    # default case, you probably don't want this
+    return ds
+
+
+def retrieve_thredds_dataset(thredds_code):
+    """
+    If some source needs to be loaded differently than normal, or requires some
+    additional processing before actually being sliced and downloaded, define
+    that processing here.
+    """
+    ds = None
+    if thredds_code in UCSD_HFR_CODES:
+        dropvars = {
+            "time_bnds", "depth_bnds", "wgs84", "processing_parameters", "radial_metadata",
+            "depth", "time_offset", "dopx", "dopy", "hdop", "number_of_sites",
+            "number_of_radials", "time_run"
+        }
+        ds = xr.open_dataset(
+            thredds_urls[thredds_code], chunks={"time": CHUNK_SIZE}, drop_variables=dropvars
+        )
+    elif thredds_code == ThreddsCode.DATA_HYCOMFORE:
+        # HYCOM data times cannot be decoded normally
+        dropvars = {"water_temp", "water_temp_bottom", "salinity", "salinity_bottom", "water_u_bottom", "water_v_bottom", "surf_el"}
+        ds = xr.open_dataset(
+            thredds_urls[thredds_code], chunks={"time": CHUNK_SIZE}, decode_times=False,
+            drop_variables=dropvars
+        )
+    elif thredds_code == "some other code that needs to be loaded differently...":
+        # implement other cases here if needed
+        ds = ...
+    else:
+        ds = xr.open_dataset(
+            thredds_urls[thredds_code], chunks={"time": CHUNK_SIZE}
+        )
+    return preprocess_thredds_dataset(ds, thredds_code)
+
+
+def retrieve_dataset(ds_src):
     """
     Get the full xarray dataset for thredds data at a given thredds dataset
 
     TODO check if the thredds server is down so it doesn't get stuck
     """
-    if thredds_code in ThreddsCode.__members__:
-        thredds_code = thredds_urls[ThreddsCode[thredds_code]]
+    if ds_src in ThreddsCode.__members__:
+        ds_src = ThreddsCode[ds_src]
     # url passed in
-    if isinstance(thredds_code, str):
-        return xr.open_dataset(thredds_code, chunks={"time": CHUNK_SIZE})
-    if thredds_code not in thredds_data or thredds_data[thredds_code] is None:
-        print(f"Data for type {thredds_code} not loaded yet. Loading from...")
-        print(thredds_urls[thredds_code])
-        thredds_data[thredds_code] = xr.open_dataset(
-            thredds_urls[thredds_code], chunks={"time": CHUNK_SIZE}
-        )
-    return thredds_data[thredds_code]
+    if isinstance(ds_src, str):
+        return xr.open_dataset(ds_src, chunks={"time": CHUNK_SIZE})
+    if ds_src not in thredds_data or thredds_data[ds_src] is None:
+        print(f"Data for type {ds_src} not loaded yet. Loading from...")
+        print(thredds_urls[ds_src])
+        thredds_data[ds_src] = retrieve_thredds_dataset(ds_src)
+    return thredds_data[ds_src]
 
 
 def get_time_slice(time_range, inclusive=False, ref_coords=None, precision="h"):

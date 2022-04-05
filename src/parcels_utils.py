@@ -100,40 +100,6 @@ def clean_erddap_ds(ds):
     return clean_ds
 
 
-def rename_dataset_vars(path):
-    """
-    Renames variable/coord keys in an NetCDF ocean current dataset.
-    If the data has a depth dimension, it will be removed.
-
-    Args:
-        path (path-like or xr.Dataset)
-    """
-    MAPPINGS = {
-        "depth": {"depth", "z"},
-        "lat": {"lat", "latitude", "y"},
-        "lon": {"lon", "longitude", "long", "x"},
-        "time": {"time", "t"},
-        "U": {"u", "water_u"},
-        "V": {"v", "water_v"}
-    }
-    if isinstance(path, xr.Dataset):
-        ds = path
-    else:
-        with xr.open_dataset(path) as opened:
-            ds = opened
-    rename_map = {}
-    for var in ds.variables.keys():
-        for match in MAPPINGS.keys():
-            if var.lower() in MAPPINGS[match]:
-                rename_map[var] = match
-    ds = ds.rename(rename_map)
-    if "depth" in ds["U"].dims:
-        ds["U"] = ds["U"].sel(depth=0)
-    if "depth" in ds["V"].dims:
-        ds["V"] = ds["V"].sel(depth=0)
-    return ds
-
-
 def xr_dataset_to_fieldset(xrds, copy=True, raw=True, complete=True, **kwargs) -> FieldSet:
     """
     Creates a parcels FieldSet with an ocean current xarray Dataset.
@@ -195,7 +161,7 @@ class HFRGrid:
             dataset (path-like or xr.Dataset): represents the netcdf ocean current data.
             fields (list[parcels.Field])
         """
-        self.xrds = rename_dataset_vars(utils.open_ds_if_path(dataset))
+        self.xrds = thredds_utils.rename_dataset_vars(utils.open_ds_if_path(dataset))
         self.fields = fields
         self.times = self.xrds["time"].values
         self.lats = self.xrds["lat"].values

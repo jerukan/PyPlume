@@ -4,6 +4,10 @@ A collection of notebooks with the purpose of taking ocean current data from the
 [HFRNet Thredds Data Server](https://hfrnet-tds.ucsd.edu/) (and other files) and using
 [OceanParcels](https://oceanparcels.org/) to simulate particle movement.
 
+## NOTE: Running on HYCOM data
+
+Refer to the instructions found in `README_HYCOM.md`.
+
 ## Environment setup
 
 It is highly recommended to use [Conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html)
@@ -20,6 +24,10 @@ To make the Conda environment useable in Jupyter, run these two commands
 conda activate py3-parcels
 python -m ipykernel install --user --name py3-parcels --display-name "py3-parcels"
 ```
+
+## Saving netCDF files for vector fields
+
+These should be saved in the `current_netcdfs/` directory. Formats and more information about the files themselves can be found in `current_netcdfs/README.md`.
 
 ## Using the notebooks
 

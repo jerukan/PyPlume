@@ -1,5 +1,8 @@
 """
 Adding function to interprety HYCOM
+
+With the new refactoring, this file should not be needed
+anymore, but this will still be kept.
 """
 import datetime
 from pathlib import Path

@@ -27,6 +27,13 @@ class ThreddsCode(Enum):
     DATA_HYCOMFORE = auto()  # hycom forecast data for the east coast, 3 hour intervals
 
 
+UCSD_HFR_CODES = {
+    ThreddsCode.USWC_6KM_HOURLY, ThreddsCode.USWC_2KM_HOURLY, ThreddsCode.USWC_1KM_HOURLY,
+    ThreddsCode.USWC_500M_HOURLY, ThreddsCode.USEC_6KM_HOURLY, ThreddsCode.USEC_2KM_HOURLY,
+    ThreddsCode.USEC_1KM_HOURLY
+}
+
+
 thredds_names = {
     ThreddsCode.USWC_6KM_HOURLY: "US west coast 6km hourly",
     ThreddsCode.USWC_2KM_HOURLY: "US west coast 2km hourly",
@@ -99,6 +106,16 @@ def drop_depth(ds):
 
 
 def preprocess_thredds_dataset(ds, thredds_code):
+    """
+    Once the data is loaded into memory from some source (internet or local),
+    some of the variables/coordinates of the dataset itself might not be
+    in the correct format the simulation will read it in.
+
+    Units might be incorrect or the 'latitude' variable might have a different
+    name. This method serves to standardize these inconsistencies.
+    """
+    if thredds_code in UCSD_HFR_CODES:
+        return rename_dataset_vars(ds)
     if thredds_code == ThreddsCode.DATA_HYCOMFORE:
         # This particular HYCOM forecast data has different units of time, where
         # it is "hours since <time from a week ago> UTC", which has to be converted
@@ -121,7 +138,8 @@ def preprocess_thredds_dataset(ds, thredds_code):
     if thredds_code == "some other code that needs to be preprocessed...":
         # implement other cases here if needed
         return ...
-    return drop_depth(rename_dataset_vars(ds))
+    # default case, you probably don't want this
+    return ds
 
 
 def retrieve_thredds_dataset(thredds_code):
@@ -131,7 +149,16 @@ def retrieve_thredds_dataset(thredds_code):
     that processing here.
     """
     ds = None
-    if thredds_code == ThreddsCode.DATA_HYCOMFORE:
+    if thredds_code in UCSD_HFR_CODES:
+        dropvars = {
+            "time_bnds", "depth_bnds", "wgs84", "processing_parameters", "radial_metadata",
+            "depth", "time_offset", "dopx", "dopy", "hdop", "number_of_sites",
+            "number_of_radials", "time_run"
+        }
+        ds = xr.open_dataset(
+            thredds_urls[thredds_code], chunks={"time": CHUNK_SIZE}, drop_variables=dropvars
+        )
+    elif thredds_code == ThreddsCode.DATA_HYCOMFORE:
         # HYCOM data times cannot be decoded normally
         dropvars = {"water_temp", "water_temp_bottom", "salinity", "salinity_bottom", "water_u_bottom", "water_v_bottom", "surf_el"}
         ds = xr.open_dataset(

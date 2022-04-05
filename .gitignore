@@ -14,8 +14,9 @@ out-*/
 matlab/support_data/*
 # ignore downloaded wave buoy data
 buoy_data/
-# ignore vector field data
-current_netcdfs/
+# ignore vector field related data
+current_netcdfs/*
+!current_netcdfs/README.md
 # MATLAB autosave stuff
 *.asv
 

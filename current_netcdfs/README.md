@@ -12,4 +12,4 @@ It's fine if there are more variables as long as these exist.
 
 ## Units
 
-Where latitude/longitude are the usualy degrees, U and V are in m/s, and time is some properly decoded datetime that can be read by numpy.
+Where latitude/longitude are the usually degrees, U and V are in m/s, and time is some properly decoded datetime that can be read by numpy.

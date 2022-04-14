@@ -105,7 +105,7 @@ def drop_depth(ds):
     return ds
 
 
-def preprocess_thredds_dataset(ds, thredds_code):
+def _preprocess_thredds_dataset(ds, thredds_code):
     """
     Once the data is loaded into memory from some source (internet or local),
     some of the variables/coordinates of the dataset itself might not be
@@ -142,37 +142,37 @@ def preprocess_thredds_dataset(ds, thredds_code):
     return ds
 
 
-def retrieve_thredds_dataset(thredds_code):
+def _open_thredds_dataset(thredds_code):
     """
     If some source needs to be loaded differently than normal, or requires some
     additional processing before actually being sliced and downloaded, define
     that processing here.
     """
-    ds = None
     if thredds_code in UCSD_HFR_CODES:
         dropvars = {
             "time_bnds", "depth_bnds", "wgs84", "processing_parameters", "radial_metadata",
             "depth", "time_offset", "dopx", "dopy", "hdop", "number_of_sites",
             "number_of_radials", "time_run"
         }
-        ds = xr.open_dataset(
+        return xr.open_dataset(
             thredds_urls[thredds_code], chunks={"time": CHUNK_SIZE}, drop_variables=dropvars
         )
     elif thredds_code == ThreddsCode.DATA_HYCOMFORE:
+        dropvars = {
+            "water_temp", "water_temp_bottom", "salinity", "salinity_bottom", "water_u_bottom",
+            "water_v_bottom", "surf_el"
+        }
         # HYCOM data times cannot be decoded normally
-        dropvars = {"water_temp", "water_temp_bottom", "salinity", "salinity_bottom", "water_u_bottom", "water_v_bottom", "surf_el"}
-        ds = xr.open_dataset(
+        return xr.open_dataset(
             thredds_urls[thredds_code], chunks={"time": CHUNK_SIZE}, decode_times=False,
             drop_variables=dropvars
         )
     elif thredds_code == "some other code that needs to be loaded differently...":
         # implement other cases here if needed
-        ds = ...
-    else:
-        ds = xr.open_dataset(
-            thredds_urls[thredds_code], chunks={"time": CHUNK_SIZE}
-        )
-    return preprocess_thredds_dataset(ds, thredds_code)
+        return ...
+    return xr.open_dataset(
+        thredds_urls[thredds_code], chunks={"time": CHUNK_SIZE}
+    )
 
 
 def retrieve_dataset(ds_src):
@@ -189,7 +189,7 @@ def retrieve_dataset(ds_src):
     if ds_src not in thredds_data or thredds_data[ds_src] is None:
         print(f"Data for type {ds_src} not loaded yet. Loading from...")
         print(thredds_urls[ds_src])
-        thredds_data[ds_src] = retrieve_thredds_dataset(ds_src)
+        thredds_data[ds_src] = _preprocess_thredds_dataset(_open_thredds_dataset(ds_src), ds_src)
     return thredds_data[ds_src]
 
 
@@ -256,35 +256,45 @@ def check_bounds(dataset, lat_range, lon_range, time_range):
         print("Longitude span reaches the min/max of the range")
 
 
-def get_thredds_dataset(thredds_code, time_range, lat_range, lon_range,
+def slice_dataset(ds_src, time_range=None, lat_range=None, lon_range=None,
         inclusive=False, padding=0.0) -> xr.Dataset:
     """
     Params:
-        thredds_code (int or str): the dataset constant or url
+        ds_src (int or str): the dataset constant or url
         time_range (np.datetime64, np.datetime64[, int]): (start, stop[, interval])
         lat_range (float, float)
         lon_range (float, float)
-        inclusive (bool)
+        inclusive (bool): set to true to keep the endpoints of all the ranges provided
         padding (float): lat and lon padding
 
     Returns:
         xr.Dataset
     """
     print("Retrieving thredds dataset...")
-    reg_data = retrieve_dataset(thredds_code)
-    if inclusive:
-        lat_range = utils.include_coord_range(lat_range, reg_data["lat"].values)
-        lon_range = utils.include_coord_range(lon_range, reg_data["lon"].values)
-    lat_range = (lat_range[0] - padding, lat_range[1] + padding)
-    lon_range = (lon_range[0] - padding, lon_range[1] + padding)
-    if not isinstance(time_range, slice):
-        if time_range[0] == "START":
-            time_range = (reg_data["time"].values[0], time_range[1])
-        if time_range[1] == "END":
-            time_range = (time_range[0], reg_data["time"].values[-1])
-        time_slice = get_time_slice(time_range, inclusive=inclusive, ref_coords=reg_data["time"].values)
+    reg_data = retrieve_dataset(ds_src)
+    if lat_range is None:
+        lat_range = (reg_data["lat"].min(), reg_data["lat"].max())
     else:
-        time_slice = time_range
+        if inclusive:
+            lat_range = utils.include_coord_range(lat_range, reg_data["lat"].values)
+        lat_range = (lat_range[0] - padding, lat_range[1] + padding)
+    if lon_range is None:
+        lon_range = (reg_data["lon"].min(), reg_data["lon"].max())
+    else:
+        if inclusive:
+            lon_range = utils.include_coord_range(lon_range, reg_data["lon"].values)
+        lon_range = (lon_range[0] - padding, lon_range[1] + padding)
+    if time_range is None:
+        time_slice = slice(reg_data["time"].min(), reg_data["time"].max())
+    else:
+        if not isinstance(time_range, slice):
+            if time_range[0] == "START":
+                time_range = (reg_data["time"].values[0], time_range[1])
+            if time_range[1] == "END":
+                time_range = (time_range[0], reg_data["time"].values[-1])
+            time_slice = get_time_slice(time_range, inclusive=inclusive, ref_coords=reg_data["time"].values)
+        else:
+            time_slice = time_range
     check_bounds(reg_data, lat_range, lon_range, (time_slice.start, time_slice.stop))
     dataset_start = reg_data["time"].values[0]
     if time_slice.start >= np.datetime64("now") or time_slice.stop <= dataset_start:

@@ -141,7 +141,7 @@ def read_netcdf_info(netcdf_cfg):
             return ds
     # attempt to retrieve data from thredds
     # ranges of data are required due to the size of data
-    return thredds_utils.get_thredds_dataset(
+    return thredds_utils.slice_dataset(
         cfg["path"], cfg["time_range"], cfg["lat_range"], cfg["lon_range"], inclusive=True
     )
 

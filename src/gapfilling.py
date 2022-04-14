@@ -80,7 +80,7 @@ class InterpolationStep(GapfillStep):
                     lat_range = (lats[0], lats[-1])
                     lon_range = (lons[0], lons[-1])
                     # slice the data before loading into HFRGrid since it's huge
-                    ds = thredds_utils.get_thredds_dataset(
+                    ds = thredds_utils.slice_dataset(
                         ref, time_range, lat_range, lon_range, inclusive=True
                     )
                     loaded_references.append(HFRGrid(ds))

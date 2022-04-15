@@ -2,6 +2,7 @@
 Support and utilities for retrieving datsets servers that have OPENDAP access.
 """
 from enum import Enum, unique, auto
+from pathlib import Path
 
 import numpy as np
 import xarray as xr
@@ -260,7 +261,7 @@ def slice_dataset(ds_src, time_range=None, lat_range=None, lon_range=None,
         inclusive=False, padding=0.0) -> xr.Dataset:
     """
     Params:
-        ds_src (int or str): the dataset constant or url
+        ds_src (int or str): the dataset constant, url, or path
         time_range (np.datetime64, np.datetime64[, int]): (start, stop[, interval])
         lat_range (float, float)
         lon_range (float, float)
@@ -270,8 +271,17 @@ def slice_dataset(ds_src, time_range=None, lat_range=None, lon_range=None,
     Returns:
         xr.Dataset
     """
-    print("Retrieving thredds dataset...")
-    reg_data = retrieve_dataset(ds_src)
+    if isinstance(ds_src, str):
+        if Path(ds_src).is_file():
+            # if the data is already saved locally, assume it's been formatted correctly
+            # no processing or chunking
+            reg_data = xr.open_dataset(ds_src)
+        else:
+            print("Retrieving thredds dataset...")
+            reg_data = retrieve_dataset(ds_src)
+    else:
+        print("Retrieving thredds dataset...")
+        reg_data = retrieve_dataset(ds_src)
     if lat_range is None:
         lat_range = (reg_data["lat"].min(), reg_data["lat"].max())
     else:

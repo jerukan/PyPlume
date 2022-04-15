@@ -185,6 +185,6 @@ def plot_particles(
         cbar_ax.set_position([posn.x0 + posn.width + 0.14, posn.y0, 0.04, posn.height])
         cbar_ax.get_yaxis().labelpad = 13
         # super jank label the other colorbar since it's in plotting.plotfield
-        cbar_ax.set_ylabel("Age (days)\n\n\n\n\nVelocity (m/s)", rotation=270)
+        cbar_ax.set_ylabel("Age (days)\n\n\n\n\n\nVelocity (m/s)", rotation=270)
 
     return fig, ax

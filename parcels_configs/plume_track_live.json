@@ -1,8 +1,11 @@
 {
-  "name": "plume_track",
+  "name": "plume_track_live",
   "netcdf_data": {
     "ocean": {
-      "path": "current_netcdfs/tj_plume_1km_2020-03.nc",
+      "path": "USWC_1KM_HOURLY",
+      "time_range": ["2020-02-09T01:00", "2020-02-14T01:00"],
+      "lat_range": [32.525, 32.7],
+      "lon_range": [-117.27, -117.09],
       "gapfill_steps": [
         {
           "name": "InterpolationStep",
@@ -12,9 +15,7 @@
         },
         {
           "name": "SmoothnStep",
-          "args": {
-            "mask": "current_netcdfs/tj_plume_1km_2020-03_mask.nc"
-          }
+          "args": {}
         }
       ]
     }
@@ -24,7 +25,7 @@
     "particle_type": "ThreddsParticle",
     "boundary": "free",
     "kernels": ["AdvectionRK4", "AgeParticle", "RandomWalk"],
-    "time_range": ["START", "END"],
+    "time_range": ["2020-02-09T01:00", "2020-02-14T01:00"],
     "repeat_dt": 3600,
     "repetitions": -1,
     "instances_per_spawn": 1,

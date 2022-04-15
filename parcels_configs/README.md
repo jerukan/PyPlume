@@ -18,11 +18,10 @@ example layout:
     # ocean vector field
     "ocean": {
       "path": "path/to/file/or/url.nc",
-      ##### start of thredds only settings #####
+      # if you only want a subset of the data, you can slice it here
       "time_range": ["2020-06-16T21", "2020-06-23T21"],
       "lat_range": [32.524, 32.75],
       "lon_range": [-117.32, -117.09],
-      ###### end of thredds only settings ######
       # if there is a need to use any built in gapfillers, specify them here
       # check gapfilling.py for available gapfillers and arguments
       "gapfill_steps": [

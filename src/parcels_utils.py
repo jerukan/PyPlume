@@ -135,14 +135,10 @@ def xr_dataset_to_fieldset(xrds, copy=True, raw=True, complete=True, **kwargs) -
 
 def read_netcdf_info(netcdf_cfg):
     cfg = utils.get_path_cfg(netcdf_cfg)
-    if os.path.exists(cfg["path"]):
-        # check if url
-        with xr.open_dataset(cfg["path"]) as ds:
-            return ds
     # attempt to retrieve data from thredds
-    # ranges of data are required due to the size of data
     return thredds_utils.slice_dataset(
-        cfg["path"], cfg["time_range"], cfg["lat_range"], cfg["lon_range"], inclusive=True
+        cfg["path"], time_range=cfg.get("time_range", None), lat_range=cfg.get("lat_range", None),
+        lon_range=cfg.get("lon_range", None), inclusive=True
     )
 
 

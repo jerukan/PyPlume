@@ -65,17 +65,31 @@ class VecDataLoader:
 
 
 class SimpleDataLoader(VecDataLoader):
+    DEFAULT_MAPPINGS = {
+        "depth": {"depth", "z"},
+        "lat": {"lat", "latitude", "y"},
+        "lon": {"lon", "longitude", "long", "x"},
+        "time": {"time", "t"},
+        "U": {"u", "water_u"},
+        "V": {"v", "water_v"}
+    }
+
     def __init__(self, mappings=None, dropvars=None, time_chunk_size=None):
-        self.mappings = mappings
+        if mappings is None:
+            self.mappings = self.DEFAULT_MAPPINGS
+        else:
+            self.mappings = mappings
         self.dropvars = dropvars
         if time_chunk_size is not None:
             self.time_chunks = {"time": time_chunk_size}
+        else:
+            self.time_chunks = None
     
     def load_source(self, src):
         ds = xr.open_dataset(src, chunks=self.time_chunks, drop_variables=self.dropvars)
         if self.mappings is None:
             return ds
-        return rename_dataset_vars(ds, self.mappings)
+        return drop_depth(rename_dataset_vars(ds, self.mappings))
 
 
 class HFRThreddsDataLoader(SimpleDataLoader):

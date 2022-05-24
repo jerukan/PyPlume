@@ -220,7 +220,7 @@ class StationFeature(ParticlePlotFeature):
         return fig, ax
 
     @classmethod
-    def get_sd_stations(cls, path=None, track_dist=500):
+    def get_sd_stations(cls, path=None, track_dist=1000):
         """Gets the stations in the SD area from the mat file."""
         if path is None:
             path = utils.MATLAB_DIR / SD_STATION_FILENAME

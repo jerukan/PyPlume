@@ -31,14 +31,13 @@ def RandomWalk(particle, fieldset, time):
     """
     Adds random noise to particle movement (ripped from the plume tracker).
 
-    I'm not entirely sure what's up with the units or something, but 5 cm/s error barely
-    adds any randomness to the movement. Maybe something is wrong.
+    Adds random noise of 5 cm/s, with mean 0.
     """
-    uerr = 5 / 100  # 5 cm/s uncertainty with radar
+    uerr = 5.0 / 100  # 5 cm/s uncertainty with radar
     th = 2 * math.pi * ParcelsRandom.random()  # randomize angle of error
     # convert from degrees to m
-    u_conv = 1852 * 60 * math.cos(particle.lat * math.pi / 180)  # lon convert
-    v_conv = 1852 * 60  # lat convert
+    u_conv = 1852.0 * 60 * math.cos(particle.lat * math.pi / 180)  # lon convert
+    v_conv = 1852.0 * 60  # lat convert
     u_n = uerr * math.cos(th)
     v_n = uerr * math.sin(th)
     dx = u_n * particle.dt

@@ -101,6 +101,12 @@ def WindModify3Percent(particle, fieldset, time):
 
 
 def AdvectionRK4BorderCheck(particle, fieldset, time):
+    """
+    Same Runge-Kutta method, but calculates on the coastline grid if
+    the particle is close enough to it.
+
+    Requires the fieldset to have a CUV grid (coastline UV)
+    """
     (u1, v1) = fieldset.CUV[particle]
     if math.fabs(u1) > 0 or math.fabs(v1) > 0:
         lon1, lat1 = (particle.lon + u1*.5*particle.dt, particle.lat + v1*.5*particle.dt)

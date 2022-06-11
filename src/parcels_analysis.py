@@ -57,6 +57,7 @@ class ParticleResult:
             self.xrds = dataset
         else:
             raise TypeError(f"{dataset} is not a path or xarray dataset")
+        # assumed to be in data_vars: trajectory, time, lat, lon, z
         self.data_vars = {}
         self.non_vars = {}  # data variables with different dimensions than the dataset's
         self.shape = self.xrds["trajectory"].shape  # use trajectory var as reference
@@ -66,7 +67,9 @@ class ParticleResult:
                 self.data_vars[var] = arr
             else:
                 self.non_vars[var] = arr
-        # assumed to be in data_vars: trajectory, time, lat, lon, z
+        # some particles die in a timestamp between the time intervals, and leave a specific
+        # time that probably isn't included in most of the other particles
+        # we take the unique timestamps across all particles
         times_unique = np.unique(self.data_vars["time"])
         self.times = np.sort(times_unique[~np.isnan(times_unique)])
 
@@ -143,14 +146,17 @@ class ParticleResult:
             return fig_feat, ax_feat
         return None, None
 
-    def plot_at_t(self, t: np.datetime64, domain=None, feat_info="all", land=True):
+    def plot_at_t(self, t, domain=None, feat_info="all", land=True):
         """
         Create figures of the simulation at a particular time.
         TODO when drawing land, prioritize coastline instead of using cartopy
 
         Args:
-            feat_info [list]: set of features to draw (their names), or 'all' to draw every feature
+            t (int or np.datetime64): the int will index the time list
+            feat_info (list): set of features to draw (their names), or 'all' to draw every feature
         """
+        if isinstance(t, int):
+            t = self.times[t]
         mask = self.data_vars["time"] == t
         ages = self.data_vars["lifetime"][mask] / 86400 if "lifetime" in self.data_vars else None
         # TODO cache this
@@ -170,6 +176,12 @@ class ParticleResult:
             figs[name] = fig_feat
             axs[name] = ax_feat
         return fig, ax, figs, axs
+
+    # TODO finish
+    def plot_trajectory(self, idxs, domain=None, land=True):
+        if not isinstance(idxs, list):
+            idxs = [idxs]
+        plot_utils.draw_trajectories
 
     def on_plot_generated(self, savefile, savefile_feats, i, t, total):
         """

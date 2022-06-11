@@ -41,7 +41,27 @@ def pad_domain(domain, padding):
     return domain
 
 
-def generate_domain(datasets, padding=0.005):
+# TODO finish
+def generate_domain(lats, lons, padding=0.005):
+    lat_rng = (ds["lat"].values.min(), ds["lat"].values.max())
+    if lat_rng[0] < lat_min:
+        lat_min = lat_rng[0]
+    if lat_rng[1] > lat_max:
+        lat_max = lat_rng[1]
+    lon_rng = (ds["lon"].values.min(), ds["lon"].values.max())
+    if lon_rng[0] < lon_min:
+        lon_min = lon_rng[0]
+    if lon_rng[1] > lon_max:
+        lon_max = lon_rng[1]
+    return dict(
+        S=lat_min - padding,
+        N=lat_max + padding,
+        W=lon_min - padding,
+        E=lon_max + padding,
+    )
+
+
+def generate_domain_datasets(datasets, padding=0.005):
     """
     Given a list of datasets or paths to particle netcdf files, generate a domain that encompasses
     every position with some padding.
@@ -65,12 +85,12 @@ def generate_domain(datasets, padding=0.005):
             lon_min = lon_rng[0]
         if lon_rng[1] > lon_max:
             lon_max = lon_rng[1]
-    return dict(
-        S=lat_min - padding,
-        N=lat_max + padding,
-        W=lon_min - padding,
-        E=lon_max + padding,
-    )
+    return {
+        "S": lat_min - padding,
+        "N": lat_max + padding,
+        "W": lon_min - padding,
+        "E": lon_max + padding
+    }
 
 
 def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None, verbose=False):
@@ -99,7 +119,7 @@ def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None, verbos
             plt.close(fig)
 
 
-def draw_trajectories(datasets, names, domain=None, legend=True, scatter=True, savefile=None, titlestr=None, part_size=DEFAULT_PARTICLE_SIZE, padding=0.0, figsize=None):
+def draw_trajectories_datasets(datasets, names, domain=None, legend=True, scatter=True, savefile=None, titlestr=None, part_size=DEFAULT_PARTICLE_SIZE, padding=0.0, figsize=None):
     """
     Takes in Parcels ParticleFile datasets or netcdf file paths and creates plots of those
     trajectories on the same plot.
@@ -112,7 +132,7 @@ def draw_trajectories(datasets, names, domain=None, legend=True, scatter=True, s
         raise ValueError("dataset list length and name list length do not match")
     # automatically generate domain if none is provided
     if domain is None:
-        domain = generate_domain(datasets, padding)
+        domain = generate_domain_datasets(datasets, padding)
     else:
         pad_domain(domain, padding)
     fig, ax = get_carree_axis(domain)
@@ -135,6 +155,23 @@ def draw_trajectories(datasets, names, domain=None, legend=True, scatter=True, s
     plt.title("Particle trajectories" if titlestr is None else titlestr)
 
     draw_plt(savefile=savefile, fig=fig, figsize=figsize)
+
+
+def draw_trajectories(lats, lons, times=None, domain=None, points=True, savefile=None, padding=0.0):
+    if len(lats.shape) == 1:
+        lats = np.array([lats])
+    if len(lons.shape) == 1:
+        lons = np.array([lons])
+    if times is None and len(times.shape) == 1:
+        times = np.array([times])
+    if domain is None:
+        domain = generate_domain(datasets, padding)
+    else:
+        pad_domain(domain, padding)
+    fig, ax = get_carree_axis(domain)
+    gl = get_carree_gl(ax)
+    for i in range(lats.shape[0]):
+        
 
 
 def plot_particles(

@@ -267,7 +267,7 @@ class LatTrackedPointFeature(ParticlePlotFeature):
 
     @classmethod
     def get_tijuana_mouth(cls):
-        return cls(TIJUANA_MOUTH_POSITION[0], TIJUANA_MOUTH_POSITION[1], xlim=[-16, 4], ymax=0.1, show=False)
+        return cls(TIJUANA_MOUTH_POSITION[0], TIJUANA_MOUTH_POSITION[1], xlim=[-16, 4], ymax=0.1, show=False, color="y")
 
 
 class NearcoastDensityFeature(ParticlePlotFeature):

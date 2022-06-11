@@ -1,7 +1,6 @@
 """
 Methods in here related to preparing, running, and processing simulations.
 """
-
 import numpy as np
 import os
 

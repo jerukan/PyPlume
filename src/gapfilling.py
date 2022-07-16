@@ -8,14 +8,14 @@ import numpy as np
 import xarray as xr
 
 import src.utils as utils
-from src.parcels_utils import HFRGrid
+from src.parcels_utils import SurfaceGrid
 import src.thredds_utils as thredds_utils
 
 
 class GapfillStep(ABC):
     @abstractmethod
     def process(
-        self, u: np.ndarray, v: np.ndarray, target: HFRGrid, **kwargs
+        self, u: np.ndarray, v: np.ndarray, target: SurfaceGrid, **kwargs
     ) -> Tuple[np.ndarray, np.ndarray]:
         pass
 
@@ -24,7 +24,7 @@ def get_interped(i, target, ref, invalid_where):
     """
     Args:
         i (int): index on invalid_where
-        ref (HFRGrid): reference Dataset
+        ref (SurfaceGrid): reference Dataset
         invalid_where (array-like): (3, n) dimensional array representing all invalid positions
     
     Returns:
@@ -64,26 +64,26 @@ class InterpolationStep(GapfillStep):
                     should be larger than the target's)")
 
     def process(
-        self, u: np.ndarray, v: np.ndarray, target: HFRGrid, **kwargs
+        self, u: np.ndarray, v: np.ndarray, target: SurfaceGrid, **kwargs
     ) -> Tuple[np.ndarray, np.ndarray]:
         loaded_references = []
         for i, ref in enumerate(self.references):
-            if isinstance(ref, HFRGrid):
+            if isinstance(ref, SurfaceGrid):
                 loaded_references.append(ref)
             elif isinstance(ref, (str, int)):
                 if os.path.isfile(ref):
-                    loaded_references.append(HFRGrid(ref))
+                    loaded_references.append(SurfaceGrid(ref))
                 else:
                     # assume url, attempt to open with OPENDAP
                     times, lats, lons = target.get_coords()
                     time_range = (times[0], times[-1])
                     lat_range = (lats[0], lats[-1])
                     lon_range = (lons[0], lons[-1])
-                    # slice the data before loading into HFRGrid since it's huge
+                    # slice the data before loading into SurfaceGrid since it's huge
                     ds = thredds_utils.slice_dataset(
                         ref, time_range, lat_range, lon_range, inclusive=True
                     )
-                    loaded_references.append(HFRGrid(ds))
+                    loaded_references.append(SurfaceGrid(ds))
             else:
                 raise TypeError(f"Unrecognized type for {ref}")
                         
@@ -126,7 +126,7 @@ class SmoothnStep(GapfillStep):
     """
     def __init__(self, mask=None):
         if mask is not None:
-            self.mask = HFRGrid(mask) if not isinstance(mask, HFRGrid) else mask
+            self.mask = SurfaceGrid(mask) if not isinstance(mask, SurfaceGrid) else mask
         else:
             self.mask = None
 
@@ -148,7 +148,7 @@ class SmoothnStep(GapfillStep):
             raise ValueError("Incorrect mask dimensions")
 
     def process(
-        self, u: np.ndarray, v: np.ndarray, target: HFRGrid, **kwargs
+        self, u: np.ndarray, v: np.ndarray, target: SurfaceGrid, **kwargs
     ) -> Tuple[np.ndarray, np.ndarray]:
         self.do_validation(target)
 
@@ -201,7 +201,7 @@ class Gapfiller:
                 raise TypeError(f"{step} is not a proper gapfilling step.")
             self.steps.append(step)
 
-    def execute(self, target: HFRGrid, **kwargs) -> xr.Dataset:
+    def execute(self, target: SurfaceGrid, **kwargs) -> xr.Dataset:
         u = target.xrds["U"].values.copy()
         v = target.xrds["V"].values.copy()
         for step in self.steps:

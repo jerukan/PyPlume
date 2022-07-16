@@ -103,11 +103,11 @@ def insert_default_values(self, cfg):
 class ParcelsSimulation:
     PFILE_SAVE_DEFAULT = utils.FILES_ROOT / utils.PARTICLE_NETCDF_DIR
 
-    def __init__(self, name, hfrgrid, cfg):
+    def __init__(self, name, SurfaceGrid, cfg):
         self.name = name
-        self.hfrgrid = hfrgrid
+        self.SurfaceGrid = SurfaceGrid
         self.cfg = cfg
-        self.times, _, _ = hfrgrid.get_coords()
+        self.times, _, _ = SurfaceGrid.get_coords()
 
         # load spawn points
         if isinstance(cfg["spawn_points"], (str, dict)):
@@ -134,7 +134,7 @@ class ParcelsSimulation:
 
         # set up ParticleSet and ParticleFile
         self.pset = ParticleSet(
-            fieldset=hfrgrid.fieldset, pclass=import_kernel_or_particle(cfg["particle_type"]),
+            fieldset=SurfaceGrid.fieldset, pclass=import_kernel_or_particle(cfg["particle_type"]),
             time=time_arr, lon=p_lons, lat=p_lats
         )
         if "save_dir_pfile" in cfg and cfg["save_dir_pfile"] not in (None, ""):
@@ -298,4 +298,4 @@ class ParcelsSimulation:
         self.pfile.close()
         self.completed = True
         self.parcels_result = ParticleResult(self.pfile_path, cfg=self.cfg)
-        self.parcels_result.add_grid(self.hfrgrid)
+        self.parcels_result.add_grid(self.SurfaceGrid)

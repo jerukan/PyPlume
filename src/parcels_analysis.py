@@ -12,7 +12,7 @@ from shapely.geometry import LineString
 import xarray as xr
 
 from src.constants import *
-from src.parcels_utils import HFRGrid
+from src.parcels_utils import SurfaceGrid
 from src.plot_features import *
 import src.plot_utils as plot_utils
 import src.utils as utils
@@ -37,7 +37,7 @@ class TimedFrame:
 class ParticleResult:
     """
     Wraps the output of a particle file to make visualizing and analyzing the results easier.
-    Can also use an HFRGrid if the ocean currents are also wanted in the plot.
+    Can also use an SurfaceGrid if the ocean currents are also wanted in the plot.
 
     NOTE this currently only works with simulations with ThreddsParticle particle classes.
     """
@@ -115,8 +115,8 @@ class ParticleResult:
                                 self.data_vars[var][i, j:] = np.nan
                         break
 
-    def add_grid(self, grid: HFRGrid):
-        """Adds a HFRGrid to draw the currents on the plots."""
+    def add_grid(self, grid: SurfaceGrid):
+        """Adds a SurfaceGrid to draw the currents on the plots."""
         self.grid = grid
         gtimes, _, _ = grid.get_coords()
         # check if particle set is in-bounds of the given grid

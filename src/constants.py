@@ -1,5 +1,13 @@
 """Useful constants"""
+from pathlib import Path
+
 import numpy as np
+
+
+DATA_DIR = Path("data")
+CONFIGS_DIR = Path("configs")
+FIELD_NETCDF_DIR = DATA_DIR / "field_netcdfs"
+WAVEBUOY_DATA_DIR = DATA_DIR / "buoy_data"
 
 TIJUANA_RIVER_DOMAIN = {
     "S": 32.525,

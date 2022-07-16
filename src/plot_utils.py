@@ -171,8 +171,7 @@ def draw_trajectories(lats, lons, times=None, domain=None, points=True, savefile
     fig, ax = get_carree_axis(domain)
     gl = get_carree_gl(ax)
     for i in range(lats.shape[0]):
-        
-
+        pass
 
 def plot_particles(
     lats, lons, ages=None, time=None, grid=None, domain=None, land=True, vmax=0.6, max_age=None,
@@ -186,7 +185,7 @@ def plot_particles(
         lons
         ages
         time (np.datetime64)
-        grid (HFRGrid)
+        grid (SurfaceGrid)
         s: size of the particles
 
     Returns:

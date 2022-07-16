@@ -142,7 +142,7 @@ def read_netcdf_info(netcdf_cfg):
     )
 
 
-class HFRGrid:
+class SurfaceGrid:
     """
     Wraps information relating to ocean current data given some dataset.
     Replaces get_file_info.

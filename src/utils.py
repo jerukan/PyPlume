@@ -11,14 +11,6 @@ import numpy as np
 import scipy.io
 import xarray as xr
 
-FILES_ROOT = Path("")
-PARCELS_CONFIGS_DIR = Path("parcels_configs")
-CURRENT_NETCDF_DIR = Path("current_netcdfs")
-PARTICLE_NETCDF_DIR = Path("particledata")
-WAVEBUOY_DATA_DIR = Path("buoy_data")
-MATLAB_DIR = Path("matlab")
-PICUTRE_DIR = Path("snapshots")
-
 
 def open_ds_if_path(dataset) -> xr.Dataset:
     if isinstance(dataset, (Path, str)):

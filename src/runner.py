@@ -9,7 +9,7 @@ from parcels.tools.converters import GeographicPolar, Geographic
 
 import src.utils as utils
 from src.thredds_utils import rename_dataset_vars
-from src.parcels_utils import HFRGrid, read_netcdf_info
+from src.parcels_utils import SurfaceGrid, read_netcdf_info
 from src.parcels_sim import ParcelsSimulation
 from src.parcels_analysis import add_feature_set_to_result
 from src.plot_features import BuoyPathFeature
@@ -24,7 +24,7 @@ def prep_sim_from_cfg(cfg) -> ParcelsSimulation:
     ocean_cfg = utils.get_path_cfg(cfg["netcdf_data"]["ocean"])
     ds = read_netcdf_info(ocean_cfg)
     gapfiller = Gapfiller.load_from_config(*ocean_cfg.get("gapfill_steps", []))
-    ds = gapfiller.execute(HFRGrid(ds))
+    ds = gapfiller.execute(SurfaceGrid(ds))
     bound_cond = cfg["parcels_config"].get("boundary", None)
     fields = []
     # load alongshore current data if it exists
@@ -42,13 +42,13 @@ def prep_sim_from_cfg(cfg) -> ParcelsSimulation:
         fields = [fuv]
     # set boundary condition of fields
     if bound_cond is None:
-        grid = HFRGrid(ds, fields=fields)
+        grid = SurfaceGrid(ds, fields=fields)
     elif bound_cond.lower() in ("free", "freeslip"):
-        grid = HFRGrid(
+        grid = SurfaceGrid(
             ds, fields=fields, fs_kwargs={"interp_method": {"U": "freeslip", "V": "freeslip"}}
         )
     elif bound_cond.lower() in ("partial", "partialslip"):
-        grid = HFRGrid(
+        grid = SurfaceGrid(
             ds, fields=fields, fs_kwargs={"interp_method": {"U": "partialslip", "V": "partialslip"}}
         )
     else:

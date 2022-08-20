@@ -10,8 +10,8 @@ import numpy as np
 from parcels import ParticleSet, ErrorCode, AdvectionRK4, AdvectionRK45, ScipyParticle, JITParticle
 
 import pyplume.utils as utils
-from pyplume.parcels_analysis import ParticleResult
-from pyplume.parcels_kernels import DeleteParticle, DeleteParticleVerbose
+from pyplume.postprocess import ParticleResult
+from pyplume.kernels import DeleteParticle, DeleteParticleVerbose
 
 # ignore annoying deprecation warnings
 import warnings
@@ -88,11 +88,11 @@ def import_kernel_or_particle(name):
         return ScipyParticle
     if name == "JITParticle":
         return JITParticle
-    mod = importlib.import_module("pyplume.parcels_kernels")
+    mod = importlib.import_module("pyplume.kernels")
     try:
         return getattr(mod, name)
     except AttributeError as err:
-        raise AttributeError(f"Kernel {name} not found in parcels_kernels.py") from err
+        raise AttributeError(f"Kernel {name} not found in kernels.py") from err
 
 
 def insert_default_values(self, cfg):
@@ -100,14 +100,14 @@ def insert_default_values(self, cfg):
     pass
 
 
-class ParcelsSimulation:
+class ParcelsParcelsSimulation:
     PFILE_SAVE_DEFAULT = utils.FILES_ROOT / utils.PARTICLE_NETCDF_DIR
 
-    def __init__(self, name, SurfaceGrid, cfg):
+    def __init__(self, name, grid, cfg):
         self.name = name
-        self.SurfaceGrid = SurfaceGrid
+        self.grid = grid
         self.cfg = cfg
-        self.times, _, _ = SurfaceGrid.get_coords()
+        self.times, _, _ = grid.get_coords()
 
         # load spawn points
         if isinstance(cfg["spawn_points"], (str, dict)):
@@ -134,13 +134,13 @@ class ParcelsSimulation:
 
         # set up ParticleSet and ParticleFile
         self.pset = ParticleSet(
-            fieldset=SurfaceGrid.fieldset, pclass=import_kernel_or_particle(cfg["particle_type"]),
+            fieldset=grid.fieldset, pclass=import_kernel_or_particle(cfg["particle_type"]),
             time=time_arr, lon=p_lons, lat=p_lats
         )
         if "save_dir_pfile" in cfg and cfg["save_dir_pfile"] not in (None, ""):
             self.pfile_path = utils.create_path(cfg["save_dir_pfile"]) / f"particle_{name}.nc"
         else:
-            self.pfile_path = utils.create_path(ParcelsSimulation.PFILE_SAVE_DEFAULT) / f"particle_{name}.nc"
+            self.pfile_path = utils.create_path(ParcelsParcelsSimulation.PFILE_SAVE_DEFAULT) / f"particle_{name}.nc"
         self.pfile = self.pset.ParticleFile(self.pfile_path)
         print(f"Particle trajectories for {name} will be saved to {self.pfile_path}")
         print(f"    total particles in simulation: {len(time_arr)}")
@@ -247,7 +247,7 @@ class ParcelsSimulation:
         if (t_start < self.times[0] or t_end < self.times[0] or
             t_start > self.times[-1] or t_end > self.times[-1]):
             raise ValueError("Start and end times of simulation are out of bounds\n" +
-                f"Simulation range: ({t_start}, {t_end})\n" +
+                f"ParcelsSimulation range: ({t_start}, {t_end})\n" +
                 f"Allowed domain: ({self.times[0]}, {self.times[-1]})")
         t_start = (t_start - self.times[0]) / np.timedelta64(1, "s")
         t_end = (t_end - self.times[0]) / np.timedelta64(1, "s")
@@ -285,7 +285,7 @@ class ParcelsSimulation:
 
     def execute(self):
         if self.completed:
-            raise RuntimeError("Simulation has already completed.")
+            raise RuntimeError("ParcelsSimulation has already completed.")
         for i in range(self.snap_num):
             if not self.simulation_loop(i, self.cfg["snapshot_interval"]):
                 break
@@ -298,4 +298,4 @@ class ParcelsSimulation:
         self.pfile.close()
         self.completed = True
         self.parcels_result = ParticleResult(self.pfile_path, cfg=self.cfg)
-        self.parcels_result.add_grid(self.SurfaceGrid)
+        self.parcels_result.add_grid(self.grid)

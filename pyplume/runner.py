@@ -10,8 +10,8 @@ from parcels.tools.converters import GeographicPolar, Geographic
 import pyplume.utils as utils
 from pyplume.thredds_utils import rename_dataset_vars
 from pyplume.parcels_utils import SurfaceGrid, read_netcdf_info
-from pyplume.parcels_sim import ParcelsSimulation
-from pyplume.parcels_analysis import add_feature_set_to_result
+from pyplume.simulation import ParcelsSimulation
+from pyplume.postprocess import add_feature_set_to_result
 from pyplume.plot_features import BuoyPathFeature
 from pyplume.gapfilling import Gapfiller
 

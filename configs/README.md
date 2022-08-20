@@ -55,10 +55,10 @@ example layout:
     # The DIRECTORY to save the particle netcdf file to
     "save_dir_pfile": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/particledata",
     # Can be either of the built-ins: JITParticle, ScipyParticle
-    # or a custom one wrote in parcels_kernels.py
+    # or a custom one wrote in kernels.py
     "particle_type": "ThreddsParticle",
     # List of kernels to add, can be built ins like AdvectionRK4
-    # or custom ones in parcels_kernels.py. Feel free to add new ones to the file.
+    # or custom ones in kernels.py. Feel free to add new ones to the file.
     "kernels": ["AdvectionRK4", "DeleteOOB", "RandomWalk"],
     # Determines how to handle boundary conditions. By default, the zero-vectors at coastlines
     # are interpolated linearly. Other options are "freeslip" and "partialslip".
@@ -163,7 +163,7 @@ example layout:
     # path to save the plots to
     "save_dir_snapshots": "/Volumes/T7/Documents/Programs/scripps-cordc/parcels_westcoast/snapshots",
     # features to add to the plots (detailed coastline, a tracked location, etc). check the
-    # bottom of parcels_analysis.py for the available sets of features. details for each
+    # bottom of postprocess.py for the available sets of features. details for each
     # feature are found in plot_features.py
     "plot_feature_set": "tj_plume_tracker",
     # draw land or not?

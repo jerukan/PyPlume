@@ -8,7 +8,7 @@ import numpy as np
 import xarray as xr
 
 import pyplume.utils as utils
-from pyplume.data_loaders import *
+from pyplume.dataloaders import *
 
 
 # xarray dask chunks, mainly for the stupid big datasets

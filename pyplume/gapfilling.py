@@ -7,9 +7,9 @@ import matlab.engine
 import numpy as np
 import xarray as xr
 
-import src.utils as utils
-from src.parcels_utils import SurfaceGrid
-import src.thredds_utils as thredds_utils
+import pyplume.utils as utils
+from pyplume.parcels_utils import SurfaceGrid
+import pyplume.thredds_utils as thredds_utils
 
 
 class GapfillStep(ABC):
@@ -184,7 +184,7 @@ class SmoothnStep(GapfillStep):
 
 
 def import_gapfill_step(name):
-    mod = importlib.import_module("src.gapfilling")
+    mod = importlib.import_module("pyplume.gapfilling")
     try:
         return getattr(mod, name)
     except AttributeError:

@@ -7,13 +7,13 @@ import os
 from parcels import Field, VectorField
 from parcels.tools.converters import GeographicPolar, Geographic
 
-import src.utils as utils
-from src.thredds_utils import rename_dataset_vars
-from src.parcels_utils import SurfaceGrid, read_netcdf_info
-from src.parcels_sim import ParcelsSimulation
-from src.parcels_analysis import add_feature_set_to_result
-from src.plot_features import BuoyPathFeature
-from src.gapfilling import Gapfiller
+import pyplume.utils as utils
+from pyplume.thredds_utils import rename_dataset_vars
+from pyplume.parcels_utils import SurfaceGrid, read_netcdf_info
+from pyplume.parcels_sim import ParcelsSimulation
+from pyplume.parcels_analysis import add_feature_set_to_result
+from pyplume.plot_features import BuoyPathFeature
+from pyplume.gapfilling import Gapfiller
 
 
 empty = (None, {}, "", [])

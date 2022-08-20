@@ -10,8 +10,8 @@ from parcels import FieldSet, Field, VectorField
 import scipy.spatial
 import xarray as xr
 
-import src.thredds_utils as thredds_utils
-import src.utils as utils
+import pyplume.thredds_utils as thredds_utils
+import pyplume.utils as utils
 
 
 def arrays_to_particleds(time, lat, lon) -> xr.Dataset:

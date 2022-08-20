@@ -11,11 +11,11 @@ import numpy as np
 from shapely.geometry import LineString
 import xarray as xr
 
-from src.constants import *
-from src.parcels_utils import SurfaceGrid
-from src.plot_features import *
-import src.plot_utils as plot_utils
-import src.utils as utils
+from pyplume.constants import *
+from pyplume.parcels_utils import SurfaceGrid
+from pyplume.plot_features import *
+import pyplume.plot_utils as plot_utils
+import pyplume.utils as utils
 
 
 class TimedFrame:

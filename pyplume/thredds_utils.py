@@ -7,8 +7,8 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-import src.utils as utils
-from src.data_loaders import *
+import pyplume.utils as utils
+from pyplume.data_loaders import *
 
 
 # xarray dask chunks, mainly for the stupid big datasets

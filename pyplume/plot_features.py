@@ -17,9 +17,9 @@ import scipy.spatial
 from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
 
-from src.constants import *
-from src.parcels_utils import BuoyPath
-import src.utils as utils
+from pyplume.constants import *
+from pyplume.parcels_utils import BuoyPath
+import pyplume.utils as utils
 
 
 class ParticlePlotFeature:

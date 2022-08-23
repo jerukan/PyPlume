@@ -14,7 +14,7 @@ import xarray as xr
 from pyplume.constants import *
 from pyplume.parcels_utils import SurfaceGrid
 from pyplume.plot_features import *
-import pyplume.plot_utils as plot_utils
+import pyplume.plotting as plotting
 import pyplume.utils as utils
 
 
@@ -161,7 +161,7 @@ class ParticleResult:
         ages = self.data_vars["lifetime"][mask] / 86400 if "lifetime" in self.data_vars else None
         # TODO cache this
         max_age = np.nanmax(self.data_vars["lifetime"]) / 86400  if "lifetime" in self.data_vars else None
-        fig, ax = plot_utils.plot_particles(
+        fig, ax = plotting.plot_particles(
             self.data_vars["lat"][mask], self.data_vars["lon"][mask], ages=ages, time=t,
             grid=self.grid, domain=domain, land=land, max_age=max_age
         )
@@ -181,7 +181,7 @@ class ParticleResult:
     def plot_trajectory(self, idxs, domain=None, land=True):
         if not isinstance(idxs, list):
             idxs = [idxs]
-        plot_utils.draw_trajectories
+        plotting.draw_trajectories
 
     def on_plot_generated(self, savefile, savefile_feats, i, t, total):
         """
@@ -197,7 +197,7 @@ class ParticleResult:
         savefile = os.path.join(
             save_dir, f"snap_{i}.png" if filename is None else f"{filename}_{i}.png"
         )
-        plot_utils.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
+        plotting.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
         savefile_feats = {}
         # plot and save every desired feature
         for name, fig_feat in figs.items():
@@ -207,7 +207,7 @@ class ParticleResult:
                     f"snap_{name}_{i}.png" if filename is None else f"{filename}_{name}_{i}.png"
                 )
                 savefile_feats[name] = savefile_feat
-                plot_utils.draw_plt(savefile=savefile_feat, fig=fig_feat, figsize=figsize)
+                plotting.draw_plt(savefile=savefile_feat, fig=fig_feat, figsize=figsize)
         lats, lons = self.get_points_at_t(t)
         mask = self.data_vars["time"] == t  # lol idk just do it again
         ages = None

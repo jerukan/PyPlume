@@ -8,7 +8,7 @@ from parcels import Field, VectorField
 from parcels.tools.converters import GeographicPolar, Geographic
 
 import pyplume.utils as utils
-from pyplume.thredds_utils import rename_dataset_vars
+from pyplume.thredds_data import rename_dataset_vars
 from pyplume.parcels_utils import SurfaceGrid, read_netcdf_info
 from pyplume.simulation import ParcelsSimulation
 from pyplume.postprocess import add_feature_set_to_result

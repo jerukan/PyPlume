@@ -16,7 +16,7 @@ from parcels import FieldSet, plotting
 import scipy.spatial
 import xarray as xr
 
-import plot_utils
+import plotting
 import utils
 
 

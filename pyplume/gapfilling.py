@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import importlib
+import logging
 import os
 from typing import Tuple
 
@@ -7,9 +8,10 @@ import matlab.engine
 import numpy as np
 import xarray as xr
 
+from pyplume.dataloaders import slice_dataset
 import pyplume.utils as utils
 from pyplume.parcels_utils import SurfaceGrid
-import pyplume.thredds_utils as thredds_utils
+import pyplume.thredds_data as thredds_data
 
 
 class GapfillStep(ABC):
@@ -70,27 +72,25 @@ class InterpolationStep(GapfillStep):
         for i, ref in enumerate(self.references):
             if isinstance(ref, SurfaceGrid):
                 loaded_references.append(ref)
-            elif isinstance(ref, (str, int)):
-                if os.path.isfile(ref):
-                    loaded_references.append(SurfaceGrid(ref))
-                else:
-                    # assume url, attempt to open with OPENDAP
-                    times, lats, lons = target.get_coords()
-                    time_range = (times[0], times[-1])
-                    lat_range = (lats[0], lats[-1])
-                    lon_range = (lons[0], lons[-1])
-                    # slice the data before loading into SurfaceGrid since it's huge
-                    ds = thredds_utils.slice_dataset(
-                        ref, time_range, lat_range, lon_range, inclusive=True
-                    )
-                    loaded_references.append(SurfaceGrid(ds))
+            elif isinstance(ref, str):
+                # TODO generalize this
+                ref = thredds_data.SRC_THREDDS_HFRNET_UCSD.load_source(ref)
+                times, lats, lons = target.get_coords()
+                time_range = (times[0], times[-1])
+                lat_range = (lats[0], lats[-1])
+                lon_range = (lons[0], lons[-1])
+                # slice the data before loading into SurfaceGrid since it's huge
+                ds = slice_dataset(
+                    ref, time_range, lat_range, lon_range, inclusive=True
+                )
+                loaded_references.append(SurfaceGrid(ds))
             else:
                 raise TypeError(f"Unrecognized type for {ref}")
                         
         self.do_validation(target, loaded_references)
         invalid = utils.generate_mask_invalid(u)
         num_invalid = invalid.sum()
-        print(f"total invalid values on target data: {num_invalid}")
+        logging.info(f"total invalid values on target data: {num_invalid}")
 
         # linear interpolation from lower resolution data
         target_interped_u = u.copy()
@@ -101,7 +101,7 @@ class InterpolationStep(GapfillStep):
             num_invalid_new = int(invalid_interped.sum())
             arr_u = np.zeros(num_invalid_new)
             arr_v = np.zeros(num_invalid_new)
-            print(f"Attempting to interpolate {num_invalid_new} points...")
+            logging.info(f"Attempting to interpolate {num_invalid_new} points...")
             for i in range(num_invalid_new):
                 c_u, c_v = get_interped(i, target, ref, invalid_pos_new)
                 arr_u[i] = c_u
@@ -109,9 +109,11 @@ class InterpolationStep(GapfillStep):
             target_interped_u[invalid_pos_new] = arr_u
             target_interped_v[invalid_pos_new] = arr_v
             invalid_interped = utils.generate_mask_invalid(target_interped_u)
-            print(f"total invalid values after interpolation with {ref}: {invalid_interped.sum()}")
-            print(f"    values filled: {num_invalid_new - invalid_interped.sum()}")
-        print(f"total invalid values on interpolated: {invalid_interped.sum()}")
+            logging.info(
+                f"total invalid values after interpolation with {ref}: {invalid_interped.sum()}"
+                + f"\n\tvalues filled: {num_invalid_new - invalid_interped.sum()}"
+            )
+        logging.info(f"total invalid values on interpolated: {invalid_interped.sum()}")
 
         return target_interped_u, target_interped_v
 
@@ -126,7 +128,13 @@ class SmoothnStep(GapfillStep):
     """
     def __init__(self, mask=None):
         if mask is not None:
-            self.mask = SurfaceGrid(mask) if not isinstance(mask, SurfaceGrid) else mask
+            if isinstance(mask, SurfaceGrid):
+                self.mask = mask
+            elif isinstance(mask, xr.Dataset):
+                self.mask = SurfaceGrid(mask)
+            else:
+                # TODO generalize
+                self.mask = SurfaceGrid.from_url_or_path(mask, thredds_data.SRC_THREDDS_HFRNET_UCSD)
         else:
             self.mask = None
 

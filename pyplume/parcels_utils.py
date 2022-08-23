@@ -10,7 +10,7 @@ from parcels import FieldSet, Field, VectorField
 import scipy.spatial
 import xarray as xr
 
-import pyplume.thredds_utils as thredds_utils
+from pyplume.dataloaders import DataSource, slice_dataset
 import pyplume.utils as utils
 
 
@@ -136,9 +136,9 @@ def xr_dataset_to_fieldset(xrds, copy=True, raw=True, complete=True, **kwargs) -
 def read_netcdf_info(netcdf_cfg):
     cfg = utils.get_path_cfg(netcdf_cfg)
     # attempt to retrieve data from thredds
-    return thredds_utils.slice_dataset(
-        cfg["path"], time_range=cfg.get("time_range", None), lat_range=cfg.get("lat_range", None),
-        lon_range=cfg.get("lon_range", None), inclusive=True
+    return slice_dataset(
+        xr.open_dataset(cfg["path"]), time_range=cfg.get("time_range", None),
+        lat_range=cfg.get("lat_range", None), lon_range=cfg.get("lon_range", None), inclusive=True
     )
 
 
@@ -154,10 +154,10 @@ class SurfaceGrid:
         Reads from a netcdf file containing ocean current data.
 
         Args:
-            dataset (path-like or xr.Dataset): represents the netcdf ocean current data.
+            dataset (xr.Dataset): formatted netcdf data
             fields (list[parcels.Field])
         """
-        self.xrds = thredds_utils.rename_dataset_vars(utils.open_ds_if_path(dataset))
+        self.xrds = dataset
         self.fields = fields
         self.times = self.xrds["time"].values
         self.lats = self.xrds["lat"].values
@@ -328,6 +328,11 @@ class SurfaceGrid:
         if flat:
             return self.fieldset_flat.U[t, 0, lat, lon], self.fieldset_flat.V[t, 0, lat, lon]
         return self.fieldset.U[t, 0, lat, lon], self.fieldset.V[t, 0, lat, lon]
+
+    @classmethod
+    def from_url_or_path(cls, path, dssrc: DataSource, **kwargs):
+        ds = dssrc.load_source(path)
+        return cls(ds, **kwargs)
 
 
 class BuoyPath:

@@ -2,7 +2,7 @@
   "name": "plume_track",
   "netcdf_data": {
     "ocean": {
-      "path": "current_netcdfs/tj_plume_1km_2020-03.nc",
+      "path": "data/field_netcdfs/tj_plume_1km_2020-03.nc",
       "gapfill_steps": [
         {
           "name": "InterpolationStep",
@@ -13,7 +13,7 @@
         {
           "name": "SmoothnStep",
           "args": {
-            "mask": "current_netcdfs/tj_plume_1km_2020-03_mask.nc"
+            "mask": "data/field_netcdfs/tj_plume_1km_2020-03_mask.nc"
           }
         }
       ]
@@ -28,7 +28,7 @@
     "repeat_dt": 3600,
     "repetitions": -1,
     "instances_per_spawn": 1,
-    "spawn_points": "matlab/glist90zj_pts_position_spawn.mat",
+    "spawn_points": "data/spawn_points_mats/glist90zj_pts_position_spawn.mat",
     "simulation_dt": 300,
     "snapshot_interval": 3600
   },

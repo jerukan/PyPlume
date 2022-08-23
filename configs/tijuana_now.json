@@ -37,7 +37,7 @@
   },
   "postprocess_config": {
     "coastline": {
-      "path": "matlab/coastline.mat",
+      "path": "data/coastline.mat",
       "lat_var": "latz0",
       "lon_var": "lonz0"
     }

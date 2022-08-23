@@ -129,7 +129,7 @@ class ParticlePlotFeature:
     def get_sd_coastline(cls, path=None, track_dist=100):
         """A simplified SD coastline"""
         if path is None:
-            path = utils.MATLAB_DIR / SD_COASTLINE_FILENAME
+            path = DATA_DIR / SD_COASTLINE_FILENAME
         if not os.path.exists(path):
             print(f"{path} does not exist", file=sys.stderr)
             return None
@@ -154,7 +154,7 @@ class NanSeparatedFeature(ParticlePlotFeature):
     def get_sd_full_coastline(cls, path=None):
         """Gets the full detailed Tijuana coastline. Don't try get_all_dists"""
         if path is None:
-            path = utils.MATLAB_DIR / SD_FULL_COASTLINE_FILENAME
+            path = DATA_DIR / SD_FULL_COASTLINE_FILENAME
         if not os.path.exists(path):
             print(f"{path} does not exist", file=sys.stderr)
             return None
@@ -223,7 +223,7 @@ class StationFeature(ParticlePlotFeature):
     def get_sd_stations(cls, path=None, track_dist=1000):
         """Gets the stations in the SD area from the mat file."""
         if path is None:
-            path = utils.MATLAB_DIR / SD_STATION_FILENAME
+            path = DATA_DIR / SD_STATION_FILENAME
         if not os.path.exists(path):
             print(f"{path} does not exist", file=sys.stderr)
             return None
@@ -337,12 +337,12 @@ class NearcoastDensityFeature(ParticlePlotFeature):
     @classmethod
     def get_tijuana_mouth(cls, path=None):
         if path is None:
-            path = utils.MATLAB_DIR / SD_STATION_FILENAME
+            path = DATA_DIR / SD_STATION_FILENAME
         if not os.path.exists(path):
             print(f"{path} does not exist", file=sys.stderr)
             return None
         st_lats, st_lons = utils.load_pts_mat(path, "ywq", "xwq")
-        path = utils.MATLAB_DIR / SD_COASTLINE_FILENAME
+        path = DATA_DIR / SD_COASTLINE_FILENAME
         c_lats, c_lons = utils.load_pts_mat(path, "latz0", "lonz0")
         return cls(
             [TIJUANA_MOUTH_POSITION[0], TIJUANA_MOUTH_POSITION[1]],

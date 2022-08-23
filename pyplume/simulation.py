@@ -9,6 +9,7 @@ import sys
 import numpy as np
 from parcels import ParticleSet, ErrorCode, AdvectionRK4, AdvectionRK45, ScipyParticle, JITParticle
 
+from pyplume.constants import PARTICLEFILE_DIR
 import pyplume.utils as utils
 from pyplume.postprocess import ParticleResult
 from pyplume.kernels import DeleteParticle, DeleteParticleVerbose
@@ -100,8 +101,8 @@ def insert_default_values(self, cfg):
     pass
 
 
-class ParcelsParcelsSimulation:
-    PFILE_SAVE_DEFAULT = utils.FILES_ROOT / utils.PARTICLE_NETCDF_DIR
+class ParcelsSimulation:
+    PFILE_SAVE_DEFAULT = PARTICLEFILE_DIR
 
     def __init__(self, name, grid, cfg):
         self.name = name

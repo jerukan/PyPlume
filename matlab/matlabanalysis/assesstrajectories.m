@@ -33,7 +33,7 @@ if contains(fpath, 'parcels-westcoast-master')
 end
 
     
-fpath = 'current_netcdfs/HYCOM_forecast/';
+fpath = 'data/field_netcdfs/HYCOM_forecast/';
 fname = 'hycom_mwbproj.nc';
 
 hyc = load_any_nc([fpath fname]);

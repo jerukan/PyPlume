@@ -2,7 +2,7 @@
   "name": "hycom_mwb",
   "netcdf_data": {
     "ocean": {
-      "path": "current_netcdfs/hycom_mwbproj.nc"
+      "path": "data/field_netcdfs/hycom_mwbproj.nc"
     }
   },
   "save_snapshots": false,
@@ -14,7 +14,7 @@
     "repeat_dt": -1,
     "repetitions": -1,
     "instances_per_spawn": 1,
-    "spawn_points": "spawn_points_mats/seeds_keywest.mat",
+    "spawn_points": "data/spawn_points_mats/seeds_keywest.mat",
     "simulation_dt": 300,
     "snapshot_interval": 3600
   },

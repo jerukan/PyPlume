@@ -11,8 +11,10 @@ snapshots/
 # ignore particle output data
 out-*/
 # ignore input data
-data/**
-!data/README.md
+data/*
+!data/field_netcdfs
+data/field_netcdfs/*
+!data/field_netcdfs/README.md
 # ignore output data folder
 results/**
 # MATLAB autosave stuff

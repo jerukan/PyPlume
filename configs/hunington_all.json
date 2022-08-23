@@ -8,11 +8,11 @@
       "gapfill_steps": []
     },
     "wind": {
-      "path": "current_netcdfs/ndbc_46025_wind.nc",
+      "path": "data/field_netcdfs/ndbc_46025_wind.nc",
       "ratio": 0.03,
       "add_to_field_directly": true
     },
-    "alongshore": "current_netcdfs/socal_alongshore.nc"
+    "alongshore": "data/field_netcdfs/socal_alongshore.nc"
   },
   "parcels_config": {
     "particle_type": "ThreddsParticle",

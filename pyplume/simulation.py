@@ -1,15 +1,15 @@
 """
 Classes and methods directly related to setting up Parcels simulations and running them.
 """
-from datetime import timedelta
+from datetime import timedelta, datetime
 import importlib
 import math
+from pathlib import Path
 import sys
 
 import numpy as np
 from parcels import ParticleSet, ErrorCode, AdvectionRK4, AdvectionRK45, ScipyParticle, JITParticle
 
-from pyplume.constants import PARTICLEFILE_DIR
 import pyplume.utils as utils
 from pyplume.postprocess import ParticleResult
 from pyplume.kernels import DeleteParticle, DeleteParticleVerbose
@@ -102,8 +102,6 @@ def insert_default_values(self, cfg):
 
 
 class ParcelsSimulation:
-    PFILE_SAVE_DEFAULT = PARTICLEFILE_DIR
-
     def __init__(self, name, grid, cfg):
         self.name = name
         self.grid = grid
@@ -138,10 +136,9 @@ class ParcelsSimulation:
             fieldset=grid.fieldset, pclass=import_kernel_or_particle(cfg["particle_type"]),
             time=time_arr, lon=p_lons, lat=p_lats
         )
-        if "save_dir_pfile" in cfg and cfg["save_dir_pfile"] not in (None, ""):
-            self.pfile_path = utils.create_path(cfg["save_dir_pfile"]) / f"particle_{name}.nc"
-        else:
-            self.pfile_path = utils.create_path(ParcelsParcelsSimulation.PFILE_SAVE_DEFAULT) / f"particle_{name}.nc"
+        # TODO generalize path lol
+        self.sim_result_dir = utils.get_dir(Path("results") / f"simulation_{name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}")
+        self.pfile_path = self.sim_result_dir / f"particlefile.nc"
         self.pfile = self.pset.ParticleFile(self.pfile_path)
         print(f"Particle trajectories for {name} will be saved to {self.pfile_path}")
         print(f"    total particles in simulation: {len(time_arr)}")
@@ -298,5 +295,5 @@ class ParcelsSimulation:
         self.pfile.export()
         self.pfile.close()
         self.completed = True
-        self.parcels_result = ParticleResult(self.pfile_path, cfg=self.cfg)
+        self.parcels_result = ParticleResult(self.pfile_path, sim_result_dir=self.sim_result_dir, cfg=self.cfg)
         self.parcels_result.add_grid(self.grid)

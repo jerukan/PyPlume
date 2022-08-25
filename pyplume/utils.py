@@ -34,7 +34,7 @@ def haversine(lat1, lat2, lon1, lon2):
     return d * 1000  # meters
 
 
-def create_path(path_str, iterate=False):
+def get_dir(path_str, iterate=False):
     """
     Returns a Path to a directory. A new directory is created if the
     given path doesn't exist.

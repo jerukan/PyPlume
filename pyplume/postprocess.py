@@ -41,12 +41,16 @@ class ParticleResult:
 
     NOTE this currently only works with simulations with ThreddsParticle particle classes.
     """
-    def __init__(self, dataset, cfg=None):
+    # for the main plot that draws the particles per frame
+    MAIN_PARTICLE_PLOT_NAME = "particles"
+
+    def __init__(self, dataset, sim_result_dir=None, cfg=None):
         """
         Args:
             dataset: path to ParticleFile or just the dataset itself
             cfg: the parcels config passed into the main simulation
         """
+        self.sim_result_dir = Path(sim_result_dir) if sim_result_dir is not None else None
         self.cfg = cfg
         if isinstance(dataset, (Path, str)):
             self.path = dataset
@@ -77,7 +81,9 @@ class ParticleResult:
 
         self.grid = None
         self.frames = None
-        self.plot_features = {}
+        self.plot_features = {
+            ParticleResult.MAIN_PARTICLE_PLOT_NAME: ParticlePlotFeature(particle_size=20)
+        }
         self.coastline = None
 
     def add_coastline(self, lats, lons):
@@ -153,10 +159,7 @@ class ParticleResult:
         curr_lats = self.data_vars["lat"][mask]
         curr_lons = self.data_vars["lon"][mask]
         lifetimes = self.data_vars["lifetime"][mask] / 86400 if "lifetime" in self.data_vars else None
-        fig, ax = plotting.plot_particles(
-            self.data_vars["lat"][mask], self.data_vars["lon"][mask], lifetimes=lifetimes, time=t,
-            grid=self.grid, domain=domain, land=land, lifetime_max=lifetime_max
-        )
+        fig, ax = plotting.plot_field(time=t, grid=self.grid, domain=domain, land=land)
 
         figs = {}
         axs = {}
@@ -173,22 +176,17 @@ class ParticleResult:
             idxs = [idxs]
         plotting.draw_trajectories
 
-    def save_at_t(self, t, i, save_dir, filename, figsize, domain, land):
+    def save_at_t(self, t, i, save_dir, figsize, domain, land):
         """Generate and save plots at a timestamp, given a bunch of information."""
         lifetime_max = np.nanmax(self.data_vars["lifetime"]) / 86400  if "lifetime" in self.data_vars else None
         fig, _, figs, _ = self.plot_at_t(t, domain=domain, land=land, lifetime_max=lifetime_max)
-        savefile = os.path.join(
-            save_dir, f"snap_{i}.png" if filename is None else f"{filename}_{i}.png"
-        )
+        savefile = utils.get_dir(save_dir / ParticleResult.MAIN_PARTICLE_PLOT_NAME) / f"simframe_{i}.png"
         plotting.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
         savefile_feats = {}
         # plot and save every desired feature
         for name, fig_feat in figs.items():
             if fig_feat is not None:
-                savefile_feat = os.path.join(
-                    save_dir,
-                    f"snap_{name}_{i}.png" if filename is None else f"{filename}_{name}_{i}.png"
-                )
+                savefile_feat = utils.get_dir(save_dir / name) / f"simframe_{name}_{i}.png"
                 savefile_feats[name] = savefile_feat
                 plotting.draw_plt(savefile=savefile_feat, fig=fig_feat, figsize=figsize)
         lats, lons = self.get_points_at_t(t)
@@ -199,14 +197,14 @@ class ParticleResult:
         self.frames.append(TimedFrame(t, savefile, lats, lons, ages=ages, **savefile_feats))
         return savefile, savefile_feats
 
-    def generate_all_plots(
-        self, save_dir, filename=None, figsize=None, domain=None, land=True,
-        clear_folder=False
-    ):
+    def generate_all_plots(self, figsize=None, domain=None, land=True, clear_folder=False):
         """
-        Generates plots and then saves them
+        Generates plots and then saves them.
         """
-        utils.create_path(save_dir)
+        if self.sim_result_dir is None:
+            raise ValueError("Please specify a path for sim_result_dir to save the plots")
+        save_dir = self.sim_result_dir / "plots"
+        utils.get_dir(save_dir)
         if clear_folder:
             utils.delete_all_pngs(save_dir)
         self.frames = []
@@ -218,7 +216,7 @@ class ParticleResult:
             i = 0
             while t <= self.times[-1]:
                 savefile, savefile_feats = self.save_at_t(
-                    t, i, save_dir, filename, figsize, domain, land
+                    t, i, save_dir, figsize, domain, land
                 )
                 i += 1
                 t += np.timedelta64(self.cfg["snapshot_interval"], "s")
@@ -227,7 +225,7 @@ class ParticleResult:
             # from the particle files.
             for i in range(len(self.times)):
                 savefile, savefile_feats = self.save_at_t(
-                    self.times[i], i, save_dir, filename, figsize, domain, land
+                    self.times[i], i, save_dir, figsize, domain, land
                 )
         return self.frames
 
@@ -257,8 +255,9 @@ class ParticleResult:
                 self.frames.append(TimedFrame(self.times[i], None, lats, lons, ages=ages))
         return self.frames
 
-    def generate_gif(self, gif_path, gif_delay=25):
+    def generate_gif(self, gif_delay=25):
         """Uses imagemagick to generate a gif of the main simulation plot."""
+        gif_path = self.sim_result_dir / f"{ParticleResult.MAIN_PARTICLE_PLOT_NAME}.gif"
         input_paths = [str(frame.path) for frame in self.frames]
         sp_in = ["magick", "-delay", str(gif_delay)] + input_paths
         sp_in.append(str(gif_path))

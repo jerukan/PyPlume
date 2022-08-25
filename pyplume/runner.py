@@ -98,12 +98,11 @@ def process_results(sim, cfg):
         if plotting_cfg.get("plot_feature_set", None) not in empty:
             add_feature_set_to_result(sim.parcels_result, plotting_cfg["plot_feature_set"])
         sim.parcels_result.generate_all_plots(
-            os.path.join(plotting_cfg["save_dir_snapshots"], sim.name),
             domain=plotting_cfg.get("shown_domain", None),
             land=plotting_cfg.get("draw_coasts", False),
             figsize=(13, 8)
         )
         try:
-            print(sim.parcels_result.generate_gif(os.path.join(plotting_cfg["save_dir_snapshots"], f"{sim.name}.gif")))
+            print(sim.parcels_result.generate_gif())
         except FileNotFoundError:
             print("magick is not installed, gif will not be generated")

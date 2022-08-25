@@ -58,8 +58,10 @@ class ParticleResult:
         else:
             raise TypeError(f"{dataset} is not a path or xarray dataset")
         # assumed to be in data_vars: trajectory, time, lat, lon, z
+        # these variables are generated from default particles in Parcels
         self.data_vars = {}
-        self.non_vars = {}  # data variables with different dimensions than the dataset's
+        # data variables with different dimensions than the dataset's
+        self.non_vars = {}
         self.shape = self.xrds["trajectory"].shape  # use trajectory var as reference
         for var, arr in self.xrds.variables.items():
             arr = arr.values
@@ -123,56 +125,44 @@ class ParticleResult:
         if np.nanmin(self.data_vars["time"]) < gtimes.min() or np.nanmax(self.data_vars["time"]) > gtimes.max():
             raise ValueError("Time out of bounds")
 
-    def add_plot_feature(self, feature: ParticlePlotFeature, name=None):
+    def add_plot_feature(self, feature: PlotFeature, name=None):
         if name is None:
-            # just give a unique name
-            self.plot_features[hash(feature)] = feature
+            self.plot_features[feature.__class__.__name__] = feature
         else:
             self.plot_features[name] = feature
 
-    def plot_feature(self, t: np.datetime64, feature: ParticlePlotFeature, fig, ax, feat_info=True):
+    def plot_feature(self, feature: PlotFeature, fig, ax, t: np.datetime64, lats, lons, lifetimes, lifetime_max):
         """Plots a feature at a given time."""
-        mask = self.data_vars["time"] == t
-        curr_lats = self.data_vars["lat"][mask]
-        curr_lons = self.data_vars["lon"][mask]
-        ages = self.data_vars["lifetime"][mask] / 86400 if "lifetime" in self.data_vars else None
-        # TODO cache this
-        max_age = np.nanmax(self.data_vars["lifetime"]) / 86400  if "lifetime" in self.data_vars else None
-        feature.plot_on_frame(fig, ax, curr_lats, curr_lons, time=t)
-        if feat_info:
-            fig_feat, ax_feat = feature.generate_info_table(
-                curr_lats, curr_lons, lifetimes=ages, age_max=max_age
-            )
-            return fig_feat, ax_feat
-        return None, None
+        feature.add_to_plot(fig, ax, t, lats, lons)
+        fig_feat, ax_feat = feature.generate_external_plot(
+            t, lats, lons, lifetimes=lifetimes, lifetime_max=lifetime_max
+        )
+        return fig_feat, ax_feat
 
-    def plot_at_t(self, t, domain=None, feat_info="all", land=True):
+    def plot_at_t(self, t, domain=None, land=True, lifetime_max=None):
         """
         Create figures of the simulation at a particular time.
         TODO when drawing land, prioritize coastline instead of using cartopy
 
         Args:
             t (int or np.datetime64): the int will index the time list
-            feat_info (list): set of features to draw (their names), or 'all' to draw every feature
         """
         if isinstance(t, int):
             t = self.times[t]
         mask = self.data_vars["time"] == t
-        ages = self.data_vars["lifetime"][mask] / 86400 if "lifetime" in self.data_vars else None
-        # TODO cache this
-        max_age = np.nanmax(self.data_vars["lifetime"]) / 86400  if "lifetime" in self.data_vars else None
+        curr_lats = self.data_vars["lat"][mask]
+        curr_lons = self.data_vars["lon"][mask]
+        lifetimes = self.data_vars["lifetime"][mask] / 86400 if "lifetime" in self.data_vars else None
         fig, ax = plotting.plot_particles(
-            self.data_vars["lat"][mask], self.data_vars["lon"][mask], ages=ages, time=t,
-            grid=self.grid, domain=domain, land=land, max_age=max_age
+            self.data_vars["lat"][mask], self.data_vars["lon"][mask], lifetimes=lifetimes, time=t,
+            grid=self.grid, domain=domain, land=land, lifetime_max=lifetime_max
         )
 
         figs = {}
         axs = {}
         # get feature plots
         for name, feature in self.plot_features.items():
-            fig_feat, ax_feat = self.plot_feature(
-                t, feature, fig, ax, feat_info=(feat_info == "all" or name in feat_info)
-            )
+            fig_feat, ax_feat = self.plot_feature(feature, fig, ax, t, curr_lats, curr_lons, lifetimes, lifetime_max)
             figs[name] = fig_feat
             axs[name] = ax_feat
         return fig, ax, figs, axs
@@ -183,17 +173,10 @@ class ParticleResult:
             idxs = [idxs]
         plotting.draw_trajectories
 
-    def on_plot_generated(self, savefile, savefile_feats, i, t, total):
-        """
-        An overridable hook just in case you want something to happen between plot generations
-        in generate_all_plots or something.
-        This was definitely not made just for celery progress tracking.
-        """
-        pass
-
-    def save_at_t(self, t, i, save_dir, filename, figsize, domain, feat_info, land):
+    def save_at_t(self, t, i, save_dir, filename, figsize, domain, land):
         """Generate and save plots at a timestamp, given a bunch of information."""
-        fig, _, figs, _ = self.plot_at_t(t, domain=domain, feat_info=feat_info, land=land)
+        lifetime_max = np.nanmax(self.data_vars["lifetime"]) / 86400  if "lifetime" in self.data_vars else None
+        fig, _, figs, _ = self.plot_at_t(t, domain=domain, land=land, lifetime_max=lifetime_max)
         savefile = os.path.join(
             save_dir, f"snap_{i}.png" if filename is None else f"{filename}_{i}.png"
         )
@@ -201,7 +184,7 @@ class ParticleResult:
         savefile_feats = {}
         # plot and save every desired feature
         for name, fig_feat in figs.items():
-            if fig_feat is not None and (feat_info == "all" or name in feat_info):
+            if fig_feat is not None:
                 savefile_feat = os.path.join(
                     save_dir,
                     f"snap_{name}_{i}.png" if filename is None else f"{filename}_{name}_{i}.png"
@@ -217,15 +200,11 @@ class ParticleResult:
         return savefile, savefile_feats
 
     def generate_all_plots(
-        self, save_dir, filename=None, figsize=None, domain=None, feat_info="all", land=True,
+        self, save_dir, filename=None, figsize=None, domain=None, land=True,
         clear_folder=False
     ):
         """
         Generates plots and then saves them
-
-        Args:
-            feat_info (list or str): 'all' to plot everything, list of names to choose which
-             features to generate their own plots for
         """
         utils.create_path(save_dir)
         if clear_folder:
@@ -239,9 +218,8 @@ class ParticleResult:
             i = 0
             while t <= self.times[-1]:
                 savefile, savefile_feats = self.save_at_t(
-                    t, i, save_dir, filename, figsize, domain, feat_info, land
+                    t, i, save_dir, filename, figsize, domain, land
                 )
-                self.on_plot_generated(savefile, savefile_feats, i, t, total_plots)
                 i += 1
                 t += np.timedelta64(self.cfg["snapshot_interval"], "s")
         else:
@@ -249,9 +227,8 @@ class ParticleResult:
             # from the particle files.
             for i in range(len(self.times)):
                 savefile, savefile_feats = self.save_at_t(
-                    self.times[i], i, save_dir, filename, figsize, domain, feat_info, land
+                    self.times[i], i, save_dir, filename, figsize, domain, land
                 )
-                self.on_plot_generated(savefile, savefile_feats, i, self.times[i], len(self.times))
         return self.frames
 
     def generate_all_positions(self):
@@ -298,6 +275,7 @@ class ParticleResult:
     def write_feature_dists(self, feat_names):
         for feat_name in feat_names:
             feat = self.plot_features[feat_name]
+            if not isinstance(feat, ScatterPlotFeature): continue
             dists = np.zeros(self.shape, dtype=float)
             for time in self.times:
                 mask = self.data_vars["time"] == time

@@ -22,9 +22,64 @@ from pyplume.parcels_utils import BuoyPath
 import pyplume.utils as utils
 
 
-class ParticlePlotFeature:
+class PlotFeature:
     """
-    Represents additional points to plot and maybe track on top of the particles from a
+    Generic class to represent a feature that should be plotted on a plot of a simulation frame.
+    """
+    def add_to_plot(self, fig, ax, t, lats, lons, **kwargs):
+        """
+        Plots onto a simulation frame plot, with information on particles at that time passed in.
+
+        Args:
+            ax: the axes that the simulation plot was already drawn on
+            t: timestamp
+            lats: particle lats
+            lons: particle lons
+
+        Returns:
+            fig, ax
+        """
+        return fig, ax
+
+    def generate_external_plot(self, t, lats, lons, **kwargs):
+        """
+        Generates an entirely new optional plot that could display any kind of additional info
+        about this particular feature.
+
+        Args:
+            t: timestamp
+            lats: particle lats
+            lons: particle lons
+
+        Returns:
+            fig, ax
+        """
+        return None, None
+
+
+class ParticlePlotFeature(PlotFeature):
+    """
+    Plots particles per frame.
+    """
+    def __init__(self, particle_size=4):
+        self.particle_size = particle_size
+
+    def add_to_plot(self, fig, ax, t, lats, lons, lifetimes=None, lifetime_max=None, **kwargs):
+        sc = ax.scatter(lons, lats, c=lifetimes, edgecolor="k", vmin=0, vmax=lifetime_max, s=self.particle_size)
+        if lifetimes is not None:
+            cbar_ax = fig.add_axes([0.1, 0, 0.1, 0.1])
+            plt.colorbar(sc, cax=cbar_ax)
+            posn = ax.get_position()
+            cbar_ax.set_position([posn.x0 + posn.width + 0.14, posn.y0, 0.04, posn.height])
+            cbar_ax.get_yaxis().labelpad = 13
+            # super jank label the other colorbar since it's in plotting.plotfield
+            cbar_ax.set_ylabel("Age (days)\n\n\n\n\n\nVelocity (m/s)", rotation=270)
+        return fig, ax
+
+
+class ScatterPlotFeature(PlotFeature):
+    """
+    Represents additional points to plot and track in addition to the particles from a
     Parcels simulation.
     """
     def __init__(self, lats, lons, labels=None, segments=False, track_dist=0, color=None):
@@ -42,6 +97,21 @@ class ParticlePlotFeature:
             self.segments = None
         self.track_dist = track_dist
         self.color = color
+
+    def add_to_plot(self, fig, ax, t, lats, lons, **kwargs):
+        """
+        Plots onto a frame plot, with information on particles at that time passed in
+
+        Args:
+            ax: the axes that the simulation plot was already drawn on
+            lats: particle lats
+            lons: particle lons
+        """
+        if self.segments is not None:
+            ax.plot(self.lons, self.lats, c=self.color)
+        else:
+            ax.scatter(self.lons, self.lats, c=self.color)
+        return fig, ax
 
     def count_near(self, lats, lons, **kwargs):
         """
@@ -100,31 +170,6 @@ class ParticlePlotFeature:
                 dists[i][j] = utils.haversine(self.lats[i], lats[j], self.lons[i], lons[j])
         return dists
 
-    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
-        """
-        Plots onto a frame plot, with information on particles at that time passed in
-
-        Args:
-            ax: the axes that the simulation plot was already drawn on
-            lats: particle lats
-            lons: particle lons
-        """
-        if self.segments is not None:
-            ax.plot(self.lons, self.lats, c=self.color)
-        else:
-            ax.scatter(self.lons, self.lats, c=self.color)
-
-    def generate_info_table(self, lats, lons, *args, **kwargs):
-        """
-        Generates an entirely new optional plot that could display any kind of additional info
-        about this particular feature.
-
-        Args:
-            lats: particle lats
-            lons: particle lons
-        """
-        return None, None
-
     @classmethod
     def get_sd_coastline(cls, path=None, track_dist=100):
         """A simplified SD coastline"""
@@ -137,18 +182,19 @@ class ParticlePlotFeature:
         return cls(lats, lons, segments=True, track_dist=track_dist)
 
 
-class NanSeparatedFeature(ParticlePlotFeature):
+class NanSeparatedFeature(ScatterPlotFeature):
     """
     A feature containing multiple line segments where nans separate each collection of segments.
     """
     def __init__(self, lats, lons, **kwargs):
         super().__init__(lats, lons, segments=False, **kwargs)
 
-    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
+    def add_to_plot(self, fig, ax, t, lats, lons, **kwargs):
         lat_borders = np.split(self.lats, np.where(np.isnan(self.lats))[0])
         lon_borders = np.split(self.lons, np.where(np.isnan(self.lons))[0])
         for i in range(len(lat_borders)):
             ax.plot(lon_borders[i], lat_borders[i], c=self.color)
+        return fig, ax
 
     @classmethod
     def get_sd_full_coastline(cls, path=None):
@@ -173,7 +219,7 @@ class NanSeparatedFeature(ParticlePlotFeature):
         return inst
 
 
-class StationFeature(ParticlePlotFeature):
+class StationFeature(ScatterPlotFeature):
     """
     Plots points that represent stations, where each is uniquely named and tracks how many
     particles are within tracking distance. When plotted on a frame, they change colors based
@@ -185,7 +231,7 @@ class StationFeature(ParticlePlotFeature):
         """Labels is required"""
         super().__init__(lats, lons, labels=labels, segments=False, **kwargs)
 
-    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
+    def add_to_plot(self, fig, ax, t, lats, lons, **kwargs):
         """Any point with points near them are colored red, otherwise they are blue."""
         counts = self.count_near(lats, lons)
         ax.scatter(
@@ -194,8 +240,9 @@ class StationFeature(ParticlePlotFeature):
         ax.scatter(
             self.lons[counts > 0], self.lats[counts > 0], c="r", s=60, edgecolor="k"
         )
+        return fig, ax
 
-    def generate_info_table(self, lats, lons, *args, **kwargs):
+    def generate_external_plot(self, t, lats, lons, **kwargs):
         """
         Creates a table where each row contains information on each station and how many particles
         are nearby that point.
@@ -231,7 +278,7 @@ class StationFeature(ParticlePlotFeature):
         return cls(lats, lons, SD_STATION_NAMES, track_dist=track_dist)
 
 
-class LatTrackedPointFeature(ParticlePlotFeature):
+class LatTrackedPointFeature(ScatterPlotFeature):
     """A single point that tracks how northward/southward the particles around it are."""
     def __init__(self, lat, lon, xlim=None, ymax=None, show=True, **kwargs):
         super().__init__([lat], [lon], **kwargs)
@@ -239,11 +286,12 @@ class LatTrackedPointFeature(ParticlePlotFeature):
         self.ymax = ymax
         self.show = show
 
-    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
+    def add_to_plot(self, t, fig, ax, lats, lons, **kwargs):
         if self.show:
-            super().plot_on_frame(fig, ax, lats, lons, *args, **kwargs)
+            return super().add_to_plot(fig, ax, lats, lons, **kwargs)
+        return fig, ax
 
-    def generate_info_table(self, lats, lons, *args, **kwargs):
+    def generate_external_plot(self, t, lats, lons, **kwargs):
         """
         Generates a histogram showing the distribution of meridional distances from the single
         point.
@@ -270,7 +318,7 @@ class LatTrackedPointFeature(ParticlePlotFeature):
         return cls(TIJUANA_MOUTH_POSITION[0], TIJUANA_MOUTH_POSITION[1], xlim=[-16, 4], ymax=0.1, show=False, color="y")
 
 
-class NearcoastDensityFeature(ParticlePlotFeature):
+class NearcoastDensityFeature(ScatterPlotFeature):
     """A single point that tracks how northward/southward the particles around it are."""
     def __init__(self, origin, stations, coastline, xlim=None, ymax=None, **kwargs):
         """
@@ -290,7 +338,7 @@ class NearcoastDensityFeature(ParticlePlotFeature):
         self.xlim = xlim
         self.ymax = ymax
 
-    def generate_info_table(self, lats, lons, *args, **kwargs):
+    def generate_external_plot(self, t, lats, lons, **kwargs):
         """
         Generates a histogram showing the distribution of meridional distances from the single
         point.
@@ -352,33 +400,28 @@ class NearcoastDensityFeature(ParticlePlotFeature):
         )
 
 
-class BuoyPathFeature(ParticlePlotFeature):
+class BuoyPathFeature(ScatterPlotFeature):
     def __init__(self, buoy_path: BuoyPath, backstep_delta=None, backstep_count=0):
         self.buoy_path = buoy_path
         self.backstep_count = backstep_count
         self.backstep_delta = backstep_delta
         super().__init__(buoy_path.lats, buoy_path.lons, labels=buoy_path.times, segments=True)
 
-    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
-        time = kwargs.get("time", None)
-        if time is None:
-            return super().plot_on_frame(fig, ax, lats, lons, *args, **kwargs)
+    def add_to_plot(self, fig, ax, t, lats, lons, **kwargs):
         b_lats = []
         b_lons = []
         for i in range(self.backstep_count + 1):
-            curr_time = time - i * self.backstep_delta
+            curr_time = t - i * self.backstep_delta
             if not self.buoy_path.in_time_bounds(curr_time):
                 break
             b_lat, b_lon = self.buoy_path.get_interped_point(curr_time)
             b_lats.append(b_lat)
             b_lons.append(b_lon)
         ax.plot(b_lons, b_lats)
+        return fig, ax
 
-    def get_closest_dists(self, lats, lons, **kwargs):
-        time = kwargs.get("time", None)
-        if time is None:
-            return super().get_closest_dists(lats, lons, **kwargs)
-        buoy_lat, buoy_lon = self.buoy_path.get_interped_point(time)
+    def get_closest_dists(self, t, lats, lons, **kwargs):
+        buoy_lat, buoy_lon = self.buoy_path.get_interped_point(t)
         return utils.haversine(lats, buoy_lat, lons, buoy_lon)
 
     @classmethod
@@ -386,8 +429,8 @@ class BuoyPathFeature(ParticlePlotFeature):
         return cls(BuoyPath.from_csv(**utils.get_path_cfg(path)), **kwargs)
 
 
-class WindVectorFeature(ParticlePlotFeature):
-    def plot_on_frame(self, fig, ax, lats, lons, *args, **kwargs):
+class WindVectorFeature(ScatterPlotFeature):
+    def add_to_plot(self, fig, ax, t, lats, lons, **kwargs):
         if "wind" not in kwargs:
             return
         wind_u, wind_v = kwargs["wind"]  # tuple of u, v

@@ -158,6 +158,7 @@ def draw_trajectories_datasets(datasets, names, domain=None, legend=True, scatte
 
 
 def draw_trajectories(lats, lons, times=None, domain=None, points=True, savefile=None, padding=0.0):
+    # TODO finish
     if len(lats.shape) == 1:
         lats = np.array([lats])
     if len(lons.shape) == 1:
@@ -173,8 +174,9 @@ def draw_trajectories(lats, lons, times=None, domain=None, points=True, savefile
     for i in range(lats.shape[0]):
         pass
 
+
 def plot_particles(
-    lats, lons, ages=None, time=None, grid=None, domain=None, land=True, vmax=0.6, max_age=None,
+    lats, lons, lifetimes=None, time=None, grid=None, domain=None, land=True, vmax=0.6, lifetime_max=None,
     s=20
 ):
     """
@@ -212,9 +214,9 @@ def plot_particles(
             field=grid.fieldset.UV, show_time=show_time, domain=domain, land=land, vmin=0,
             vmax=vmax, titlestr="Particles and "
         )
-    sc = ax.scatter(lons, lats, c=ages, edgecolor="k", vmin=0, vmax=max_age, s=s)
+    sc = ax.scatter(lons, lats, c=lifetimes, edgecolor="k", vmin=0, vmax=lifetime_max, s=s)
 
-    if ages is not None:
+    if lifetimes is not None:
         cbar_ax = fig.add_axes([0.1, 0, 0.1, 0.1])
         plt.colorbar(sc, cax=cbar_ax)
         posn = ax.get_position()

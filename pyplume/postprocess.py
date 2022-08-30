@@ -12,7 +12,7 @@ from shapely.geometry import LineString
 import xarray as xr
 
 from pyplume.constants import *
-from pyplume.parcels_utils import SurfaceGrid
+from pyplume.dataloaders import SurfaceGrid
 from pyplume.plot_features import *
 import pyplume.plotting as plotting
 import pyplume.utils as utils
@@ -44,21 +44,20 @@ class ParticleResult:
     # for the main plot that draws the particles per frame
     MAIN_PARTICLE_PLOT_NAME = "particles"
 
-    def __init__(self, dataset, sim_result_dir=None, cfg=None):
+    def __init__(self, dataset, sim_result_dir=None, snapshot_interval=None):
         """
         Args:
             dataset: path to ParticleFile or just the dataset itself
-            cfg: the parcels config passed into the main simulation
         """
         self.sim_result_dir = Path(sim_result_dir) if sim_result_dir is not None else None
-        self.cfg = cfg
+        self.snapshot_interval = snapshot_interval
         if isinstance(dataset, (Path, str)):
             self.path = dataset
             with xr.open_dataset(dataset) as ds:
-                self.xrds = ds
+                self.ds = ds
         elif isinstance(dataset, xr.Dataset):
             self.path = None
-            self.xrds = dataset
+            self.ds = dataset
         else:
             raise TypeError(f"{dataset} is not a path or xarray dataset")
         # assumed to be in data_vars: trajectory, time, lat, lon, z
@@ -66,8 +65,8 @@ class ParticleResult:
         self.data_vars = {}
         # data variables with different dimensions than the dataset's
         self.non_vars = {}
-        self.shape = self.xrds["trajectory"].shape  # use trajectory var as reference
-        for var, arr in self.xrds.variables.items():
+        self.shape = self.ds["trajectory"].shape  # use trajectory var as reference
+        for var, arr in self.ds.variables.items():
             arr = arr.values
             if self.shape == arr.shape:
                 self.data_vars[var] = arr
@@ -208,10 +207,10 @@ class ParticleResult:
         if clear_folder:
             utils.delete_all_pngs(save_dir)
         self.frames = []
-        if self.cfg is not None:
+        if self.snapshot_interval is not None:
             # The delta time between each snapshot is defined in the parcels config. This lets us avoid
             # the in-between timestamps where a single particle gets deleted.
-            total_plots = int((self.times[-1] - self.times[0]) / np.timedelta64(1, "s") / self.cfg["snapshot_interval"]) + 1
+            total_plots = int((self.times[-1] - self.times[0]) / np.timedelta64(1, "s") / self.snapshot_interval) + 1
             t = self.times[0]
             i = 0
             while t <= self.times[-1]:
@@ -219,7 +218,7 @@ class ParticleResult:
                     t, i, save_dir, figsize, domain, land
                 )
                 i += 1
-                t += np.timedelta64(self.cfg["snapshot_interval"], "s")
+                t += np.timedelta64(self.snapshot_interval, "s")
         else:
             # If the delta time between each snapshot is unknown, we'll just use the unique times
             # from the particle files.
@@ -231,7 +230,7 @@ class ParticleResult:
 
     def generate_all_positions(self):
         self.frames = []
-        if self.cfg is not None:
+        if self.snapshot_interval is not None:
             t = self.times[0]
             i = 0
             while t <= self.times[-1]:
@@ -242,7 +241,7 @@ class ParticleResult:
                     ages = self.data_vars["lifetime"][mask]
                 self.frames.append(TimedFrame(t, None, lats, lons, ages=ages))
                 i += 1
-                t += np.timedelta64(self.cfg["snapshot_interval"], "s")
+                t += np.timedelta64(self.snapshot_interval, "s")
         else:
             # If the delta time between each snapshot is unknown, we'll just use the unique times
             # from the particle files.
@@ -297,8 +296,8 @@ class ParticleResult:
         if self.path is None and path is None:
             raise ValueError("No path specified and no previous path was passed in.")
         new_ds = xr.Dataset(
-            data_vars={var: (self.xrds.dims, arr) for var, arr in self.data_vars.items()},
-            coords=self.xrds.coords, attrs=self.xrds.attrs
+            data_vars={var: (self.ds.dims, arr) for var, arr in self.data_vars.items()},
+            coords=self.ds.coords, attrs=self.ds.attrs
         )
         new_ds.to_netcdf(path=self.path if path is None else path)
 

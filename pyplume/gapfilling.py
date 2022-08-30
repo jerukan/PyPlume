@@ -8,16 +8,15 @@ import matlab.engine
 import numpy as np
 import xarray as xr
 
-from pyplume.dataloaders import slice_dataset
+from pyplume.dataloaders import slice_dataset, SurfaceGrid
 import pyplume.utils as utils
-from pyplume.parcels_utils import SurfaceGrid
 import pyplume.thredds_data as thredds_data
 
 
 class GapfillStep(ABC):
     @abstractmethod
     def process(
-        self, u: np.ndarray, v: np.ndarray, target: SurfaceGrid, **kwargs
+        self, u: np.ndarray, v: np.ndarray, target: xr.Dataset, **kwargs
     ) -> Tuple[np.ndarray, np.ndarray]:
         pass
 
@@ -36,7 +35,7 @@ def get_interped(i, target, ref, invalid_where):
     t = invalid_where[0][i]
     lat = target.lats[invalid_where[1][i]]
     lon = target.lons[invalid_where[2][i]]
-    current_u, current_v = ref.get_fs_current(t * time_diff, lat, lon)
+    current_u, current_v = ref.get_fs_vector(t * time_diff, lat, lon)
     current_abs = abs(current_u) + abs(current_v)
     # if both the u and v components are 0, there's probably no data there
     if np.isnan(ref.get_closest_current(t, lat, lon)[0]) or current_abs == 0:
@@ -48,7 +47,7 @@ class InterpolationStep(GapfillStep):
     """
     Uses linear interpolation
     """
-    def __init__(self, references=None):
+    def __init__(self, references):
         self.references = references if references is not None else []
 
     def do_validation(self, target, loaded_references):
@@ -66,8 +65,9 @@ class InterpolationStep(GapfillStep):
                     should be larger than the target's)")
 
     def process(
-        self, u: np.ndarray, v: np.ndarray, target: SurfaceGrid, **kwargs
+        self, u: np.ndarray, v: np.ndarray, target: xr.Dataset, **kwargs
     ) -> Tuple[np.ndarray, np.ndarray]:
+        target = SurfaceGrid(target)
         loaded_references = []
         for i, ref in enumerate(self.references):
             if isinstance(ref, SurfaceGrid):
@@ -156,8 +156,9 @@ class SmoothnStep(GapfillStep):
             raise ValueError("Incorrect mask dimensions")
 
     def process(
-        self, u: np.ndarray, v: np.ndarray, target: SurfaceGrid, **kwargs
+        self, u: np.ndarray, v: np.ndarray, target: xr.Dataset, **kwargs
     ) -> Tuple[np.ndarray, np.ndarray]:
+        target = SurfaceGrid(target)
         self.do_validation(target)
 
         # DCT smoothing and gapfilling using matlab
@@ -181,8 +182,8 @@ class SmoothnStep(GapfillStep):
             target_smoothed_v[i] = v_array
 
         if self.mask is not None:
-            no_data = utils.generate_mask_none(self.mask.xrds["U"].values)
-            no_data = np.tile(no_data, (target.xrds["time"].size, 1, 1))
+            no_data = utils.generate_mask_no_data(self.mask.ds["U"].values)
+            no_data = np.tile(no_data, (target.ds["time"].size, 1, 1))
             target_smoothed_u[no_data] = np.nan
             target_smoothed_v[no_data] = np.nan
 
@@ -200,8 +201,8 @@ def import_gapfill_step(name):
 
 
 class Gapfiller:
-    def __init__(self):
-        self.steps = []
+    def __init__(self, *args):
+        self.steps = list(args)
 
     def add_steps(self, *args):
         for step in args:
@@ -209,17 +210,17 @@ class Gapfiller:
                 raise TypeError(f"{step} is not a proper gapfilling step.")
             self.steps.append(step)
 
-    def execute(self, target: SurfaceGrid, **kwargs) -> xr.Dataset:
-        u = target.xrds["U"].values.copy()
-        v = target.xrds["V"].values.copy()
+    def execute(self, target: xr.Dataset, **kwargs) -> xr.Dataset:
+        u = target["U"].values.copy()
+        v = target["V"].values.copy()
         for step in self.steps:
             u, v = step.process(u, v, target, **kwargs)
 
         # re-add coordinates, dimensions, and metadata to interpolated data
-        darr_u = utils.conv_to_dataarray(u, target.xrds["U"])
-        darr_v = utils.conv_to_dataarray(v, target.xrds["V"])
-        target_interped_xrds = target.xrds.drop_vars(["U", "V"]).assign(U=darr_u, V=darr_v)
-        return target_interped_xrds
+        darr_u = utils.conv_to_dataarray(u, target["U"])
+        darr_v = utils.conv_to_dataarray(v, target["V"])
+        target_interped = target.drop_vars(["U", "V"]).assign(U=darr_u, V=darr_v)
+        return target_interped
 
     @classmethod
     def load_from_config(cls, *args):

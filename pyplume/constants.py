@@ -4,6 +4,9 @@ from pathlib import Path
 import numpy as np
 
 
+EMPTY = (None, {}, "", [])
+
+
 CONFIGS_DIR = Path("configs")
 DATA_DIR = Path("data")
 FIELD_NETCDF_DIR = DATA_DIR / "field_netcdfs"

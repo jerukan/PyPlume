@@ -11,7 +11,6 @@
   },
   "save_snapshots": true,
   "parcels_config": {
-    "save_dir_pfile": "particledata",
     "particle_type": "ThreddsParticle",
     "kernels": ["AdvectionRK4", "AgeParticle"],
     "time_range": ["2019-08-16T22:01:42", "2019-08-22T10:01:21"],

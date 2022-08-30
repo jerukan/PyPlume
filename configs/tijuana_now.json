@@ -21,7 +21,6 @@
     }
   },
   "parcels_config": {
-    "save_dir_pfile": "particledata",
     "particle_type": "ThreddsParticle",
     "kernels": ["AdvectionRK4", "AgeParticle", "DeleteOOB"],
     "time_range": ["START", "END"],

@@ -102,18 +102,26 @@ def insert_default_values(self, cfg):
 
 
 class ParcelsSimulation:
-    def __init__(self, name, grid, cfg):
+    def __init__(
+        self, name, grid, spawn_points=None, particle_type=None, save_dir=None,
+        snapshot_interval=None, kernels=None, time_range=None, repetitions=None, repeat_dt=None,
+        instances_per_spawn=None, simulation_dt=None
+    ):
         self.name = name
         self.grid = grid
-        self.cfg = cfg
+        self.time_range = time_range
+        self.repetitions = repetitions
+        self.repeat_dt = repeat_dt
+        self.instances_per_spawn = instances_per_spawn
+        self.simulation_dt = simulation_dt
         self.times, _, _ = grid.get_coords()
 
         # load spawn points
-        if isinstance(cfg["spawn_points"], (str, dict)):
-            lats, lons = utils.load_geo_points(**utils.get_path_cfg(cfg["spawn_points"]))
+        if isinstance(spawn_points, (str, dict)):
+            lats, lons = utils.load_geo_points(**utils.get_path_cfg(spawn_points))
             spawn_points = np.array([lats, lons]).T
-        elif isinstance(cfg["spawn_points"], (list, np.ndarray)):
-            spawn_points = cfg["spawn_points"]
+        elif isinstance(spawn_points, (list, np.ndarray)):
+            spawn_points = spawn_points
         else:
             raise ValueError("Invalid spawn point format in config")
 
@@ -133,19 +141,19 @@ class ParcelsSimulation:
 
         # set up ParticleSet and ParticleFile
         self.pset = ParticleSet(
-            fieldset=grid.fieldset, pclass=import_kernel_or_particle(cfg["particle_type"]),
+            fieldset=grid.fieldset, pclass=import_kernel_or_particle(particle_type),
             time=time_arr, lon=p_lons, lat=p_lats
         )
         # TODO generalize path lol
-        self.sim_result_dir = utils.get_dir(Path("results") / f"simulation_{name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}")
+        self.sim_result_dir = utils.get_dir(Path(save_dir) / f"simulation_{name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}")
         self.pfile_path = self.sim_result_dir / f"particlefile.nc"
         self.pfile = self.pset.ParticleFile(self.pfile_path)
         print(f"Particle trajectories for {name} will be saved to {self.pfile_path}")
         print(f"    total particles in simulation: {len(time_arr)}")
 
         t_start, t_end = self.get_time_bounds(spawn_points)
-        self.snap_num = math.floor((t_end - t_start) / cfg["snapshot_interval"])
-        self.last_int = t_end - (self.snap_num * cfg["snapshot_interval"] + t_start)
+        self.snap_num = math.floor((t_end - t_start) / snapshot_interval)
+        self.last_int = t_end - (self.snap_num * snapshot_interval + t_start)
         if self.last_int == 0:
             # +1 snapshot is from an initial plot
             print("No last interval exists.")
@@ -155,15 +163,16 @@ class ParcelsSimulation:
 
         self.completed = False
         self.parcels_result = None
-        self.kernels = [import_kernel_or_particle(kernel) for kernel in cfg["kernels"]]
+        self.kernels = [import_kernel_or_particle(kernel) for kernel in kernels]
         if len(self.kernels) == 0:
             self.kernels = [AdvectionRK4]
         self.kernel = None
         self.update_kernel()
 
+        
     def generate_single_particle_spawns(self, **kwargs):
         """Generates spawn information for a single specified location"""
-        t_start, t_end = parse_time_range(self.cfg["time_range"], self.times)
+        t_start, t_end = parse_time_range(self.time_range, self.times)
         release = np.datetime64(kwargs.get("release", t_start))
         if release < t_start:
             raise ValueError(f"Particle is released {release}, before simulation start {t_start}")
@@ -173,9 +182,9 @@ class ParcelsSimulation:
         point = kwargs["point"]
         if len(point) != 2:
             raise ValueError(f"{point} has incorrect point dimensions")
-        repetitions = kwargs.get("repetitions", self.cfg["repetitions"])
-        repeat_dt = kwargs.get("repeat_dt", self.cfg["repeat_dt"])
-        instances_per_spawn = kwargs.get("instances_per_spawn", self.cfg["instances_per_spawn"])
+        repetitions = kwargs.get("repetitions", self.repetitions)
+        repeat_dt = kwargs.get("repeat_dt", self.repeat_dt)
+        instances_per_spawn = kwargs.get("instances_per_spawn", self.instances_per_spawn)
         if repetitions is None:
             repetitions = -1
         if repeat_dt is None:
@@ -221,7 +230,7 @@ class ParcelsSimulation:
         for sp in spawns:
             if isinstance(sp, (list, tuple, np.ndarray)):
                 # position that defaults to START
-                return self.cfg["time_range"][0]
+                return self.time_range[0]
             if isinstance(sp, dict):
                 release = sp.get("release", None)
                 release = None if release is None else np.datetime64(release)
@@ -232,15 +241,15 @@ class ParcelsSimulation:
                         earliest_spawn = release if release < earliest_spawn else earliest_spawn
                 else:
                     # position that defaults to START
-                    return self.cfg["time_range"][0]
-        return earliest_spawn if earliest_spawn is not None else self.cfg["time_range"][0]
+                    return self.time_range[0]
+        return earliest_spawn if earliest_spawn is not None else self.time_range[0]
 
     def get_time_bounds(self, spawns):
-        if self.cfg["time_range"][0] == "START":
+        if self.time_range[0] == "START":
             earliest_spawn = self.get_earliest_spawn(spawns)
-            self.cfg["time_range"][0] = earliest_spawn
+            self.time_range[0] = earliest_spawn
         t_start, t_end = parse_time_range(
-            self.cfg["time_range"], self.times
+            self.time_range, self.times
         )
         if (t_start < self.times[0] or t_end < self.times[0] or
             t_start > self.times[-1] or t_end > self.times[-1]):
@@ -255,7 +264,7 @@ class ParcelsSimulation:
         self.pset.execute(
             self.kernel,
             runtime=timedelta(seconds=runtime),
-            dt=timedelta(seconds=self.cfg["simulation_dt"]),
+            dt=timedelta(seconds=self.simulation_dt),
             recovery={ErrorCode.ErrorOutOfBounds: DeleteParticleVerbose},
             output_file=self.pfile
         )
@@ -285,7 +294,7 @@ class ParcelsSimulation:
         if self.completed:
             raise RuntimeError("ParcelsSimulation has already completed.")
         for i in range(self.snap_num):
-            if not self.simulation_loop(i, self.cfg["snapshot_interval"]):
+            if not self.simulation_loop(i, self.snapshot_interval):
                 break
 
         # run the last interval (the remainder) if needed
@@ -295,5 +304,6 @@ class ParcelsSimulation:
         self.pfile.export()
         self.pfile.close()
         self.completed = True
-        self.parcels_result = ParticleResult(self.pfile_path, sim_result_dir=self.sim_result_dir, cfg=self.cfg)
+        self.parcels_result = ParticleResult(self.pfile_path, sim_result_dir=self.sim_result_dir)
         self.parcels_result.add_grid(self.grid)
+        return self.parcels_result

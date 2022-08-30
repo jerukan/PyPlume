@@ -103,26 +103,28 @@ def generate_mask_invalid(data):
     but normally should have)
 
     Args:
-        data (np.ndarray): an array with the shape of (time, lat, lon).
+        data (array-like): an array with the shape of (time, lat, lon).
 
     Returns:
-        np.ndarray: boolean mask with the same shape as data.
+        array-like: boolean mask with the same shape as data.
     """
-    mask_none = np.tile(generate_mask_none(data), (data.shape[0], 1, 1))
+    mask_none = np.tile(generate_mask_no_data(data), (data.shape[0], 1, 1))
     mask = np.isnan(data)
     mask[mask_none] = False
     return mask
 
 
-def generate_mask_none(data):
+def generate_mask_no_data(data):
     """
-    Generates a boolean mask signifying which points in the data don't have data and never should.
+    Generates a boolean mask signifying which coordinates in the data shouldn't have data and which
+    ones should.
 
     Args:
-        data (np.ndarray): an array with the shape of (time, lat, lon).
+        data (array-like): an array with the shape of (time, lat, lon).
 
     Returns:
-        np.ndarray: boolean mask with the shape of (lat, lon).
+        array-like: Boolean mask with the shape of (lat, lon). True values signify data shouldn't
+         exist, False values signify they should.
     """
     nan_data = ~np.isnan(data)
     return nan_data.sum(axis=0) == 0

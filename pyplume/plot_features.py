@@ -18,7 +18,7 @@ from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
 
 from pyplume.constants import *
-from pyplume.parcels_utils import BuoyPath
+from pyplume.dataloaders import BuoyPath
 import pyplume.utils as utils
 
 

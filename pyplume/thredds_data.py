@@ -63,7 +63,6 @@ def get_fmrc_hycom_load_method(time_chunk_size=None):
         ds["time"].attrs["_CoordinateAxisType"] = "Time"
         ds["tau"].attrs["units"] = "hours since " + ds["tau"].time_origin
         # drop depth data
-        ds = ds.sel(depth=0)
         ds = drop_depth(rename_dataset_vars(ds, VAR_MAPPINGS_FMRC_HYCOM))
         return ds
     return load_hycom_method

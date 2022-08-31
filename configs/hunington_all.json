@@ -1,4 +1,5 @@
 {
+  "name": "huntington_all",
   "netcdf_data": {
     "ocean": {
       "path": "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd",

@@ -11,6 +11,8 @@ import numpy as np
 from parcels import plotting
 import xarray as xr
 
+from pyplume.dataloaders import open_dataset
+
 
 DEFAULT_PARTICLE_SIZE = 4
 
@@ -73,8 +75,7 @@ def generate_domain_datasets(datasets, padding=0.005):
     lon_max = -180
     for ds in datasets:
         if isinstance(ds, (str, Path)):
-            with xr.open_dataset(ds) as p_ds:
-                ds = p_ds
+            ds = open_dataset(ds)
         lat_rng = (ds["lat"].values.min(), ds["lat"].values.max())
         if lat_rng[0] < lat_min:
             lat_min = lat_rng[0]
@@ -140,8 +141,7 @@ def draw_trajectories_datasets(datasets, names, domain=None, legend=True, scatte
 
     for i, ds in enumerate(datasets):
         if isinstance(ds, (str, Path)):
-            with xr.open_dataset(ds) as p_ds:
-                ds = p_ds
+            ds = open_dataset(ds)
         # now I'm not entirely sure how matplotlib deals with
         # nan values, so if any show up, damnit
         for j in range(ds.dims["traj"]):

@@ -45,7 +45,7 @@ def get_fmrc_hycom_load_method(time_chunk_size=None):
     time_chunks = parse_time_chunk_size(time_chunk_size)
     def load_hycom_method(src):
         # HYCOM data times cannot be decoded normally
-        ds = xr.open_dataset(
+        ds = open_dataset(
             src, chunks=time_chunks, drop_variables=DROP_VARS_FMRC_HYCOM, decode_times=False
         )
         # This particular HYCOM forecast data has different units of time, where

@@ -26,6 +26,14 @@ VAR_MAPPINGS_DEFAULT = {
 CHUNK_SIZE_DEFAULT = "100MB"
 
 
+def open_dataset(filename_or_obj, *args, **kwargs):
+    """
+    Wrapper for xr.open_dataset that wraps the method in a with block in order to close the file.
+    """
+    with xr.open_dataset(filename_or_obj, *args, **kwargs) as ds:
+        return ds
+
+
 @dataclass
 class DatasetInfo:
     id: str
@@ -45,7 +53,7 @@ class DataSource:
         self.id = id
         self.name = name if name is not None else "Data source"
         self.available_datasets = available_datasets if available_datasets is not None else []
-        self.load_method = load_method if load_method is not None else xr.open_dataset
+        self.load_method = load_method if load_method is not None else open_dataset
 
     def get_dataset_by_id(self, id) -> DatasetInfo:
         with_id = list(filter(lambda ds: ds.id == id, self.available_datasets))
@@ -92,12 +100,12 @@ def get_simple_load_method(mappings=None, drop_vars=None, time_chunk_size=None):
     drop_vars = drop_vars if drop_vars is not None else set()
     time_chunks = parse_time_chunk_size(time_chunk_size)
     def new_load_method(src):
-        ds = xr.open_dataset(src, chunks=time_chunks, drop_variables=drop_vars)
+        ds = open_dataset(src, chunks=time_chunks, drop_variables=drop_vars)
         return rename_dataset_vars(ds, mappings)
     return new_load_method
 
 
-def rename_dataset_vars(src, mappings):
+def rename_dataset_vars(src, mappings=None):
     """
     Renames variable/coord keys in an NetCDF ocean current dataset.
 
@@ -109,11 +117,11 @@ def rename_dataset_vars(src, mappings):
                 ...
             }
     """
+    if mappings is None: mappings = VAR_MAPPINGS_DEFAULT
     if isinstance(src, xr.Dataset):
         ds = src
     else:
-        with xr.open_dataset(src) as opened:
-            ds = opened
+        ds = open_dataset(src)
     rename_map = {}
     for var in ds.variables.keys():
         for match in mappings.keys():

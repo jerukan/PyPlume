@@ -12,15 +12,6 @@ import scipy.io
 import xarray as xr
 
 
-def open_ds_if_path(dataset) -> xr.Dataset:
-    if isinstance(dataset, (Path, str)):
-        with xr.open_dataset(dataset) as ds:
-            return ds
-    elif isinstance(dataset, xr.Dataset):
-        return dataset
-    raise TypeError(f"{dataset} is not a path or xarray dataset")
-
-
 def haversine(lat1, lat2, lon1, lon2):
     """
     Calculates the haversine distance between two points.

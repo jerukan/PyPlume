@@ -111,6 +111,7 @@ class ParcelsSimulation:
         self.grid = grid
         self.time_range = time_range
         self.repetitions = repetitions
+        self.snapshot_interval = snapshot_interval
         self.repeat_dt = repeat_dt
         self.instances_per_spawn = instances_per_spawn
         self.simulation_dt = simulation_dt

@@ -12,7 +12,7 @@ from shapely.geometry import LineString
 import xarray as xr
 
 from pyplume.constants import *
-from pyplume.dataloaders import SurfaceGrid
+from pyplume.dataloaders import SurfaceGrid, open_dataset
 from pyplume.plot_features import *
 import pyplume.plotting as plotting
 import pyplume.utils as utils
@@ -53,8 +53,7 @@ class ParticleResult:
         self.snapshot_interval = snapshot_interval
         if isinstance(dataset, (Path, str)):
             self.path = dataset
-            with xr.open_dataset(dataset) as ds:
-                self.ds = ds
+            self.ds = open_dataset(dataset)
         elif isinstance(dataset, xr.Dataset):
             self.path = None
             self.ds = dataset

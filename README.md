@@ -1,4 +1,4 @@
-# parcels_westcoast
+# PyPlume (name definitely not final)
 
 A collection of notebooks with the purpose of taking ocean current data from the
 [HFRNet Thredds Data Server](https://hfrnet-tds.ucsd.edu/) (and other files) and using

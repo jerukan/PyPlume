@@ -44,8 +44,7 @@
   "save_snapshots": true,
   "plotting_config": {
     "shown_domain": null,
-    "save_dir_snapshots": "snapshots",
-    "plot_feature_set": null,
+    "plot_features": null,
     "draw_coasts": true
   }
 }

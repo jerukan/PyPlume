@@ -266,7 +266,7 @@ class ParticleResult:
             universal_newlines=True
         )
         stdout, stderr = magick_sp.communicate()
-        print(f"magick ouptput: {(stdout, stderr)}", file=sys.stderr)
+        logging.info(f"magick ouptput: {(stdout, stderr)}", file=sys.stderr)
         return gif_path
 
     def write_feature_dists(self, feat_names):
@@ -303,17 +303,3 @@ class ParticleResult:
     def get_points_at_t(self, t: np.datetime64):
         mask = self.data_vars["time"] == t
         return self.data_vars["lat"][mask], self.data_vars["lon"][mask]
-
-
-PLOT_FEATURE_SETS = {
-    "tj_plume_tracker": {
-        "coast": NanSeparatedFeature.get_sd_full_coastline(),
-        "station": StationFeature.get_sd_stations(),
-        "mouth": NearcoastDensityFeature.get_tijuana_mouth()
-    }
-}
-
-
-def add_feature_set_to_result(result: ParticleResult, set_name: str):
-    for key, value in PLOT_FEATURE_SETS[set_name].items():
-        result.add_plot_feature(value, name=key)

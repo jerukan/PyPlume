@@ -8,6 +8,7 @@ the particle frames.
 These features represent additional information to the simulation on top of the already plotted
 particle movements.
 """
+import logging
 import os
 import sys
 
@@ -55,6 +56,10 @@ class PlotFeature:
             fig, ax
         """
         return None, None
+
+    @classmethod
+    def load_from_external(cls, **kwargs):
+        raise NotImplementedError()
 
 
 class ParticlePlotFeature(PlotFeature):
@@ -171,15 +176,12 @@ class ScatterPlotFeature(PlotFeature):
         return dists
 
     @classmethod
-    def get_sd_coastline(cls, path=None, track_dist=100):
-        """A simplified SD coastline"""
-        if path is None:
-            path = DATA_DIR / SD_COASTLINE_FILENAME
-        if not os.path.exists(path):
-            print(f"{path} does not exist", file=sys.stderr)
-            return None
-        lats, lons = utils.load_pts_mat(path, "latz0", "lonz0")
-        return cls(lats, lons, segments=True, track_dist=track_dist)
+    def load_from_external(cls, path, track_dist=100, **kwargs):
+        """
+        Loads from mat files only right now.
+        """
+        lats, lons = utils.load_pts_mat(path)
+        return cls(lats, lons, segments=True, track_dist=track_dist, **kwargs)
 
 
 class NanSeparatedFeature(ScatterPlotFeature):
@@ -197,25 +199,9 @@ class NanSeparatedFeature(ScatterPlotFeature):
         return fig, ax
 
     @classmethod
-    def get_sd_full_coastline(cls, path=None):
-        """Gets the full detailed Tijuana coastline. Don't try get_all_dists"""
-        if path is None:
-            path = DATA_DIR / SD_FULL_COASTLINE_FILENAME
-        if not os.path.exists(path):
-            print(f"{path} does not exist", file=sys.stderr)
-            return None
-        points = scipy.io.loadmat(path)["OR2Mex"]
-        lats = points.T[1]
-        lons = points.T[0]
-        lat_borders = np.split(lats, np.where(np.isnan(lats))[0][1:])
-        lon_borders = np.split(lons, np.where(np.isnan(lons))[0][1:])
-        lats_all = []
-        lons_all = []
-        for idx in SD_FULL_TIJUANA_IDXS:
-            lats_all.extend(lat_borders[idx])
-            lons_all.extend(lon_borders[idx])
-        inst = cls(lats_all, lons_all, track_dist=0)
-        inst.color = "k"
+    def load_from_external(cls, path, **kwargs):
+        lats, lons = utils.load_pts_mat(path, del_nan=False)
+        inst = cls(lats, lons, track_dist=0, **kwargs)
         return inst
 
 
@@ -227,8 +213,9 @@ class StationFeature(ScatterPlotFeature):
 
     The table they generate will show how many particles are near each station.
     """
-    def __init__(self, lats, lons, labels, **kwargs):
-        """Labels is required"""
+    def __init__(self, lats, lons, labels=None, **kwargs):
+        if labels is None:
+            labels = [f"Station {i}" for i in range(len(lats))]
         super().__init__(lats, lons, labels=labels, segments=False, **kwargs)
 
     def add_to_plot(self, fig, ax, t, lats, lons, **kwargs):
@@ -267,15 +254,9 @@ class StationFeature(ScatterPlotFeature):
         return fig, ax
 
     @classmethod
-    def get_sd_stations(cls, path=None, track_dist=1000):
-        """Gets the stations in the SD area from the mat file."""
-        if path is None:
-            path = DATA_DIR / SD_STATION_FILENAME
-        if not os.path.exists(path):
-            print(f"{path} does not exist", file=sys.stderr)
-            return None
+    def load_from_external(cls, path, labels=None, track_dist=1000, **kwargs):
         lats, lons = utils.load_pts_mat(path, "ywq", "xwq")
-        return cls(lats, lons, SD_STATION_NAMES, track_dist=track_dist)
+        return cls(lats, lons, labels=labels, track_dist=track_dist, **kwargs)
 
 
 class LatTrackedPointFeature(ScatterPlotFeature):
@@ -319,7 +300,7 @@ class LatTrackedPointFeature(ScatterPlotFeature):
 
 
 class NearcoastDensityFeature(ScatterPlotFeature):
-    """A single point that tracks how northward/southward the particles around it are."""
+    """Tracks which particles are within a certain distance to the coastline."""
     def __init__(self, origin, stations, coastline, xlim=None, ymax=None, **kwargs):
         """
         origin is a single point
@@ -340,8 +321,9 @@ class NearcoastDensityFeature(ScatterPlotFeature):
 
     def generate_external_plot(self, t, lats, lons, **kwargs):
         """
-        Generates a histogram showing the distribution of meridional distances from the single
-        point.
+        Generates a histogram showing the distribution of distances of particles within the
+        threshold distance to the coastline. Distribution of particles is binned by meridional
+        distance to the origin.
         """
         coast_dists = np.empty(len(lats))
         for i, (lat, lon) in enumerate(zip(lats, lons)):
@@ -383,20 +365,15 @@ class NearcoastDensityFeature(ScatterPlotFeature):
         return fig, ax
 
     @classmethod
-    def get_tijuana_mouth(cls, path=None):
-        if path is None:
-            path = DATA_DIR / SD_STATION_FILENAME
-        if not os.path.exists(path):
-            print(f"{path} does not exist", file=sys.stderr)
-            return None
-        st_lats, st_lons = utils.load_pts_mat(path, "ywq", "xwq")
-        path = DATA_DIR / SD_COASTLINE_FILENAME
-        c_lats, c_lons = utils.load_pts_mat(path, "latz0", "lonz0")
+    def load_from_external(cls, origin, stations, coastline, **kwargs):
+        st_lats, st_lons = utils.load_pts_mat(stations)
+        c_lats, c_lons = utils.load_pts_mat(coastline)
+        "xlim=[-16, 4], ymax=1, track_dist=900"
         return cls(
-            [TIJUANA_MOUTH_POSITION[0], TIJUANA_MOUTH_POSITION[1]],
+            [origin[0], origin[1]],
             [st_lats, st_lons],
             [c_lats, c_lons],
-            xlim=[-16, 4], ymax=1, track_dist=900
+            **kwargs
         )
 
 
@@ -425,7 +402,7 @@ class BuoyPathFeature(ScatterPlotFeature):
         return utils.haversine(lats, buoy_lat, lons, buoy_lon)
 
     @classmethod
-    def from_csv(cls, path, **kwargs):
+    def load_from_external(cls, path, **kwargs):
         return cls(BuoyPath.from_csv(**utils.get_path_cfg(path)), **kwargs)
 
 
@@ -435,3 +412,13 @@ class WindVectorFeature(ScatterPlotFeature):
             return
         wind_u, wind_v = kwargs["wind"]  # tuple of u, v
         wind_ax = fig.add_axes([0.1, 0, 0.1, 0.1])
+
+
+def construct_features_from_configs(*feature_configs):
+    features = []
+    names = []
+    for feature_args in feature_configs:
+        feature_class = utils.import_attr(feature_args["feature"])
+        features.append(feature_class.load_from_external(**feature_args["args"]))
+        names.append(feature_args.get("name", None))
+    return features, names

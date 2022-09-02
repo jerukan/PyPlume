@@ -1,9 +1,10 @@
 """
 Methods in here related to preparing, running, and processing simulations.
 """
-import numpy as np
+import logging
 import os
 
+import numpy as np
 from parcels import Field, VectorField
 from parcels.tools.converters import GeographicPolar, Geographic
 
@@ -11,8 +12,7 @@ from pyplume.constants import EMPTY
 from pyplume.dataloaders import DataLoader, SurfaceGrid, rename_dataset_vars
 import pyplume.utils as utils
 from pyplume.simulation import ParcelsSimulation
-from pyplume.postprocess import add_feature_set_to_result
-from pyplume.plot_features import BuoyPathFeature
+from pyplume.plot_features import BuoyPathFeature, construct_features_from_configs
 from pyplume.gapfilling import Gapfiller
 
 
@@ -53,7 +53,7 @@ def prep_sim_from_cfg(cfg) -> ParcelsSimulation:
         else:
             raise NotImplementedError("Wind kernel not implemented. Set add_to_field_directly to true")
     name = cfg["name"]
-    print(f"Preparing simulation {name}")
+    logging.info(f"Preparing simulation {name}")
     sim = ParcelsSimulation(name, grid, **cfg["parcels_config"])
     return sim
 
@@ -63,17 +63,17 @@ def handle_postprocessing(result, postprocess_cfg):
         lats, lons = utils.load_geo_points(**utils.get_path_cfg(postprocess_cfg["coastline"]))
         result.add_coastline(lats, lons)
         result.process_coastline_collisions()
-        print("processed collisions")
+        logging.info("processed collisions")
     if postprocess_cfg.get("buoy", None) not in EMPTY:
         result.add_plot_feature(
-            BuoyPathFeature.from_csv(
+            BuoyPathFeature.load_from_external(
                 postprocess_cfg["buoy"],
                 backstep_delta=np.timedelta64(1, "h"),
                 backstep_count=12
             ), "buoy"
         )
         result.write_feature_dists(["buoy"])
-        print("processed buoy distances")
+        logging.info("processed buoy distances")
     result.write_data(override=True)
 
 
@@ -86,14 +86,17 @@ def process_results(sim, cfg):
     sim.parcels_result.write_data(override=True)
     if cfg["save_snapshots"]:
         plotting_cfg = cfg["plotting_config"]
-        if plotting_cfg.get("plot_feature_set", None) not in EMPTY:
-            add_feature_set_to_result(sim.parcels_result, plotting_cfg["plot_feature_set"])
+        feature_cfgs = plotting_cfg.get("plot_features", None)
+        if feature_cfgs not in EMPTY:
+            features, names = construct_features_from_configs(*feature_cfgs)
+            for feature, name in zip(features, names):
+                sim.parcels_result.add_plot_feature(feature, name=name)
         sim.parcels_result.generate_all_plots(
             domain=plotting_cfg.get("shown_domain", None),
             land=plotting_cfg.get("draw_coasts", False),
             figsize=(13, 8)
         )
         try:
-            print(sim.parcels_result.generate_gif())
+            logging.info(sim.parcels_result.generate_gif())
         except FileNotFoundError:
-            print("magick is not installed, gif will not be generated")
+            logging.info("magick is not installed, gif will not be generated")

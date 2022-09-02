@@ -43,8 +43,50 @@
       "W": -117.27,
       "E": -117.09
     },
-    "save_dir_snapshots": "snapshots",
-    "plot_feature_set": "tj_plume_tracker",
-    "draw_coasts": false
+    "draw_coasts": false,
+    "plot_features": [
+      {
+        "feature": "pyplume.plot_features.NanSeparatedFeature",
+        "name": "coastline",
+        "args": {
+          "path": "data/coastOR2Mex_tijuana.mat",
+          "color": "k"
+        }
+      },
+      {
+        "feature": "pyplume.plot_features.StationFeature",
+        "name": "station",
+        "args": {
+          "path": "data/wq_stposition.mat",
+          "labels": [
+            "Coronado (North Island)",
+            "Silver Strand",
+            "Silver Strand Beach",
+            "Carnation Ave.",
+            "Imperial Beach Pier",
+            "Cortez Ave.",
+            "End of Seacoast Dr.",
+            "3/4 mi. N. of TJ River Mouth",
+            "Tijuana River Mouth",
+            "Monument Rd.",
+            "Board Fence",
+            "Mexico"
+          ],
+          "track_dist": 1000
+        }
+      },
+      {
+        "feature": "pyplume.plot_features.NearcoastDensityFeature",
+        "name": "nearcoast_density",
+        "args": {
+          "origin": [32.5567724355310, -117.130164948310],
+          "stations": "data/wq_stposition.mat",
+          "coastline": "data/coastline.mat",
+          "xlim": [-16, 4],
+          "ymax": 1,
+          "track_dist": 900
+        }
+      }
+    ]
   }
 }

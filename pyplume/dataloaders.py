@@ -181,11 +181,11 @@ def check_bounds(dataset, lat_range, lon_range, time_range):
     lons = dataset["lon"].values
     span_checker = lambda rng, coords: rng[0] <= coords[0] or rng[1] >= coords[-1]
     if span_checker(time_range, times):
-        print("Timespan reaches the min/max of the range")
+        logging.info("Timespan reaches the min/max of the range")
     if span_checker(lat_range, lats):
-        print("Latitude span reaches the min/max of the range")
+        logging.info("Latitude span reaches the min/max of the range")
     if span_checker(lon_range, lons):
-        print("Longitude span reaches the min/max of the range")
+        logging.info("Longitude span reaches the min/max of the range")
 
 
 def slice_dataset(ds, time_range=None, lat_range=None, lon_range=None,
@@ -250,10 +250,7 @@ class DataLoader:
         self.inclusive = inclusive
         if datasource is None: self.datasource = DEFAULT_DATASOURCE
         elif isinstance(datasource, str):
-            module_str = ".".join(datasource.split(".")[:-1])
-            var_str = datasource.split(".")[-1]
-            module = importlib.import_module(module_str)
-            self.datasource = getattr(module, var_str)
+            self.datasource = utils.import_attr(datasource)
         else: self.datasource = datasource
         if isinstance(dataset, xr.Dataset): self.full_dataset = dataset
         elif isinstance(dataset, (str, Path)):
@@ -480,7 +477,7 @@ class SurfaceGrid:
             self.prep_fieldsets(**self.fs_kwargs)
             self.modified = True
         elif len(dataset["U"].shape) == 3:
-            print("Ocean current vector modifications with wind vectors must be done"
+            logging.info("Ocean current vector modifications with wind vectors must be done"
                 " individually. This may take a while.", file=sys.stderr)
             # assume dataset has renamed time, lat, lon dimensions
             # oh god why
@@ -588,11 +585,11 @@ class SurfaceGrid:
         """
         if not isinstance(t, (int, np.integer)):
             if t < self.times.min() or t > self.times.max():
-                print("Warning: time is out of bounds", file=sys.stderr)
+                logging.info("Warning: time is out of bounds", file=sys.stderr)
         if lat < self.lats.min() or lat > self.lats.max():
-            print("Warning: latitude is out of bounds", file=sys.stderr)
+            logging.info("Warning: latitude is out of bounds", file=sys.stderr)
         if lon < self.lons.min() or lon > self.lons.max():
-            print("Warning: latitude is out of bounds", file=sys.stderr)
+            logging.info("Warning: latitude is out of bounds", file=sys.stderr)
         if isinstance(t, (int, np.integer)):
             t_idx = t
             _, lat_idx, lon_idx = self.get_closest_index(None, lat, lon)

@@ -34,7 +34,7 @@
       "E": -117.55
     },
     "save_dir_snapshots": "snapshots",
-    "plot_feature_set": null,
+    "plot_features": null,
     "draw_coasts": true
   }
 }

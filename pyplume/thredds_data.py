@@ -134,7 +134,7 @@ for src in AVAILABLE_SRCS:
 
 def register_data_source(ds_src):
     if ds_src.id in AVAILABLE_SRCS_MAP:
-        print(f"{ds_src.id} is already registered, overriding data source")
+        logging.info(f"{ds_src.id} is already registered, overriding data source")
     AVAILABLE_SRCS.add(ds_src)
     AVAILABLE_SRCS_MAP[ds_src.id] = ds_src
 

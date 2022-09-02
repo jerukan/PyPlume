@@ -1,6 +1,8 @@
 """Just some useful methods."""
 import glob
+import importlib
 import json
+import logging
 import math
 import os
 from pathlib import Path
@@ -10,6 +12,13 @@ import subprocess
 import numpy as np
 import scipy.io
 import xarray as xr
+
+
+def import_attr(path):
+    module_str = ".".join(path.split(".")[:-1])
+    var_str = path.split(".")[-1]
+    module = importlib.import_module(module_str)
+    return getattr(module, var_str)
 
 
 def haversine(lat1, lat2, lon1, lon2):
@@ -134,7 +143,7 @@ def create_gif(delay, images_path, out_path):
         universal_newlines=True
     )
     stdout, stderr = magick_sp.communicate()
-    print((stdout, stderr))
+    logging.info((stdout, stderr))
 
 
 def include_coord_range(coord_rng, ref_coords):
@@ -179,7 +188,7 @@ def expand_time_rng(time_rng, precision="h"):
     return start_time, end_time
 
 
-def load_pts_mat(path, lat_ind=None, lon_ind=None):
+def load_pts_mat(path, lat_ind=None, lon_ind=None, del_nan=False):
     """
     Loads points from a pts mat from the TJ Plume Tracker.
     Only points where both lat and lon are non-nan are returned.
@@ -191,28 +200,30 @@ def load_pts_mat(path, lat_ind=None, lon_ind=None):
         np.ndarray: [lats], [lons]
     """
     mat_data = scipy.io.loadmat(path)
+    # guess keys for latitude and longitude, this is not robust at all
     if lat_ind is None:
         for key in mat_data.keys():
             if "y" in key.lower() or "lat" in key.lower():
                 lat_ind = key
-                print(f"Detected latitude key as {key}")
+                logging.info(f"Guessed latitude key as {key}")
                 break
     if lat_ind is None:
-        raise IndexError("No latitude or y key found in mat")
+        raise IndexError(f"No latitude or y key could be guessed in {path}")
     if lon_ind is None:
         for key in mat_data.keys():
             if "x" in key.lower() or "lon" in key.lower():
                 lon_ind = key
-                print(f"Detected longitude key as {key}")
+                logging.info(f"Guessed longitude key as {key}")
                 break
     if lon_ind is None:
-        raise IndexError("No longitude or x key found in mat")
+        raise IndexError(f"No longitude or x key could be guessed in {path}")
     xf = mat_data[lon_ind].flatten()
     yf = mat_data[lat_ind].flatten()
-    # filter out nan values
-    non_nan = (~np.isnan(xf)) & (~np.isnan(yf))
-    xf = xf[np.where(non_nan)]
-    yf = yf[np.where(non_nan)]
+    if del_nan:
+        # filter out nan values
+        non_nan = (~np.isnan(xf)) & (~np.isnan(yf))
+        xf = xf[np.where(non_nan)]
+        yf = yf[np.where(non_nan)]
     return yf, xf
 
 

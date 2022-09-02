@@ -3,6 +3,7 @@ Classes and methods directly related to setting up Parcels simulations and runni
 """
 from datetime import timedelta, datetime
 import importlib
+import logging
 import math
 from pathlib import Path
 import sys
@@ -149,18 +150,22 @@ class ParcelsSimulation:
         self.sim_result_dir = utils.get_dir(Path(save_dir) / f"simulation_{name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}")
         self.pfile_path = self.sim_result_dir / f"particlefile.nc"
         self.pfile = self.pset.ParticleFile(self.pfile_path)
-        print(f"Particle trajectories for {name} will be saved to {self.pfile_path}")
-        print(f"    total particles in simulation: {len(time_arr)}")
+        logging.info(
+            f"Particle trajectories for {name} will be saved to {self.pfile_path}"
+            + f"\n\ttotal particles in simulation: {len(time_arr)}"
+        )
 
         t_start, t_end = self.get_time_bounds(spawn_points)
         self.snap_num = math.floor((t_end - t_start) / snapshot_interval)
         self.last_int = t_end - (self.snap_num * snapshot_interval + t_start)
         if self.last_int == 0:
             # +1 snapshot is from an initial plot
-            print("No last interval exists.")
-            print(f"Num snapshots to save for {name}: {self.snap_num + 1}")
+            logging.info(
+                "No last interval exists."
+                + f"\nNum snapshots to save for {name}: {self.snap_num + 1}"
+            )
         else:
-            print(f"Num snapshots to save for {name}: {self.snap_num + 2}")
+            logging.info(f"Num snapshots to save for {name}: {self.snap_num + 2}")
 
         self.completed = False
         self.parcels_result = None
@@ -281,12 +286,12 @@ class ParcelsSimulation:
     def simulation_loop(self, iteration, interval):
         # yes 2 checks are needed to prevent it from breaking
         if len(self.pset) == 0:
-            print("Particle set is empty, simulation loop not run.", file=sys.stderr)
+            logging.info("Particle set is empty, simulation loop not run.", file=sys.stderr)
             return False
         self.pre_loop(iteration, interval)
         self.exec_pset(interval)
         if len(self.pset) == 0:
-            print("Particle set empty after execution, no post-loop run.", file=sys.stderr)
+            logging.info("Particle set empty after execution, no post-loop run.", file=sys.stderr)
             return False
         self.post_loop(iteration, interval)
         return True

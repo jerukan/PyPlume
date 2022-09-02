@@ -169,7 +169,7 @@ class SmoothnStep(GapfillStep):
         u_list = target_smoothed_u.tolist()
         v_list = target_smoothed_v.tolist()
 
-        print(f"Filling {len(u_list)} fields...")
+        logging.info(f"Filling {len(u_list)} fields...")
         for i in range(len(u_list)):
             u_mat = matlab.double(u_list[i])
             v_mat = matlab.double(v_list[i])

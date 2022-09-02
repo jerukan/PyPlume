@@ -101,7 +101,7 @@ def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None, verbos
     """
     if fig is None:
         if verbose:
-            print("Figure not passed in, figure size unchanged", file=sys.stderr)
+            logging.info("Figure not passed in, figure size unchanged", file=sys.stderr)
     else:
         fig.patch.set_facecolor("w")
         plt.figure(fig.number)
@@ -113,7 +113,7 @@ def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None, verbos
     if savefile is not None:
         plt.savefig(savefile, bbox_inches="tight" if fit else None)
         if verbose:
-            print(f"Plot saved to {savefile}", file=sys.stderr)
+            logging.info(f"Plot saved to {savefile}", file=sys.stderr)
         if fig is None:
             plt.close()
         else:

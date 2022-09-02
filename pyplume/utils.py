@@ -14,6 +14,9 @@ import scipy.io
 import xarray as xr
 
 
+logger = logging.getLogger("pyplume")
+
+
 def import_attr(path):
     module_str = ".".join(path.split(".")[:-1])
     var_str = path.split(".")[-1]
@@ -126,6 +129,7 @@ def generate_mask_no_data(data):
         array-like: Boolean mask with the shape of (lat, lon). True values signify data shouldn't
          exist, False values signify they should.
     """
+    if isinstance(data, xr.Dataset): data = data.to_array()
     nan_data = ~np.isnan(data)
     return nan_data.sum(axis=0) == 0
 
@@ -143,7 +147,7 @@ def create_gif(delay, images_path, out_path):
         universal_newlines=True
     )
     stdout, stderr = magick_sp.communicate()
-    logging.info((stdout, stderr))
+    logger.info((stdout, stderr))
 
 
 def include_coord_range(coord_rng, ref_coords):
@@ -205,7 +209,7 @@ def load_pts_mat(path, lat_ind=None, lon_ind=None, del_nan=False):
         for key in mat_data.keys():
             if "y" in key.lower() or "lat" in key.lower():
                 lat_ind = key
-                logging.info(f"Guessed latitude key as {key}")
+                logger.info(f"Guessed latitude key as {key}")
                 break
     if lat_ind is None:
         raise IndexError(f"No latitude or y key could be guessed in {path}")
@@ -213,7 +217,7 @@ def load_pts_mat(path, lat_ind=None, lon_ind=None, del_nan=False):
         for key in mat_data.keys():
             if "x" in key.lower() or "lon" in key.lower():
                 lon_ind = key
-                logging.info(f"Guessed longitude key as {key}")
+                logger.info(f"Guessed longitude key as {key}")
                 break
     if lon_ind is None:
         raise IndexError(f"No longitude or x key could be guessed in {path}")

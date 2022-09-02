@@ -1,6 +1,7 @@
 """
 A collection of methods related to plotting.
 """
+import logging
 from pathlib import Path
 import sys
 
@@ -13,6 +14,8 @@ import xarray as xr
 
 from pyplume.dataloaders import open_dataset
 
+
+logger = logging.getLogger("pyplume")
 
 DEFAULT_PARTICLE_SIZE = 4
 
@@ -101,7 +104,7 @@ def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None, verbos
     """
     if fig is None:
         if verbose:
-            logging.info("Figure not passed in, figure size unchanged", file=sys.stderr)
+            logger.info("Figure not passed in, figure size unchanged", file=sys.stderr)
     else:
         fig.patch.set_facecolor("w")
         plt.figure(fig.number)
@@ -113,7 +116,7 @@ def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None, verbos
     if savefile is not None:
         plt.savefig(savefile, bbox_inches="tight" if fit else None)
         if verbose:
-            logging.info(f"Plot saved to {savefile}", file=sys.stderr)
+            logger.info(f"Plot saved to {savefile}", file=sys.stderr)
         if fig is None:
             plt.close()
         else:

@@ -13,6 +13,9 @@ import pyplume.utils as utils
 import pyplume.thredds_data as thredds_data
 
 
+logger = logging.getLogger("pyplume")
+
+
 class GapfillStep(ABC):
     @abstractmethod
     def process(
@@ -90,7 +93,7 @@ class InterpolationStep(GapfillStep):
         self.do_validation(target, loaded_references)
         invalid = utils.generate_mask_invalid(u)
         num_invalid = invalid.sum()
-        logging.info(f"total invalid values on target data: {num_invalid}")
+        logger.info(f"total invalid values on target data: {num_invalid}")
 
         # linear interpolation from lower resolution data
         target_interped_u = u.copy()
@@ -101,7 +104,7 @@ class InterpolationStep(GapfillStep):
             num_invalid_new = int(invalid_interped.sum())
             arr_u = np.zeros(num_invalid_new)
             arr_v = np.zeros(num_invalid_new)
-            logging.info(f"Attempting to interpolate {num_invalid_new} points...")
+            logger.info(f"Attempting to interpolate {num_invalid_new} points...")
             for i in range(num_invalid_new):
                 c_u, c_v = get_interped(i, target, ref, invalid_pos_new)
                 arr_u[i] = c_u
@@ -109,11 +112,11 @@ class InterpolationStep(GapfillStep):
             target_interped_u[invalid_pos_new] = arr_u
             target_interped_v[invalid_pos_new] = arr_v
             invalid_interped = utils.generate_mask_invalid(target_interped_u)
-            logging.info(
+            logger.info(
                 f"total invalid values after interpolation with {ref}: {invalid_interped.sum()}"
                 + f"\n\tvalues filled: {num_invalid_new - invalid_interped.sum()}"
             )
-        logging.info(f"total invalid values on interpolated: {invalid_interped.sum()}")
+        logger.info(f"total invalid values on interpolated: {invalid_interped.sum()}")
 
         return target_interped_u, target_interped_v
 
@@ -169,7 +172,7 @@ class SmoothnStep(GapfillStep):
         u_list = target_smoothed_u.tolist()
         v_list = target_smoothed_v.tolist()
 
-        logging.info(f"Filling {len(u_list)} fields...")
+        logger.info(f"Filling {len(u_list)} fields...")
         for i in range(len(u_list)):
             u_mat = matlab.double(u_list[i])
             v_mat = matlab.double(v_list[i])
@@ -211,6 +214,7 @@ class Gapfiller:
             self.steps.append(step)
 
     def execute(self, target: xr.Dataset, **kwargs) -> xr.Dataset:
+        logger.info(f"Executing gapfiller on target {target} with steps {self.steps}")
         u = target["U"].values.copy()
         v = target["V"].values.copy()
         for step in self.steps:
@@ -220,6 +224,7 @@ class Gapfiller:
         darr_u = utils.conv_to_dataarray(u, target["U"])
         darr_v = utils.conv_to_dataarray(v, target["V"])
         target_interped = target.drop_vars(["U", "V"]).assign(U=darr_u, V=darr_v)
+        logger.info(f"Completed gapfilling on target {target}")
         return target_interped
 
     @classmethod

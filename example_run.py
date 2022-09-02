@@ -24,11 +24,11 @@ loader_2km = DataLoader(ocean_data_source_2km, datasource=SRC_THREDDS_HFRNET_UCS
 loader_6km = DataLoader(ocean_data_source_6km, datasource=SRC_THREDDS_HFRNET_UCSD)
 
 gapfiller = Gapfiller(
-    InterpolationStep(loader_2km.data, loader_6km.data),
+    InterpolationStep([loader_2km.dataset, loader_6km.dataset]),
     SmoothnStep(mask=loader.get_mask(num_samples=50))
 )
 
-filled_ds = gapfiller.execute(target=loader.data)
+filled_ds = gapfiller.execute(target=loader.dataset)
 
 ocean_grid = SurfaceGrid(filled_ds)
 

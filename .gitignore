@@ -19,6 +19,8 @@ data/field_netcdfs/*
 results/**
 # MATLAB autosave stuff
 *.asv
+# logs
+logs/
 
 ### JupyterNotebooks ###
 .ipynb_checkpoints

@@ -18,6 +18,9 @@ import pyplume.plotting as plotting
 import pyplume.utils as utils
 
 
+logger = logging.getLogger("pyplume")
+
+
 class TimedFrame:
     """Class that stores information about a single simulation plot"""
     def __init__(self, time, path, lats, lons, ages=None, **kwargs):
@@ -266,7 +269,7 @@ class ParticleResult:
             universal_newlines=True
         )
         stdout, stderr = magick_sp.communicate()
-        logging.info(f"magick ouptput: {(stdout, stderr)}", file=sys.stderr)
+        logger.info(f"magick ouptput: {(stdout, stderr)}", file=sys.stderr)
         return gif_path
 
     def write_feature_dists(self, feat_names):

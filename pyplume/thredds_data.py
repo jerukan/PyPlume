@@ -10,6 +10,8 @@ import xarray as xr
 from pyplume.dataloaders import *
 
 
+logger = logging.getLogger("pyplume")
+
 VAR_MAPPINGS_HFRNET_UCSD = {
     "U": {"u"},
     "V": {"v"}
@@ -134,7 +136,7 @@ for src in AVAILABLE_SRCS:
 
 def register_data_source(ds_src):
     if ds_src.id in AVAILABLE_SRCS_MAP:
-        logging.info(f"{ds_src.id} is already registered, overriding data source")
+        logger.info(f"{ds_src.id} is already registered, overriding data source")
     AVAILABLE_SRCS.add(ds_src)
     AVAILABLE_SRCS_MAP[ds_src.id] = ds_src
 

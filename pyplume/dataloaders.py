@@ -13,6 +13,7 @@ import xarray as xr
 
 import pyplume.utils as utils
 
+logger = logging.getLogger("pyplume")
 
 VAR_MAPPINGS_DEFAULT = {
     "depth": {"depth", "z"},
@@ -75,14 +76,17 @@ class DataSource:
         """
         ds_info = self.get_dataset_by_id(src)
         if ds_info is not None:
-            logging.info(f"Loading data type {ds_info.id} from {ds_info.url}")
-            return self.load_method(ds_info.url)
-        logging.info(f"Loading dataset from {src}")
+            logger.info(f"Loading data type {ds_info.id} from {ds_info.url}")
+            ds = self.load_method(ds_info.url)
+            logger.info(f"Loaded data type {ds_info.id} from {ds_info.url}")
+            return ds
+        logger.info(f"Loading dataset from {src}")
         try:
-            return self.load_method(src)
+            ds = self.load_method(src)
+            logger.info(f"Loaded dataset from {src}")
+            return ds
         except ValueError as e:
-            # xarray loading failures are pretty vague, and are always ValueErrors. We give a bit
-            # more info on them
+            # xarray ValueError loading failures are pretty vague. We give a bit more info on them
             raise RuntimeError(f"Something went wrong with loading {src}") from e
 
 
@@ -181,11 +185,11 @@ def check_bounds(dataset, lat_range, lon_range, time_range):
     lons = dataset["lon"].values
     span_checker = lambda rng, coords: rng[0] <= coords[0] or rng[1] >= coords[-1]
     if span_checker(time_range, times):
-        logging.info("Timespan reaches the min/max of the range")
+        logger.info("Timespan reaches the min/max of the range")
     if span_checker(lat_range, lats):
-        logging.info("Latitude span reaches the min/max of the range")
+        logger.info("Latitude span reaches the min/max of the range")
     if span_checker(lon_range, lons):
-        logging.info("Longitude span reaches the min/max of the range")
+        logger.info("Longitude span reaches the min/max of the range")
 
 
 def slice_dataset(ds, time_range=None, lat_range=None, lon_range=None,
@@ -272,11 +276,14 @@ class DataLoader:
         """
         size = self.full_dataset["time"].size
         step = size // num_samples
-        mask = slice_dataset(
-            self.full_dataset, lat_range=self.lat_range, lon_range=self.lon_range,
-            inclusive=self.inclusive
-        ).isel(time=slice(0, size, step))
-        return ~utils.generate_mask_no_data(mask)
+        logger.info(f"Getting mask of full dataset for {self} with step size of {step}")
+        sample_ds = slice_dataset(
+            self.full_dataset.isel(time=slice(0, size, step)), lat_range=self.lat_range,
+            lon_range=self.lon_range, inclusive=self.inclusive
+        )
+        mask = ~utils.generate_mask_no_data(sample_ds)
+        logger.info(f"Generated mask for {self}")
+        return mask
 
 
 def arrays_to_particleds(time, lat, lon) -> xr.Dataset:
@@ -477,7 +484,7 @@ class SurfaceGrid:
             self.prep_fieldsets(**self.fs_kwargs)
             self.modified = True
         elif len(dataset["U"].shape) == 3:
-            logging.info("Ocean current vector modifications with wind vectors must be done"
+            logger.info("Ocean current vector modifications with wind vectors must be done"
                 " individually. This may take a while.", file=sys.stderr)
             # assume dataset has renamed time, lat, lon dimensions
             # oh god why
@@ -585,11 +592,11 @@ class SurfaceGrid:
         """
         if not isinstance(t, (int, np.integer)):
             if t < self.times.min() or t > self.times.max():
-                logging.info("Warning: time is out of bounds", file=sys.stderr)
+                logger.info("Warning: time is out of bounds", file=sys.stderr)
         if lat < self.lats.min() or lat > self.lats.max():
-            logging.info("Warning: latitude is out of bounds", file=sys.stderr)
+            logger.info("Warning: latitude is out of bounds", file=sys.stderr)
         if lon < self.lons.min() or lon > self.lons.max():
-            logging.info("Warning: latitude is out of bounds", file=sys.stderr)
+            logger.info("Warning: latitude is out of bounds", file=sys.stderr)
         if isinstance(t, (int, np.integer)):
             t_idx = t
             _, lat_idx, lon_idx = self.get_closest_index(None, lat, lon)

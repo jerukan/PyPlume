@@ -22,6 +22,9 @@ warnings.simplefilter("ignore", UserWarning)
 np.seterr(divide='ignore', invalid='ignore')
 
 
+logger = logging.getLogger("pyplume")
+
+
 def parse_time_range(time_range, time_list):
     """
     Args:
@@ -150,7 +153,7 @@ class ParcelsSimulation:
         self.sim_result_dir = utils.get_dir(Path(save_dir) / f"simulation_{name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}")
         self.pfile_path = self.sim_result_dir / f"particlefile.nc"
         self.pfile = self.pset.ParticleFile(self.pfile_path)
-        logging.info(
+        logger.info(
             f"Particle trajectories for {name} will be saved to {self.pfile_path}"
             + f"\n\ttotal particles in simulation: {len(time_arr)}"
         )
@@ -160,12 +163,12 @@ class ParcelsSimulation:
         self.last_int = t_end - (self.snap_num * snapshot_interval + t_start)
         if self.last_int == 0:
             # +1 snapshot is from an initial plot
-            logging.info(
+            logger.info(
                 "No last interval exists."
                 + f"\nNum snapshots to save for {name}: {self.snap_num + 1}"
             )
         else:
-            logging.info(f"Num snapshots to save for {name}: {self.snap_num + 2}")
+            logger.info(f"Num snapshots to save for {name}: {self.snap_num + 2}")
 
         self.completed = False
         self.parcels_result = None
@@ -286,12 +289,12 @@ class ParcelsSimulation:
     def simulation_loop(self, iteration, interval):
         # yes 2 checks are needed to prevent it from breaking
         if len(self.pset) == 0:
-            logging.info("Particle set is empty, simulation loop not run.", file=sys.stderr)
+            logger.info("Particle set is empty, simulation loop not run.", file=sys.stderr)
             return False
         self.pre_loop(iteration, interval)
         self.exec_pset(interval)
         if len(self.pset) == 0:
-            logging.info("Particle set empty after execution, no post-loop run.", file=sys.stderr)
+            logger.info("Particle set empty after execution, no post-loop run.", file=sys.stderr)
             return False
         self.post_loop(iteration, interval)
         return True

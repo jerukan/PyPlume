@@ -16,6 +16,9 @@ from pyplume.plot_features import BuoyPathFeature, construct_features_from_confi
 from pyplume.gapfilling import Gapfiller
 
 
+logger = logging.getLogger("pyplume")
+
+
 def prep_sim_from_cfg(cfg) -> ParcelsSimulation:
     # ocean is required, no check
     ocean_cfg = utils.get_path_cfg(cfg["netcdf_data"]["ocean"])
@@ -53,7 +56,7 @@ def prep_sim_from_cfg(cfg) -> ParcelsSimulation:
         else:
             raise NotImplementedError("Wind kernel not implemented. Set add_to_field_directly to true")
     name = cfg["name"]
-    logging.info(f"Preparing simulation {name}")
+    logger.info(f"Preparing simulation {name}")
     sim = ParcelsSimulation(name, grid, **cfg["parcels_config"])
     return sim
 
@@ -63,7 +66,7 @@ def handle_postprocessing(result, postprocess_cfg):
         lats, lons = utils.load_geo_points(**utils.get_path_cfg(postprocess_cfg["coastline"]))
         result.add_coastline(lats, lons)
         result.process_coastline_collisions()
-        logging.info("processed collisions")
+        logger.info("processed collisions")
     if postprocess_cfg.get("buoy", None) not in EMPTY:
         result.add_plot_feature(
             BuoyPathFeature.load_from_external(
@@ -73,7 +76,7 @@ def handle_postprocessing(result, postprocess_cfg):
             ), "buoy"
         )
         result.write_feature_dists(["buoy"])
-        logging.info("processed buoy distances")
+        logger.info("processed buoy distances")
     result.write_data(override=True)
 
 
@@ -97,6 +100,6 @@ def process_results(sim, cfg):
             figsize=(13, 8)
         )
         try:
-            logging.info(sim.parcels_result.generate_gif())
+            logger.info(sim.parcels_result.generate_gif())
         except FileNotFoundError:
-            logging.info("magick is not installed, gif will not be generated")
+            logger.info("magick is not installed, gif will not be generated")

@@ -9,13 +9,13 @@
       "lon_range": [-117.27, -117.09],
       "gapfill_steps": [
         {
-          "name": "InterpolationStep",
+          "path": "pyplume.gapfilling.InterpolationStep",
           "args": {
             "references": ["USWC_2KM_HOURLY", "USWC_6KM_HOURLY"]
           }
         },
         {
-          "name": "SmoothnStep",
+          "path": "pyplume.gapfilling.SmoothnStep",
           "args": {}
         }
       ],
@@ -46,7 +46,7 @@
     "draw_coasts": false,
     "plot_features": [
       {
-        "feature": "pyplume.plot_features.NanSeparatedFeature",
+        "path": "pyplume.plot_features.NanSeparatedFeature",
         "name": "coastline",
         "args": {
           "path": "data/coastOR2Mex_tijuana.mat",
@@ -54,7 +54,7 @@
         }
       },
       {
-        "feature": "pyplume.plot_features.StationFeature",
+        "path": "pyplume.plot_features.StationFeature",
         "name": "station",
         "args": {
           "path": "data/wq_stposition.mat",
@@ -76,7 +76,7 @@
         }
       },
       {
-        "feature": "pyplume.plot_features.NearcoastDensityFeature",
+        "path": "pyplume.plot_features.NearcoastDensityFeature",
         "name": "nearcoast_density",
         "args": {
           "origin": [32.5567724355310, -117.130164948310],

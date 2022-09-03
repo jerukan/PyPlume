@@ -269,7 +269,7 @@ class ParticleResult:
             universal_newlines=True
         )
         stdout, stderr = magick_sp.communicate()
-        logger.info(f"magick ouptput: {(stdout, stderr)}", file=sys.stderr)
+        logger.info(f"magick ouptput: {(stdout, stderr)}")
         return gif_path
 
     def write_feature_dists(self, feat_names):

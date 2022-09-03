@@ -195,14 +195,6 @@ class SmoothnStep(GapfillStep):
         return target_smoothed_u, target_smoothed_v
 
 
-def import_gapfill_step(name):
-    mod = importlib.import_module("pyplume.gapfilling")
-    try:
-        return getattr(mod, name)
-    except AttributeError:
-        raise AttributeError(f"Gapfilling step {name} not found in gapfilling.py")
-
-
 class Gapfiller:
     def __init__(self, *args):
         self.steps = list(args)
@@ -231,7 +223,7 @@ class Gapfiller:
     def load_from_config(cls, *args):
         steps = []
         for step in args:
-            step_class = import_gapfill_step(step["name"])
+            step_class = utils.import_attr(step["path"])
             steps.append(step_class(**step["args"]))
         gapfiller = cls()
         gapfiller.add_steps(*steps)

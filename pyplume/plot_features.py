@@ -416,9 +416,9 @@ class WindVectorFeature(ScatterPlotFeature):
 
 def construct_features_from_configs(*feature_configs):
     features = []
-    names = []
+    labels = []
     for feature_args in feature_configs:
         feature_class = utils.import_attr(feature_args["path"])
         features.append(feature_class.load_from_external(**feature_args["args"]))
-        names.append(feature_args.get("name", None))
-    return features, names
+        labels.append(feature_args.get("label", None))
+    return features, labels

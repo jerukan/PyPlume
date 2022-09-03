@@ -14,7 +14,7 @@ import scipy.io
 import xarray as xr
 
 
-logger = logging.getLogger("pyplume")
+logger = logging.getLogger(__name__)
 
 
 def import_attr(path):
@@ -129,7 +129,9 @@ def generate_mask_no_data(data):
         array-like: Boolean mask with the shape of (lat, lon). True values signify data shouldn't
          exist, False values signify they should.
     """
-    if isinstance(data, xr.Dataset): data = data.to_array()
+    if isinstance(data, xr.Dataset): data = data.to_array()[0]
+    if len(data.shape) != 3:
+        raise ValueError(f"Incorrect data dimension: expected 3, actual {len(data.shape)}")
     nan_data = ~np.isnan(data)
     return nan_data.sum(axis=0) == 0
 

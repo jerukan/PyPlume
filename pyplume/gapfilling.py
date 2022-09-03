@@ -2,18 +2,19 @@ from abc import ABC, abstractmethod
 import importlib
 import logging
 import os
+import sys
 from typing import Tuple
 
 import matlab.engine
 import numpy as np
 import xarray as xr
 
-from pyplume.dataloaders import slice_dataset, SurfaceGrid
+from pyplume.dataloaders import slice_dataset, SurfaceGrid, DataLoader
 import pyplume.utils as utils
 import pyplume.thredds_data as thredds_data
 
 
-logger = logging.getLogger("pyplume")
+logger = logging.getLogger(__name__)
 
 
 class GapfillStep(ABC):
@@ -70,23 +71,32 @@ class InterpolationStep(GapfillStep):
     def process(
         self, u: np.ndarray, v: np.ndarray, target: xr.Dataset, **kwargs
     ) -> Tuple[np.ndarray, np.ndarray]:
-        target = SurfaceGrid(target)
+        target = SurfaceGrid(target, init_fs=False)
+        times, lats, lons = target.get_coords()
+        time_range = (times[0], times[-1])
+        lat_range = (lats[0], lats[-1])
+        lon_range = (lons[0], lons[-1])
         loaded_references = []
         for i, ref in enumerate(self.references):
+            logger.info(f"Loading interp reference {ref}")
             if isinstance(ref, SurfaceGrid):
                 loaded_references.append(ref)
+            elif isinstance(ref, xr.Dataset):
+                loaded_references.append(SurfaceGrid(
+                    # slice the data before loading into SurfaceGrid since it's huge
+                    DataLoader(
+                        ref, time_range=time_range, lat_range=lat_range, lon_range=lon_range,
+                        inclusive=True
+                    ).dataset
+                ))
             elif isinstance(ref, str):
                 # TODO generalize this
-                ref = thredds_data.SRC_THREDDS_HFRNET_UCSD.load_source(ref)
-                times, lats, lons = target.get_coords()
-                time_range = (times[0], times[-1])
-                lat_range = (lats[0], lats[-1])
-                lon_range = (lons[0], lons[-1])
                 # slice the data before loading into SurfaceGrid since it's huge
-                ds = slice_dataset(
-                    ref, time_range, lat_range, lon_range, inclusive=True
-                )
-                loaded_references.append(SurfaceGrid(ds))
+                ref = DataLoader(
+                    ref, datasource=thredds_data.SRC_THREDDS_HFRNET_UCSD, time_range=time_range,
+                    lat_range=lat_range, lon_range=lon_range, inclusive=True
+                ).dataset
+                loaded_references.append(SurfaceGrid(ref))
             else:
                 raise TypeError(f"Unrecognized type for {ref}")
                         
@@ -130,38 +140,34 @@ class SmoothnStep(GapfillStep):
     https://www.mathworks.com/matlabcentral/fileexchange/25634-smoothn
     """
     def __init__(self, mask=None):
-        if mask is not None:
-            if isinstance(mask, SurfaceGrid):
-                self.mask = mask
-            elif isinstance(mask, xr.Dataset):
-                self.mask = SurfaceGrid(mask)
-            else:
-                # TODO generalize
-                self.mask = SurfaceGrid.from_url_or_path(mask, thredds_data.SRC_THREDDS_HFRNET_UCSD)
-        else:
+        """
+        Args:
+            mask: (lat, lon): True where should exist, False otherwise
+        """
+        if mask is None:
             self.mask = None
+            return
+        if isinstance(mask, str):
+            self.mask = DataLoader(mask).get_mask()
+        else:
+            # if we leave this as a DataArray, it could internally store as a dask array, which for
+            # some reason hangs indefinitely on some array operations.
+            self.mask = np.array(mask)
+        if len(self.mask.shape) != 2:
+            raise ValueError(f"Incorrect number of mask dimensions ({len(self.mask.shape)})")
 
     def do_validation(self, target):
         if self.mask is None:
             return
         _, targ_lats, targ_lons = target.get_coords()
-        targ_min = (targ_lats[0], targ_lons[0])
-        targ_max = (targ_lats[-1], targ_lons[-1])
-        _, mask_lats, mask_lons = self.mask.get_coords()
-        mask_same_res = (len(targ_lats) == len(mask_lats)) and (len(targ_lons) == len(mask_lons))
+        mask_same_res = (len(targ_lats) == len(self.mask)) and (len(targ_lons) == len(self.mask[0]))
         if not mask_same_res:
-            raise ValueError("Mask is not the same lat/lon shape as target")
-        # mask_nc should just be sliced before being used
-        # change these asserts to >= later when that's done
-        lat_inbounds = (mask_lats[0] == targ_min[0]) and (mask_lats[-1] == targ_max[0])
-        lon_inbounds = (mask_lons[0] == targ_min[1]) and (mask_lons[-1] == targ_max[1])
-        if not (lat_inbounds and lon_inbounds):
-            raise ValueError("Incorrect mask dimensions")
+            raise ValueError(f"Mask (shape {(len(self.mask), len(self.mask[0]))}) is not the same lat/lon shape as target (shape {(len(targ_lats), len(targ_lons))})")
 
     def process(
         self, u: np.ndarray, v: np.ndarray, target: xr.Dataset, **kwargs
     ) -> Tuple[np.ndarray, np.ndarray]:
-        target = SurfaceGrid(target)
+        target = SurfaceGrid(target, init_fs=False)
         self.do_validation(target)
 
         # DCT smoothing and gapfilling using matlab
@@ -185,8 +191,7 @@ class SmoothnStep(GapfillStep):
             target_smoothed_v[i] = v_array
 
         if self.mask is not None:
-            no_data = utils.generate_mask_no_data(self.mask.ds["U"].values)
-            no_data = np.tile(no_data, (target.ds["time"].size, 1, 1))
+            no_data = np.tile(~self.mask, (target.ds["time"].size, 1, 1))
             target_smoothed_u[no_data] = np.nan
             target_smoothed_v[no_data] = np.nan
 
@@ -210,6 +215,7 @@ class Gapfiller:
         u = target["U"].values.copy()
         v = target["V"].values.copy()
         for step in self.steps:
+            logger.info(f"Executing step {step}")
             u, v = step.process(u, v, target, **kwargs)
 
         # re-add coordinates, dimensions, and metadata to interpolated data

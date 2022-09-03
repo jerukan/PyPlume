@@ -22,7 +22,7 @@ warnings.simplefilter("ignore", UserWarning)
 np.seterr(divide='ignore', invalid='ignore')
 
 
-logger = logging.getLogger("pyplume")
+logger = logging.getLogger(__name__)
 
 
 def parse_time_range(time_range, time_list):
@@ -93,11 +93,7 @@ def import_kernel_or_particle(name):
         return ScipyParticle
     if name == "JITParticle":
         return JITParticle
-    mod = importlib.import_module("pyplume.kernels")
-    try:
-        return getattr(mod, name)
-    except AttributeError as err:
-        raise AttributeError(f"Kernel {name} not found in kernels.py") from err
+    return utils.import_attr(name)
 
 
 def insert_default_values(self, cfg):
@@ -144,10 +140,13 @@ class ParcelsSimulation:
             p_lats.extend(lats)
             p_lons.extend(lons)
 
+        if isinstance(particle_type, str):
+            self.particle_type = import_kernel_or_particle(particle_type)
+        else:
+            self.particle_type = particle_type
         # set up ParticleSet and ParticleFile
         self.pset = ParticleSet(
-            fieldset=grid.fieldset, pclass=import_kernel_or_particle(particle_type),
-            time=time_arr, lon=p_lons, lat=p_lats
+            fieldset=grid.fieldset, pclass=self.particle_type, time=time_arr, lon=p_lons, lat=p_lats
         )
         # TODO generalize path lol
         self.sim_result_dir = utils.get_dir(Path(save_dir) / f"simulation_{name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}")
@@ -172,7 +171,12 @@ class ParcelsSimulation:
 
         self.completed = False
         self.parcels_result = None
-        self.kernels = [import_kernel_or_particle(kernel) for kernel in kernels]
+        self.kernels = []
+        for kernel in kernels:
+            if isinstance(kernel, str):
+                self.kernels.append(import_kernel_or_particle(kernel))
+            else:
+                self.kernels.append(kernel)
         if len(self.kernels) == 0:
             self.kernels = [AdvectionRK4]
         self.kernel = None

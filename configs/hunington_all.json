@@ -19,8 +19,8 @@
   },
   "parcels_config": {
     "save_dir": "results",
-    "particle_type": "ThreddsParticle",
-    "kernels": ["AdvectionRK4BorderCheck", "AgeParticle", "RandomWalk"],
+    "particle_type": "pyplume.kernels.ThreddsParticle",
+    "kernels": ["pyplume.kernels.AdvectionRK4BorderCheck", "pyplume.kernels.AgeParticle", "pyplume.kernels.RandomWalk"],
     "time_range": ["START", "END"],
     "repeat_dt": -1,
     "repetitions": -1,

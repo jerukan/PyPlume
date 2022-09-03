@@ -10,7 +10,7 @@ import xarray as xr
 from pyplume.dataloaders import *
 
 
-logger = logging.getLogger("pyplume")
+logger = logging.getLogger(__name__)
 
 VAR_MAPPINGS_HFRNET_UCSD = {
     "U": {"u"},

@@ -18,7 +18,7 @@ import pyplume.plotting as plotting
 import pyplume.utils as utils
 
 
-logger = logging.getLogger("pyplume")
+logger = logging.getLogger(__name__)
 
 
 class TimedFrame:
@@ -132,11 +132,11 @@ class ParticleResult:
         if np.nanmin(self.data_vars["time"]) < gtimes.min() or np.nanmax(self.data_vars["time"]) > gtimes.max():
             raise ValueError("Time out of bounds")
 
-    def add_plot_feature(self, feature: PlotFeature, name=None):
-        if name is None:
+    def add_plot_feature(self, feature: PlotFeature, label=None):
+        if label is None:
             self.plot_features[feature.__class__.__name__] = feature
         else:
-            self.plot_features[name] = feature
+            self.plot_features[label] = feature
 
     def plot_feature(self, feature: PlotFeature, fig, ax, t: np.datetime64, lats, lons, lifetimes, lifetime_max):
         """Plots a feature at a given time."""

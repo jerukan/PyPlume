@@ -15,7 +15,7 @@ import xarray as xr
 from pyplume.dataloaders import open_dataset
 
 
-logger = logging.getLogger("pyplume")
+logger = logging.getLogger(__name__)
 
 DEFAULT_PARTICLE_SIZE = 4
 

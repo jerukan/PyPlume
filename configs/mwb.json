@@ -8,8 +8,8 @@
   "save_snapshots": false,
   "parcels_config": {
     "save_dir": "results",
-    "particle_type": "ThreddsParticle",
-    "kernels": ["AdvectionRK4", "AgeParticle"],
+    "particle_type": "pyplume.kernels.ThreddsParticle",
+    "kernels": ["parcels.AdvectionRK4", "pyplume.kernels.AgeParticle"],
     "time_range": ["168", "END"],
     "repeat_dt": -1,
     "repetitions": -1,

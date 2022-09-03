@@ -13,7 +13,7 @@ import xarray as xr
 
 import pyplume.utils as utils
 
-logger = logging.getLogger("pyplume")
+logger = logging.getLogger(__name__)
 
 VAR_MAPPINGS_DEFAULT = {
     "depth": {"depth", "z"},
@@ -275,13 +275,16 @@ class DataLoader:
              signifies it shouldn't.
         """
         size = self.full_dataset["time"].size
-        step = size // num_samples
-        logger.info(f"Getting mask of full dataset for {self} with step size of {step}")
+        if num_samples is None or num_samples <= 0:
+            time_slice = slice(0, size)
+        else:
+            step = size // num_samples
+            time_slice = slice(0, size, step)
         sample_ds = slice_dataset(
-            self.full_dataset.isel(time=slice(0, size, step)), lat_range=self.lat_range,
+            self.full_dataset.isel(time=time_slice), lat_range=self.lat_range,
             lon_range=self.lon_range, inclusive=self.inclusive
         )
-        mask = ~utils.generate_mask_no_data(sample_ds)
+        mask = ~utils.generate_mask_no_data(sample_ds["U"].values)
         logger.info(f"Generated mask for {self}")
         return mask
 

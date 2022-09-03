@@ -16,7 +16,7 @@ from pyplume.plot_features import BuoyPathFeature, construct_features_from_confi
 from pyplume.gapfilling import Gapfiller
 
 
-logger = logging.getLogger("pyplume")
+logger = logging.getLogger(__name__)
 
 
 def prep_sim_from_cfg(cfg) -> ParcelsSimulation:
@@ -73,7 +73,7 @@ def handle_postprocessing(result, postprocess_cfg):
                 postprocess_cfg["buoy"],
                 backstep_delta=np.timedelta64(1, "h"),
                 backstep_count=12
-            ), "buoy"
+            ), label="buoy"
         )
         result.write_feature_dists(["buoy"])
         logger.info("processed buoy distances")
@@ -91,9 +91,9 @@ def process_results(sim, cfg):
         plotting_cfg = cfg["plotting_config"]
         feature_cfgs = plotting_cfg.get("plot_features", None)
         if feature_cfgs not in EMPTY:
-            features, names = construct_features_from_configs(*feature_cfgs)
-            for feature, name in zip(features, names):
-                sim.parcels_result.add_plot_feature(feature, name=name)
+            features, labels = construct_features_from_configs(*feature_cfgs)
+            for feature, label in zip(features, labels):
+                sim.parcels_result.add_plot_feature(feature, label=label)
         sim.parcels_result.generate_all_plots(
             domain=plotting_cfg.get("shown_domain", None),
             land=plotting_cfg.get("draw_coasts", False),

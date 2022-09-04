@@ -11,6 +11,7 @@ import numpy as np
 from shapely.geometry import LineString
 import xarray as xr
 
+from pyplume import get_logger
 from pyplume.constants import *
 from pyplume.dataloaders import SurfaceGrid, open_dataset
 from pyplume.plot_features import *
@@ -18,7 +19,7 @@ import pyplume.plotting as plotting
 import pyplume.utils as utils
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class TimedFrame:
@@ -46,6 +47,7 @@ class ParticleResult:
     """
     # for the main plot that draws the particles per frame
     MAIN_PARTICLE_PLOT_NAME = "particles"
+    counter = 0
 
     def __init__(self, dataset, sim_result_dir=None, snapshot_interval=None):
         """
@@ -134,7 +136,8 @@ class ParticleResult:
 
     def add_plot_feature(self, feature: PlotFeature, label=None):
         if label is None:
-            self.plot_features[feature.__class__.__name__] = feature
+            self.plot_features[f"{feature.__class__.__name__}_{ParticleResult.counter}"] = feature
+            ParticleResult.counter += 1
         else:
             self.plot_features[label] = feature
 

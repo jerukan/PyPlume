@@ -18,9 +18,13 @@ import scipy.spatial
 from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
 
+from pyplume import get_logger
 from pyplume.constants import *
 from pyplume.dataloaders import BuoyPath
 import pyplume.utils as utils
+
+
+logger = get_logger(__name__)
 
 
 class PlotFeature:
@@ -60,6 +64,13 @@ class PlotFeature:
     @classmethod
     def load_from_external(cls, **kwargs):
         raise NotImplementedError()
+
+
+def abs_label_map(item):
+    if len(item.get_text()) == 0:
+        return item
+    # matplotlib uses a funny hyphen that doesn't work
+    return abs(float(item.get_text().replace("−", "-")))
 
 
 class ParticlePlotFeature(PlotFeature):
@@ -286,9 +297,11 @@ class LatTrackedPointFeature(ScatterPlotFeature):
         ax.set_xlim(self.xlim)
         if self.ymax is not None:
             ax.set_ylim([0, self.ymax])
-        fig.canvas.draw()
+        # generate tick labels
+        ax.set_xticklabels(ax.get_xticks())
         # matplotlib uses a funny hyphen that doesn't work
-        labels = [abs(float(item.get_text().replace("−", "-"))) for item in ax.get_xticklabels()]
+        logger.info(f"Mapping x tick axis: {ax.get_xticklabels()}")
+        labels = list(map(abs_label_map, ax.get_xticklabels()))
         ax.set_xticklabels(labels)
         plt.figtext(0.5, -0.01, '(North) ------ Distance from point (km) ------ (South)', horizontalalignment='center') 
         fig.set_size_inches(6.1, 2.5)
@@ -356,9 +369,10 @@ class NearcoastDensityFeature(ScatterPlotFeature):
         ax.set_xlim(xlim)
         if self.ymax is not None:
             ax.set_ylim([0, self.ymax])
-        fig.canvas.draw()
-        # matplotlib uses a funny hyphen that doesn't work
-        labels = [abs(float(item.get_text().replace("−", "-"))) for item in ax.get_xticklabels()]
+        # generate tick labels
+        ax.set_xticklabels(ax.get_xticks())
+        logger.info(f"Mapping x tick axis: {ax.get_xticklabels()}")
+        labels = list(map(abs_label_map, ax.get_xticklabels()))
         ax.set_xticklabels(labels)
         plt.figtext(0.5, -0.01, '(North) ------ Distance from point (km) ------ (South)', horizontalalignment='center') 
         fig.set_size_inches(6.1, 2.5)
@@ -368,7 +382,6 @@ class NearcoastDensityFeature(ScatterPlotFeature):
     def load_from_external(cls, origin, stations, coastline, **kwargs):
         st_lats, st_lons = utils.load_pts_mat(stations)
         c_lats, c_lons = utils.load_pts_mat(coastline)
-        "xlim=[-16, 4], ymax=1, track_dist=900"
         return cls(
             [origin[0], origin[1]],
             [st_lats, st_lons],

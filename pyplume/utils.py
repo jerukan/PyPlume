@@ -14,7 +14,10 @@ import scipy.io
 import xarray as xr
 
 
-logger = logging.getLogger(__name__)
+from pyplume import get_logger
+
+
+logger = get_logger(__name__)
 
 
 def import_attr(path):

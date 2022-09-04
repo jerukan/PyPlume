@@ -7,10 +7,11 @@ import logging
 import numpy as np
 import xarray as xr
 
+from pyplume import get_logger
 from pyplume.dataloaders import *
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 VAR_MAPPINGS_HFRNET_UCSD = {
     "U": {"u"},

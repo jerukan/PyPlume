@@ -9,12 +9,13 @@ import matlab.engine
 import numpy as np
 import xarray as xr
 
+from pyplume import get_logger
 from pyplume.dataloaders import slice_dataset, SurfaceGrid, DataLoader
 import pyplume.utils as utils
 import pyplume.thredds_data as thredds_data
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class GapfillStep(ABC):

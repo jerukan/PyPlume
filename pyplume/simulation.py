@@ -11,18 +11,13 @@ import sys
 import numpy as np
 from parcels import ParticleSet, ErrorCode, AdvectionRK4, AdvectionRK45, ScipyParticle, JITParticle
 
+from pyplume import get_logger
 import pyplume.utils as utils
 from pyplume.postprocess import ParticleResult
 from pyplume.kernels import DeleteParticle, DeleteParticleVerbose
 
-# ignore annoying deprecation warnings
-import warnings
-warnings.simplefilter("ignore", UserWarning)
-# ignore divide by nan error that happens constantly with parcels
-np.seterr(divide='ignore', invalid='ignore')
 
-
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def parse_time_range(time_range, time_list):

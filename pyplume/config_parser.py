@@ -8,6 +8,7 @@ import numpy as np
 from parcels import Field, VectorField
 from parcels.tools.converters import GeographicPolar, Geographic
 
+from pyplume import get_logger
 from pyplume.constants import EMPTY
 from pyplume.dataloaders import DataLoader, SurfaceGrid, rename_dataset_vars
 import pyplume.utils as utils
@@ -16,7 +17,7 @@ from pyplume.plot_features import BuoyPathFeature, construct_features_from_confi
 from pyplume.gapfilling import Gapfiller
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def prep_sim_from_cfg(cfg) -> ParcelsSimulation:

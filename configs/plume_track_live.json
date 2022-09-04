@@ -47,7 +47,7 @@
     "plot_features": [
       {
         "path": "pyplume.plot_features.NanSeparatedFeature",
-        "name": "coastline",
+        "label": "coastline",
         "args": {
           "path": "data/coastOR2Mex_tijuana.mat",
           "color": "k"
@@ -55,7 +55,7 @@
       },
       {
         "path": "pyplume.plot_features.StationFeature",
-        "name": "station",
+        "label": "station",
         "args": {
           "path": "data/wq_stposition.mat",
           "labels": [
@@ -77,7 +77,7 @@
       },
       {
         "path": "pyplume.plot_features.NearcoastDensityFeature",
-        "name": "nearcoast_density",
+        "label": "nearcoast_density",
         "args": {
           "origin": [32.5567724355310, -117.130164948310],
           "stations": "data/wq_stposition.mat",

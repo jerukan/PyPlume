@@ -12,10 +12,11 @@ import numpy as np
 from parcels import plotting
 import xarray as xr
 
+from pyplume import get_logger
 from pyplume.dataloaders import open_dataset
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 DEFAULT_PARTICLE_SIZE = 4
 

@@ -3,6 +3,7 @@ from parcels import AdvectionRK4
 from pyplume.dataloaders import DataLoader, SurfaceGrid
 from pyplume.gapfilling import Gapfiller, InterpolationStep, SmoothnStep
 from pyplume.kernels import AgeParticle, RandomWalk, ThreddsParticle
+from pyplume.plot_features import NanSeparatedFeature, NearcoastDensityFeature, StationFeature
 from pyplume.simulation import ParcelsSimulation
 from pyplume.thredds_data import SRC_THREDDS_HFRNET_UCSD
 
@@ -51,3 +52,51 @@ sim = ParcelsSimulation(
 )
 
 sim.execute()
+
+sim.parcels_result.write_data(override=True)
+
+sim.parcels_result.add_plot_feature(NanSeparatedFeature.load_from_external(
+    path="data/coastOR2Mex_tijuana.mat",
+    color="k"
+), label="coastline")
+sim.parcels_result.add_plot_feature(StationFeature.load_from_external(
+    path="data/wq_stposition.mat",
+    labels=[
+        "Coronado (North Island)",
+        "Silver Strand",
+        "Silver Strand Beach",
+        "Carnation Ave.",
+        "Imperial Beach Pier",
+        "Cortez Ave.",
+        "End of Seacoast Dr.",
+        "3/4 mi. N. of TJ River Mouth",
+        "Tijuana River Mouth",
+        "Monument Rd.",
+        "Board Fence",
+        "Mexico"
+    ],
+    track_dist=1000
+), label="station")
+sim.parcels_result.add_plot_feature(NearcoastDensityFeature.load_from_external(
+    origin=[32.5567724355310, -117.130164948310],
+    stations="data/wq_stposition.mat",
+    coastline="data/coastline.mat",
+    xlim=[-16, 4],
+    ymax=1,
+    track_dist=900
+), label="nearcoast_density")
+
+PLOT_DOMAIN = {
+    "S": 32.525,
+    "N": 32.7,
+    "W": -117.27,
+    "E": -117.09
+}
+
+sim.parcels_result.generate_all_plots(
+    domain=PLOT_DOMAIN,
+    land=True,
+    figsize=(13, 8)
+)
+
+sim.parcels_result.generate_gif()

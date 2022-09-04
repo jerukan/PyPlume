@@ -11,9 +11,10 @@ from parcels.tools.converters import GeographicPolar, Geographic
 import scipy.spatial
 import xarray as xr
 
+from pyplume import get_logger
 import pyplume.utils as utils
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 VAR_MAPPINGS_DEFAULT = {
     "depth": {"depth", "z"},

@@ -13,7 +13,6 @@ from parcels import plotting
 import xarray as xr
 
 from pyplume import get_logger
-from pyplume.dataloaders import open_dataset
 
 
 logger = get_logger(__name__)
@@ -78,8 +77,6 @@ def generate_domain_datasets(datasets, padding=0.005):
     lon_min = 180
     lon_max = -180
     for ds in datasets:
-        if isinstance(ds, (str, Path)):
-            ds = open_dataset(ds)
         lat_rng = (ds["lat"].values.min(), ds["lat"].values.max())
         if lat_rng[0] < lat_min:
             lat_min = lat_rng[0]
@@ -130,8 +127,8 @@ def draw_trajectories_datasets(datasets, names, domain=None, legend=True, scatte
     trajectories on the same plot.
 
     Args:
-        datasets (array-like): array of particle trajectory datasets or paths to nc files containing
-         the same type of data
+        datasets (array-like): array of particle trajectory datasets containing the same type of 
+         data
     """
     if len(datasets) != len(names):
         raise ValueError("dataset list length and name list length do not match")
@@ -144,8 +141,6 @@ def draw_trajectories_datasets(datasets, names, domain=None, legend=True, scatte
     gl = get_carree_gl(ax)
 
     for i, ds in enumerate(datasets):
-        if isinstance(ds, (str, Path)):
-            ds = open_dataset(ds)
         # now I'm not entirely sure how matplotlib deals with
         # nan values, so if any show up, damnit
         for j in range(ds.dims["traj"]):

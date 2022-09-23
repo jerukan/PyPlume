@@ -13,7 +13,7 @@ import xarray as xr
 
 from pyplume import get_logger
 from pyplume.constants import *
-from pyplume.dataloaders import SurfaceGrid, open_dataset
+from pyplume.dataloaders import SurfaceGrid
 from pyplume.plot_features import *
 import pyplume.plotting as plotting
 import pyplume.utils as utils
@@ -49,21 +49,22 @@ class ParticleResult:
     MAIN_PARTICLE_PLOT_NAME = "particles"
     counter = 0
 
-    def __init__(self, dataset, sim_result_dir=None, snapshot_interval=None):
+    def __init__(self, src, sim_result_dir=None, snapshot_interval=None):
         """
         Args:
-            dataset: path to ParticleFile or just the dataset itself
+            src: path to ParticleFile or just the dataset itself
         """
         self.sim_result_dir = Path(sim_result_dir) if sim_result_dir is not None else None
         self.snapshot_interval = snapshot_interval
-        if isinstance(dataset, (Path, str)):
-            self.path = dataset
-            self.ds = open_dataset(dataset)
-        elif isinstance(dataset, xr.Dataset):
+        if isinstance(src, (Path, str)):
+            self.path = src
+            self.ds = xr.open_dataset(src)
+            self.ds.close()
+        elif isinstance(src, xr.Dataset):
             self.path = None
-            self.ds = dataset
+            self.ds = src
         else:
-            raise TypeError(f"{dataset} is not a path or xarray dataset")
+            raise TypeError(f"{src} is not a path or xarray dataset")
         # assumed to be in data_vars: trajectory, time, lat, lon, z
         # these variables are generated from default particles in Parcels
         self.data_vars = {}

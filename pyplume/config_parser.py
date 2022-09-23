@@ -1,12 +1,14 @@
 """
 Methods in here related to preparing, running, and processing simulations.
 """
+import json
 import logging
 import os
 
 import numpy as np
 from parcels import Field, VectorField
 from parcels.tools.converters import GeographicPolar, Geographic
+import xarray as xr
 
 from pyplume import get_logger
 from pyplume.constants import EMPTY
@@ -18,6 +20,22 @@ from pyplume.gapfilling import Gapfiller
 
 
 logger = get_logger(__name__)
+
+
+def load_config(path):
+    """
+    Returns a json file as a dict.
+
+    Args:
+        path (str)
+
+    Returns:
+        dict: data pulled from the json specified.
+    """
+    with open(path) as f:
+        config = json.load(f)
+    # TODO do some config verification here
+    return config
 
 
 def prep_sim_from_cfg(cfg) -> ParcelsSimulation:
@@ -51,11 +69,11 @@ def prep_sim_from_cfg(cfg) -> ParcelsSimulation:
     # load wind data if it exists
     wind_data = cfg["netcdf_data"].get("wind", None)
     if wind_data not in EMPTY:
-        wind_ds = rename_dataset_vars(wind_data["path"])
-        if wind_data["add_to_field_directly"]:
-            grid.modify_with_wind(wind_ds, ratio=wind_data["ratio"])
-        else:
-            raise NotImplementedError("Wind kernel not implemented. Set add_to_field_directly to true")
+        with xr.open_dataset(wind_data["path"]) as wind_ds:
+            if wind_data["add_to_field_directly"]:
+                grid.modify_with_wind(wind_ds, ratio=wind_data["ratio"])
+            else:
+                raise NotImplementedError("Wind kernel not implemented. Set add_to_field_directly to true")
     name = cfg["name"]
     logger.info(f"Preparing simulation {name}")
     sim = ParcelsSimulation(name, grid, **cfg["parcels_config"])
@@ -78,7 +96,6 @@ def handle_postprocessing(result, postprocess_cfg):
         )
         result.write_feature_dists(["buoy"])
         logger.info("processed buoy distances")
-    result.write_data(override=True)
 
 
 def process_results(sim, cfg):

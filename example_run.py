@@ -100,3 +100,4 @@ sim.parcels_result.generate_all_plots(
 )
 
 sim.parcels_result.generate_gif()
+print("Finished simulation")

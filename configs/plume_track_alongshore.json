@@ -13,7 +13,7 @@
         {
           "path": "pyplume.gapfilling.SmoothnStep",
           "args": {
-            "mask": "data/field_netcdfs/tj_plume_1km_2020-03_mask.nc"
+            "mask": "data/field_netcdfs/tj_plume_1km_2020-03_mask.npy"
           }
         }
       ],

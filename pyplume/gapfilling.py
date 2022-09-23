@@ -149,7 +149,7 @@ class SmoothnStep(GapfillStep):
             self.mask = None
             return
         if isinstance(mask, str):
-            self.mask = DataLoader(mask).get_mask()
+            self.mask = np.load(mask)
         else:
             # if we leave this as a DataArray, it could internally store as a dask array, which for
             # some reason hangs indefinitely on some array operations.

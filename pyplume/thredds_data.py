@@ -32,23 +32,28 @@ DROP_VARS_FMRC_HYCOM = {
 }
 
 
-def get_hfrnet_ucsd_load_method(time_chunk_size=None):
-    def new_load_method(src):
+class HFRNetUCSDLoad:
+    def __init__(self, time_chunk_size=None):
+        self.time_chunk_size = time_chunk_size
+    
+    def __call__(self, src):
         return drop_depth(
-            get_simple_load_method(
+            SimpleLoad(
                 mappings=VAR_MAPPINGS_HFRNET_UCSD,
                 drop_vars=DROP_VARS_HFRNET_UCSD,
-                time_chunk_size=time_chunk_size
+                time_chunk_size=self.time_chunk_size
             )(src)
         )
-    return new_load_method
 
 
-def get_fmrc_hycom_load_method(time_chunk_size=None):
-    time_chunks = parse_time_chunk_size(time_chunk_size)
-    def load_hycom_method(src):
+class FmrcHYCOMLoad:
+    def __init__(self, time_chunk_size=None):
+        self.time_chunk_size = time_chunk_size
+    
+    def __call__(self, src):
+        time_chunks = parse_time_chunk_size(self.time_chunk_size)
         # HYCOM data times cannot be decoded normally
-        ds = open_dataset(
+        ds = xr.open_dataset(
             src, chunks=time_chunks, drop_variables=DROP_VARS_FMRC_HYCOM, decode_times=False
         )
         # This particular HYCOM forecast data has different units of time, where
@@ -68,7 +73,6 @@ def get_fmrc_hycom_load_method(time_chunk_size=None):
         # drop depth data
         ds = drop_depth(rename_dataset_vars(ds, VAR_MAPPINGS_FMRC_HYCOM))
         return ds
-    return load_hycom_method
 
 
 SRC_THREDDS_HFRNET_UCSD = DataSource(
@@ -111,7 +115,7 @@ SRC_THREDDS_HFRNET_UCSD = DataSource(
             url="http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/1km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_1km_Resolution_Hourly_RTV_best.ncd"
         )
     ],
-    load_method=get_hfrnet_ucsd_load_method(time_chunk_size=CHUNK_SIZE_DEFAULT)
+    load_method=HFRNetUCSDLoad(time_chunk_size=CHUNK_SIZE_DEFAULT)
 )
 SRC_THREDDS_HYCOM = DataSource(
     id="THREDDS_HYCOM",
@@ -123,7 +127,7 @@ SRC_THREDDS_HYCOM = DataSource(
             url="https://tds.hycom.org/thredds/dodsC/GLBy0.08/expt_93.0/FMRC/GLBy0.08_930_FMRC_best.ncd",
         )
     ],
-    load_method=get_fmrc_hycom_load_method(time_chunk_size=CHUNK_SIZE_DEFAULT)
+    load_method=FmrcHYCOMLoad(time_chunk_size=CHUNK_SIZE_DEFAULT)
 )
 
 
@@ -142,14 +146,18 @@ def register_data_source(ds_src):
     AVAILABLE_SRCS_MAP[ds_src.id] = ds_src
 
 
+def retrieve_dataloader(src_id, ds_id, **kwargs):
+    if src_id in AVAILABLE_SRCS_MAP.keys():
+        ds_src = AVAILABLE_SRCS_MAP[src_id]
+    else:
+        raise ValueError(f"{src_id} is not registered")
+    return DataLoader(ds_id, datasource=ds_src, **kwargs)
+
+
 def retrieve_dataset(src_id, ds_id):
     """
     Get the full xarray dataset for thredds data at a given thredds dataset
 
     TODO check if the thredds server is down so it doesn't get stuck
     """
-    if src_id in AVAILABLE_SRCS_MAP.keys():
-        ds_src = AVAILABLE_SRCS_MAP[src_id]
-    else:
-        raise ValueError(f"{src_id} is not registered")
-    return ds_src.load_source(ds_id)
+    return retrieve_dataloader(src_id, ds_id).dataset

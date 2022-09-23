@@ -300,7 +300,6 @@ class LatTrackedPointFeature(ScatterPlotFeature):
         # generate tick labels
         ax.set_xticklabels(ax.get_xticks())
         # matplotlib uses a funny hyphen that doesn't work
-        logger.info(f"Mapping x tick axis: {ax.get_xticklabels()}")
         labels = list(map(abs_label_map, ax.get_xticklabels()))
         ax.set_xticklabels(labels)
         plt.figtext(0.5, -0.01, '(North) ------ Distance from point (km) ------ (South)', horizontalalignment='center') 
@@ -371,7 +370,6 @@ class NearcoastDensityFeature(ScatterPlotFeature):
             ax.set_ylim([0, self.ymax])
         # generate tick labels
         ax.set_xticklabels(ax.get_xticks())
-        logger.info(f"Mapping x tick axis: {ax.get_xticklabels()}")
         labels = list(map(abs_label_map, ax.get_xticklabels()))
         ax.set_xticklabels(labels)
         plt.figtext(0.5, -0.01, '(North) ------ Distance from point (km) ------ (South)', horizontalalignment='center') 

@@ -28,14 +28,6 @@ VAR_MAPPINGS_DEFAULT = {
 CHUNK_SIZE_DEFAULT = "100MB"
 
 
-def open_dataset(filename_or_obj, *args, **kwargs):
-    """
-    Wrapper for xr.open_dataset that wraps the method in a with block in order to close the file.
-    """
-    with xr.open_dataset(filename_or_obj, *args, **kwargs) as ds:
-        return ds
-
-
 @dataclass
 class DatasetInfo:
     id: str
@@ -44,9 +36,7 @@ class DatasetInfo:
 
 
 class DataSource:
-    def __init__(
-        self, id=None, name=None, available_datasets=None, load_method=None
-    ):
+    def __init__(self, id=None, name=None, available_datasets=None, load_method=None):
         """
         Args:
             load_method (str -> xr.Dataset)
@@ -55,9 +45,9 @@ class DataSource:
         self.id = id
         self.name = name if name is not None else "Data source"
         self.available_datasets = available_datasets if available_datasets is not None else []
-        self.load_method = load_method if load_method is not None else open_dataset
+        self.load_method = load_method if load_method is not None else xr.open_dataset
 
-    def get_dataset_by_id(self, id) -> DatasetInfo:
+    def get_dataset_info_by_id(self, id) -> DatasetInfo:
         with_id = list(filter(lambda ds: ds.id == id, self.available_datasets))
         if len(with_id) == 0: return None
         return with_id[0]
@@ -75,7 +65,7 @@ class DataSource:
         Returns:
             xr.Dataset: a dataset in the standardized format
         """
-        ds_info = self.get_dataset_by_id(src)
+        ds_info = self.get_dataset_info_by_id(src)
         if ds_info is not None:
             logger.info(f"Loading data type {ds_info.id} from {ds_info.url}")
             ds = self.load_method(ds_info.url)
@@ -100,22 +90,23 @@ def parse_time_chunk_size(time_chunk_size):
     return None
 
 
-def get_simple_load_method(mappings=None, drop_vars=None, time_chunk_size=None):
-    mappings = mappings if mappings is not None else dict()
-    drop_vars = drop_vars if drop_vars is not None else set()
-    time_chunks = parse_time_chunk_size(time_chunk_size)
-    def new_load_method(src):
-        ds = open_dataset(src, chunks=time_chunks, drop_variables=drop_vars)
-        return rename_dataset_vars(ds, mappings)
-    return new_load_method
+class SimpleLoad:
+    def __init__(self, mappings=None, drop_vars=None, time_chunk_size=None):
+        self.mappings = mappings if mappings is not None else dict()
+        self.drop_vars = drop_vars if drop_vars is not None else set()
+        self.time_chunks = parse_time_chunk_size(time_chunk_size)
+
+    def __call__(self, src):
+        ds = xr.open_dataset(src, chunks=self.time_chunks, drop_variables=self.drop_vars)
+        return rename_dataset_vars(ds, self.mappings)
 
 
-def rename_dataset_vars(src, mappings=None):
+def rename_dataset_vars(ds, mappings=None):
     """
     Renames variable/coord keys in an NetCDF ocean current dataset.
 
     Args:
-        src (path-like or xr.Dataset)
+        src (xr.Dataset)
         mappings (dict): format:
             {
                 "standardized_var_name": {"other", "possible", "names"},
@@ -123,10 +114,6 @@ def rename_dataset_vars(src, mappings=None):
             }
     """
     if mappings is None: mappings = VAR_MAPPINGS_DEFAULT
-    if isinstance(src, xr.Dataset):
-        ds = src
-    else:
-        ds = open_dataset(src)
     rename_map = {}
     for var in ds.variables.keys():
         for match in mappings.keys():
@@ -253,14 +240,18 @@ class DataLoader:
         self.lat_range = lat_range
         self.lon_range = lon_range
         self.inclusive = inclusive
-        if datasource is None: self.datasource = DEFAULT_DATASOURCE
+        if datasource is None:
+            self.datasource = DEFAULT_DATASOURCE
         elif isinstance(datasource, str):
             self.datasource = utils.import_attr(datasource)
-        else: self.datasource = datasource
-        if isinstance(dataset, xr.Dataset): self.full_dataset = dataset
+        else:
+            self.datasource = datasource
+        if isinstance(dataset, xr.Dataset):
+            self.full_dataset = dataset
         elif isinstance(dataset, (str, Path)):
             self.full_dataset = self.datasource.load_source(dataset)
-        else: raise TypeError("data is not a valid type")
+        else:
+            raise TypeError("data is not a valid type")
         self.dataset = slice_dataset(
             self.full_dataset, time_range=time_range, lat_range=lat_range, lon_range=lon_range,
             inclusive=inclusive
@@ -288,6 +279,26 @@ class DataLoader:
         mask = ~utils.generate_mask_no_data(sample_ds["U"].values)
         logger.info(f"Generated mask for {self}")
         return mask
+
+    def save(self, path):
+        logger.info(f"Megabytes to download for {self}: {self.dataset.nbytes / 1024 / 1024}")
+        return self.dataset.to_netcdf(path)
+
+    def save_mask(self, path, num_samples=None):
+        mask = self.get_mask(num_samples=num_samples)
+        logger.info(f"Megabytes to download for mask {self}: {mask.nbytes / 1024 / 1024}")
+        with open(path, "wb") as f:
+            return np.save(f, mask)
+
+    def close(self):
+        self.full_dataset.close()
+        self.dataset.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
 
 
 def arrays_to_particleds(time, lat, lon) -> xr.Dataset:

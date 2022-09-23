@@ -309,7 +309,8 @@ class ParcelsSimulation:
         if self.last_int != 0:
             self.simulation_loop(self.snap_num, self.last_int)
 
-        self.pfile.export()
+        # self.pfile.export()
+        # ParticleFile exports when it closes
         self.pfile.close()
         self.completed = True
         self.parcels_result = ParticleResult(self.pfile_path, sim_result_dir=self.sim_result_dir)

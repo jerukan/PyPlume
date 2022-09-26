@@ -1,5 +1,5 @@
 {
-  "name": "plume_track",
+  "name": "plume_track_alongshore",
   "netcdf_data": {
     "ocean": {
       "path": "data/field_netcdfs/tj_plume_1km_2020-03.nc",
@@ -23,7 +23,7 @@
   "parcels_config": {
     "save_dir": "results",
     "particle_type": "pyplume.kernels.ThreddsParticle",
-    "kernels": ["parcels.AdvectionRK4", "pyplume.kernels.AgeParticle", "pyplume.kernels.RandomWalk"],
+    "kernels": ["pyplume.kernels.AdvectionRK4BorderCheck", "pyplume.kernels.AgeParticle", "pyplume.kernels.RandomWalk"],
     "time_range": ["START", "END"],
     "repeat_dt": 3600,
     "repetitions": -1,

@@ -16,8 +16,7 @@
             "mask": "data/field_netcdfs/tj_plume_1km_2020-03_mask.npy"
           }
         }
-      ],
-      "boundary_condition": "freeslip"
+      ]
     },
     "alongshore": "data/field_netcdfs/tijuana_alongshore.nc"
   },

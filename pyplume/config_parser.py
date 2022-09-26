@@ -4,11 +4,13 @@ Methods in here related to preparing, running, and processing simulations.
 import json
 import logging
 import os
+from pathlib import Path
 
 import numpy as np
 from parcels import Field, VectorField
 from parcels.tools.converters import GeographicPolar, Geographic
 import xarray as xr
+import yaml
 
 from pyplume import get_logger
 from pyplume.constants import EMPTY
@@ -33,7 +35,9 @@ def load_config(path):
         dict: data pulled from the json specified.
     """
     with open(path) as f:
-        config = json.load(f)
+        config = yaml.safe_load(f)
+    if config.get("name", None) is None:
+        config["name"] = Path(path).stem
     # TODO do some config verification here
     return config
 

@@ -75,22 +75,6 @@ def delete_all_pngs(dir_path):
         os.remove(png)
 
 
-def load_config(path):
-    """
-    Returns a json file as a dict.
-
-    Args:
-        path (str)
-
-    Returns:
-        dict: data pulled from the json specified.
-    """
-    with open(path) as f:
-        config = json.load(f)
-    # TODO do some config verification here
-    return config
-
-
 def conv_to_dataarray(arr, darr_ref):
     """
     Takes in some array and converts it to a labelled xarray DataArray.

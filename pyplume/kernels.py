@@ -106,6 +106,8 @@ def AdvectionRK4BorderCheck(particle, fieldset, time):
     the particle is close enough to it.
 
     Requires the fieldset to have a CUV grid (coastline UV)
+
+    TODO: add special error message that CUV grid is required if it's not there
     """
     (u1, v1) = fieldset.CUV[particle]
     if math.fabs(u1) > 0 or math.fabs(v1) > 0:

@@ -281,14 +281,18 @@ class DataLoader:
         return mask
 
     def save(self, path):
-        logger.info(f"Megabytes to download for {self}: {self.dataset.nbytes / 1024 / 1024}")
-        return self.dataset.to_netcdf(path)
+        logger.info(f"Megabytes to save for {self}: {self.dataset.nbytes / 1024 / 1024}")
+        result = self.dataset.to_netcdf(path)
+        logger.info(f"Finished save for {self}")
+        return result
 
     def save_mask(self, path, num_samples=None):
         mask = self.get_mask(num_samples=num_samples)
-        logger.info(f"Megabytes to download for mask {self}: {mask.nbytes / 1024 / 1024}")
+        logger.info(f"Megabytes to save for mask {self}: {mask.nbytes / 1024 / 1024}")
         with open(path, "wb") as f:
-            return np.save(f, mask)
+            result = np.save(f, mask)
+            logger.info(f"Finished save for {self}")
+            return result
 
     def close(self):
         self.full_dataset.close()
@@ -518,8 +522,9 @@ class SurfaceGrid:
         else:
             raise ValueError("dataset vectors don't have a dimension of 1 or 3")
 
-    def add_field(self, fieldset, field, name=None):
+    def add_field_to_fieldset(self, fieldset, field, name=None):
         if isinstance(field, VectorField):
+            print(f"add vector field {field}")
             fieldset.add_vector_field(field)
         elif isinstance(field, Field):
             fieldset.add_field(field, name=name)
@@ -538,14 +543,15 @@ class SurfaceGrid:
                 self.ds, complete=False, boundary_condition=boundary_condition, mesh="spherical",
                 **kwargs
             )
-            [self.add_field(self.fieldset, fld) for fld in self.other_fields]
-            self.fieldset.check_complete()
             # flat mesh
             self.fieldset_flat = dataset_to_fieldset(
                 self.ds, complete=False, boundary_condition=boundary_condition, mesh="flat",
                 **kwargs
-            )
-            [self.add_field(self.fieldset, fld) for fld in self.other_fields]
+            )    
+            for fld in self.other_fields:
+                self.add_field_to_fieldset(self.fieldset, fld)
+                self.add_field_to_fieldset(self.fieldset_flat, fld)
+            self.fieldset.check_complete()
             self.fieldset_flat.check_complete()
         else:
             # spherical mesh

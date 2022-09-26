@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 import sys
 import warnings
 
@@ -10,14 +11,20 @@ warnings.simplefilter("ignore", UserWarning)
 np.seterr(divide="ignore", invalid="ignore")
 
 
+log_dir = Path("logs/")
+
 def get_logger(name):
     logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)
-    handler = logging.FileHandler("logs/output.log")
-    handler.setFormatter(
-        logging.Formatter("%(asctime)s,%(msecs)d %(name)s | %(levelname)s | %(message)s")
-    )
-    logger.addHandler(handler)
+    if not logger.handlers:
+        logger.propagate = False
+        logger.setLevel(logging.DEBUG)
+        if not log_dir.is_dir():
+            log_dir.mkdir(parents=True)
+        handler = logging.FileHandler(log_dir / "plumelogs.log")
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s,%(msecs)d %(name)s | %(levelname)s | %(message)s")
+        )
+        logger.addHandler(handler)
     return logger
 
 # logging.basicConfig(

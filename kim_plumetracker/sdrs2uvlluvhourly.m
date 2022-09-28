@@ -1,4 +1,8 @@
 function sdrs2uvlluvhourly(t)
+%sdrs2uvlluvhourly: consolidates raw radial files into a single vector field
+%input 
+%       t: timestamp
+%
 
 % src_path  = '/imports/hfradar/hfrnet/db/files/radials/';
 src_path  = 'support_data/RadialFiles/';
@@ -105,7 +109,6 @@ for k = 1: length(gx(:))
         w = exp(-sqrt(g));
 
         % what is happening
-        % why didn't you just use the trig identity holy shit
         cdd = w .* cos(ang1 - ang2);
 %         cdd = w .* (cos(ang1).*cos(ang2) + sin(ang1).*sin(ang2));
         % Pu = 400

@@ -167,21 +167,8 @@ def get_latest_span(delta):
     return (time_now - delta, time_now)
 
 
-def check_bounds(dataset, lat_range, lon_range, time_range):
-    times = dataset["time"].values
-    lats = dataset["lat"].values
-    lons = dataset["lon"].values
-    span_checker = lambda rng, coords: rng[0] <= coords[0] or rng[1] >= coords[-1]
-    if span_checker(time_range, times):
-        logger.info("Timespan reaches the min/max of the range")
-    if span_checker(lat_range, lats):
-        logger.info("Latitude span reaches the min/max of the range")
-    if span_checker(lon_range, lons):
-        logger.info("Longitude span reaches the min/max of the range")
-
-
 def slice_dataset(ds, time_range=None, lat_range=None, lon_range=None,
-        inclusive=False, padding=0.0) -> xr.Dataset:
+        inclusive=False) -> xr.Dataset:
     """
     Params:
         ds (xr.Dataset): formatted dataset
@@ -189,26 +176,20 @@ def slice_dataset(ds, time_range=None, lat_range=None, lon_range=None,
         lat_range (float, float)
         lon_range (float, float)
         inclusive (bool): set to true to keep the endpoints of all the ranges provided
-        padding (float): lat and lon padding
 
     Returns:
         xr.Dataset
     """
-    if lat_range is None:
-        lat_range = (ds["lat"].min(), ds["lat"].max())
-    else:
+    sel_args = {}
+    if lat_range is not None:
         if inclusive:
             lat_range = utils.include_coord_range(lat_range, ds["lat"].values)
-        lat_range = (lat_range[0] - padding, lat_range[1] + padding)
-    if lon_range is None:
-        lon_range = (ds["lon"].min(), ds["lon"].max())
-    else:
+        sel_args["lat"] = slice(lat_range[0], lat_range[1])
+    if lon_range is not None:
         if inclusive:
             lon_range = utils.include_coord_range(lon_range, ds["lon"].values)
-        lon_range = (lon_range[0] - padding, lon_range[1] + padding)
-    if time_range is None:
-        time_slice = slice(ds["time"].min(), ds["time"].max())
-    else:
+        sel_args["lon"] = slice(lon_range[0], lon_range[1])
+    if time_range is not None:
         if not isinstance(time_range, slice):
             if time_range[0] == "START":
                 time_range = (ds["time"].values[0], time_range[1])
@@ -217,15 +198,8 @@ def slice_dataset(ds, time_range=None, lat_range=None, lon_range=None,
             time_slice = get_time_slice(time_range, inclusive=inclusive, ref_coords=ds["time"].values)
         else:
             time_slice = time_range
-    check_bounds(ds, lat_range, lon_range, (time_slice.start, time_slice.stop))
-    dataset_start = ds["time"].values[0]
-    if time_slice.start >= np.datetime64("now") or time_slice.stop <= dataset_start:
-        raise ValueError("Desired time range is out of range for the dataset")
-    sliced_data = ds.sel(
-        time=time_slice,
-        lat=slice(lat_range[0], lat_range[1]),
-        lon=slice(lon_range[0], lon_range[1]),
-    )
+        sel_args["time"] = time_slice
+    sliced_data = ds.sel(**sel_args)
     if len(sliced_data["time"]) == 0:
         raise ValueError("No timestamps inside given time interval")
     return sliced_data

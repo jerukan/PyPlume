@@ -69,6 +69,8 @@ def DeleteOOB(particle, fieldset, time):
         particle.delete()
 
 
+# TODO make this configurable somehow (save method as a string and import! who the fuck knows?)
+# can't add variables outside the method scope
 def DeleteAfter3Days(particle, fieldset, time):
     """Deletes a particle after 3 days"""
     LIFETIME = 259200

@@ -15,12 +15,14 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.spatial
+import seaborn as sns
 from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
 
 from pyplume import get_logger
 from pyplume.constants import *
 from pyplume.dataloaders import BuoyPath
+from pyplume.plotting import get_carree_axis, get_carree_gl
 import pyplume.utils as utils
 
 
@@ -77,12 +79,13 @@ class ParticlePlotFeature(PlotFeature):
     """
     Plots particles per frame.
     """
-    def __init__(self, particle_size=4):
+    def __init__(self, particle_size=4, cbar=True):
         self.particle_size = particle_size
+        self.cbar = cbar
 
     def add_to_plot(self, fig, ax, t, lats, lons, lifetimes=None, lifetime_max=None, **kwargs):
         sc = ax.scatter(lons, lats, c=lifetimes, edgecolor="k", vmin=0, vmax=lifetime_max, s=self.particle_size)
-        if lifetimes is not None:
+        if lifetimes is not None and self.cbar:
             cbar_ax = fig.add_axes([0.1, 0, 0.1, 0.1])
             plt.colorbar(sc, cax=cbar_ax)
             posn = ax.get_position()
@@ -90,6 +93,21 @@ class ParticlePlotFeature(PlotFeature):
             cbar_ax.get_yaxis().labelpad = 13
             # super jank label the other colorbar since it's in plotting.plotfield
             cbar_ax.set_ylabel("Age (days)\n\n\n\n\n\nVelocity (m/s)", rotation=270)
+        return fig, ax
+
+
+class ParticleDensityFeature(PlotFeature):
+    def __init__(self, domain, coastline):
+        self.domain = domain
+        self.coast_lats, self.coast_lons = utils.get_points(coastline)
+
+    def generate_external_plot(self, t, lats, lons, **kwargs):
+        # TODO unfinished
+        fig, ax = get_carree_axis(TIJUANA_RIVER_DOMAIN, land=False)
+        fig.patch.set_facecolor("w")
+        get_carree_gl(ax)
+        sns.histplot(x=lons, y=lats, bins=100, cbar=True, pmax=0.6, ax=ax)
+        coastline.add_to_plot(fig, ax, None, None, None)
         return fig, ax
 
 

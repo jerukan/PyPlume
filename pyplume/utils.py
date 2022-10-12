@@ -27,6 +27,18 @@ def import_attr(path):
     return getattr(module, var_str)
 
 
+def get_points(points, dim=2):
+    """
+    Given N points of dimension d, the data can either be passed in as an (N,d) or (d,N)
+    dimensional array.
+    """
+    if len(points.shape) != 2:
+        raise ValueError(f"Incorrect points dimension {points.shape}")
+    if points.shape[0] == dim:
+        return points[0], points[1]
+    return points.T[0], points.T[1]
+
+
 def haversine(lat1, lat2, lon1, lon2):
     """
     Calculates the haversine distance between two points.

@@ -1,7 +1,7 @@
 % Converts all radial files in a folder into individual velocity fields from a starting date
 
 clear all;
-fid = fopen('timestamp.txt');
+fid = fopen('data/timestamp.txt');
 d = fgetl(fid);
 dend = fgetl(fid);
 fclose(fid);

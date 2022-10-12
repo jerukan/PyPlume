@@ -5,16 +5,16 @@ function sdrs2uvlluvhourly(t)
 %
 
 % src_path  = '/imports/hfradar/hfrnet/db/files/radials/';
-src_path  = 'support_data/RadialFiles/';
+src_path  = 'data/support_data/RadialFiles/';
 % out_path  = '/data/hfradar/hfrnet/trj/tjr/data/hourly/';
-out_path  = 'support_data/TrackerOutput/hourly/';
+out_path  = 'data/support_data/TrackerOutput/hourly/';
 %Data in the path below serves as state and gets removed by TJR particle processing
 % out_path2 = '/data/hfradar/hfrnet/trj/tjr/data/pdata/';
-out_path2 = 'support_data/TrackerOutput/pdata/';
+out_path2 = 'data/support_data/TrackerOutput/pdata/';
 
-load wchfradarinfo.mat;
+load 'data/wchfradarinfo.mat' stinfo;
 % load sdcodargrid.mat gx gy;
-load sdcodargrid_new.mat gx gy;
+load 'data/sdcodargrid_hfr.mat' gx gy;
 
 sts = ['SDCI'; 'SDPL'; 'SDBP'];
 nr = size(sts,1);

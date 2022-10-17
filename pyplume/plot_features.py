@@ -99,16 +99,29 @@ class ParticlePlotFeature(PlotFeature):
 class ParticleDensityFeature(PlotFeature):
     def __init__(self, domain, coastline):
         self.domain = domain
-        self.coast_lats, self.coast_lons = utils.get_points(coastline)
+        self.coast_lats, self.coast_lons = utils.get_points(coastline, dim=2)
+        self.coast_feature = NanSeparatedFeature(self.coast_lats, self.coast_lons)
+        self.all_lats = []
+        self.all_lons = []
 
     def generate_external_plot(self, t, lats, lons, **kwargs):
-        # TODO unfinished
+        self.all_lats.extend(lats)
+        self.all_lons.extend(lons)
         fig, ax = get_carree_axis(TIJUANA_RIVER_DOMAIN, land=False)
-        fig.patch.set_facecolor("w")
+        # fig.patch.set_facecolor("w")
         get_carree_gl(ax)
-        sns.histplot(x=lons, y=lats, bins=100, cbar=True, pmax=0.6, ax=ax)
-        coastline.add_to_plot(fig, ax, None, None, None)
+        ax.set_title(f"Cumilative particle density at {t}")
+        sns.histplot(x=self.all_lons, y=self.all_lats, bins=100, cbar=True, ax=ax)
+        self.coast_feature.add_to_plot(fig, ax, None, None, None)
         return fig, ax
+
+    @classmethod
+    def load_from_external(cls, domain, coastline, **kwargs):
+        """
+        Loads from mat files only right now.
+        """
+        lats, lons = utils.load_geo_points(coastline)
+        return cls(domain, [lats, lons], **kwargs)
 
 
 class ScatterPlotFeature(PlotFeature):
@@ -205,11 +218,11 @@ class ScatterPlotFeature(PlotFeature):
         return dists
 
     @classmethod
-    def load_from_external(cls, path, track_dist=100, **kwargs):
+    def load_from_external(cls, data, track_dist=100, **kwargs):
         """
         Loads from mat files only right now.
         """
-        lats, lons = utils.load_pts_mat(path)
+        lats, lons = utils.load_geo_points(data)
         return cls(lats, lons, segments=True, track_dist=track_dist, **kwargs)
 
 
@@ -228,8 +241,8 @@ class NanSeparatedFeature(ScatterPlotFeature):
         return fig, ax
 
     @classmethod
-    def load_from_external(cls, path, **kwargs):
-        lats, lons = utils.load_pts_mat(path, del_nan=False)
+    def load_from_external(cls, data, **kwargs):
+        lats, lons = utils.load_geo_points(data, del_nan=False)
         inst = cls(lats, lons, track_dist=0, **kwargs)
         return inst
 
@@ -283,8 +296,8 @@ class StationFeature(ScatterPlotFeature):
         return fig, ax
 
     @classmethod
-    def load_from_external(cls, path, labels=None, track_dist=1000, **kwargs):
-        lats, lons = utils.load_pts_mat(path, "ywq", "xwq")
+    def load_from_external(cls, data, labels=None, track_dist=1000, **kwargs):
+        lats, lons = utils.load_geo_points(data, lat_var="ywq", lon_var="xwq")
         return cls(lats, lons, labels=labels, track_dist=track_dist, **kwargs)
 
 
@@ -396,10 +409,11 @@ class NearcoastDensityFeature(ScatterPlotFeature):
 
     @classmethod
     def load_from_external(cls, origin, stations, coastline, **kwargs):
-        st_lats, st_lons = utils.load_pts_mat(stations)
-        c_lats, c_lons = utils.load_pts_mat(coastline)
+        origin_lats, origin_lons = utils.load_geo_points(origin)
+        st_lats, st_lons = utils.load_geo_points(stations)
+        c_lats, c_lons = utils.load_geo_points(coastline)
         return cls(
-            [origin[0], origin[1]],
+            [origin_lats[0], origin_lons[0]],
             [st_lats, st_lons],
             [c_lats, c_lons],
             **kwargs
@@ -431,8 +445,8 @@ class BuoyPathFeature(ScatterPlotFeature):
         return utils.haversine(lats, buoy_lat, lons, buoy_lon)
 
     @classmethod
-    def load_from_external(cls, path, **kwargs):
-        return cls(BuoyPath.from_csv(**utils.get_path_cfg(path)), **kwargs)
+    def load_from_external(cls, data, **kwargs):
+        return cls(BuoyPath.from_csv(**utils.get_path_cfg(data)), **kwargs)
 
 
 class WindVectorFeature(ScatterPlotFeature):

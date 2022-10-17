@@ -114,7 +114,7 @@ class ParcelsSimulation:
 
         # load spawn points
         if isinstance(spawn_points, (str, dict)):
-            lats, lons = utils.load_geo_points(**utils.get_path_cfg(spawn_points))
+            lats, lons = utils.load_geo_points(**utils.wrap_in_kwarg(spawn_points, key="data"))
             spawn_points = np.array([lats, lons]).T
         elif isinstance(spawn_points, (list, np.ndarray)):
             spawn_points = spawn_points

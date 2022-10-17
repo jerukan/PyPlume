@@ -44,9 +44,9 @@ def load_config(path):
 
 def prep_sim_from_cfg(cfg) -> ParcelsSimulation:
     # ocean is required, no check
-    ocean_cfg = utils.get_path_cfg(cfg["netcdf_data"]["ocean"])
-    ocean_cfg["dataset"] = ocean_cfg["path"]
-    del ocean_cfg["path"]
+    ocean_cfg = utils.wrap_in_kwarg(cfg["netcdf_data"]["ocean"], key="data")
+    ocean_cfg["dataset"] = ocean_cfg["data"]
+    del ocean_cfg["data"]
     boundary_condition = ocean_cfg.pop("boundary_condition", None)
     ds = DataLoader(**ocean_cfg).dataset
     gapfiller = Gapfiller.load_from_config(*ocean_cfg.get("gapfill_steps", []))

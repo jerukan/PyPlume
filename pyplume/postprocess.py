@@ -264,17 +264,11 @@ class ParticleResult:
         """Uses imagemagick to generate a gif of the main simulation plot."""
         gif_path = self.sim_result_dir / f"{ParticleResult.MAIN_PARTICLE_PLOT_NAME}.gif"
         input_paths = [str(frame.path) for frame in self.frames]
-        sp_in = ["magick", "-delay", str(gif_delay)] + input_paths
-        sp_in.append(str(gif_path))
-        magick_sp = subprocess.Popen(
-            sp_in,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            universal_newlines=True
-        )
-        stdout, stderr = magick_sp.communicate()
-        logger.info(f"magick ouptput: {(stdout, stderr)}")
-        return gif_path
+        utils.generate_gif(input_paths, gif_path, gif_delay=gif_delay)
+        for feat in self.frames[0].paths_feat.keys():
+            feat_gif_path = self.sim_result_dir / f"{feat}.gif"
+            feat_input_paths = [str(frame.paths_feat[feat]) for frame in self.frames]
+            utils.generate_gif(feat_input_paths, feat_gif_path, gif_delay=gif_delay)
 
     def write_feature_dists(self, feat_names):
         for feat_name in feat_names:

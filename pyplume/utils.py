@@ -27,16 +27,31 @@ def import_attr(path):
     return getattr(module, var_str)
 
 
-def get_points(points, dim=2):
+def get_points(points, dim=2, transposed=None):
     """
     Given N points of dimension d, the data can either be passed in as an (N,d) or (d,N)
     dimensional array.
+
+    Can also pass in a single (d,1) point.
+
+    Args:
+        points
+        dim
+        transposed: None to infer data format, False to not transpose data, True to transpose data.
     """
-    if len(points.shape) != 2:
+    points = np.array(points)
+    if len(points.shape) == 1:
+        points = np.array([points])
+    if len(points.shape) > 2:
         raise ValueError(f"Incorrect points dimension {points.shape}")
-    if points.shape[0] == dim:
+    if transposed is None:
+        # if the points happen to be (d,d), just guess data was passed in as collection of pairs
+        if points.shape[1] == dim:
+            return points.T[0], points.T[1]
         return points[0], points[1]
-    return points.T[0], points.T[1]
+    if transposed:
+        return points.T[0], points.T[1]
+    return points[0], points[1]
 
 
 def haversine(lat1, lat2, lon1, lon2):
@@ -193,7 +208,7 @@ def expand_time_rng(time_rng, precision="h"):
     return start_time, end_time
 
 
-def load_pts_mat(path, lat_ind=None, lon_ind=None, del_nan=False):
+def load_pts_mat(path, lat_var=None, lon_var=None, del_nan=False):
     """
     Loads points from a pts mat from the TJ Plume Tracker.
     Only points where both lat and lon are non-nan are returned.
@@ -206,24 +221,24 @@ def load_pts_mat(path, lat_ind=None, lon_ind=None, del_nan=False):
     """
     mat_data = scipy.io.loadmat(path)
     # guess keys for latitude and longitude, this is not robust at all
-    if lat_ind is None:
+    if lat_var is None:
         for key in mat_data.keys():
             if "y" in key.lower() or "lat" in key.lower():
-                lat_ind = key
+                lat_var = key
                 logger.info(f"Guessed latitude key as {key}")
                 break
-    if lat_ind is None:
+    if lat_var is None:
         raise IndexError(f"No latitude or y key could be guessed in {path}")
-    if lon_ind is None:
+    if lon_var is None:
         for key in mat_data.keys():
             if "x" in key.lower() or "lon" in key.lower():
-                lon_ind = key
+                lon_var = key
                 logger.info(f"Guessed longitude key as {key}")
                 break
-    if lon_ind is None:
+    if lon_var is None:
         raise IndexError(f"No longitude or x key could be guessed in {path}")
-    xf = mat_data[lon_ind].flatten()
-    yf = mat_data[lat_ind].flatten()
+    xf = mat_data[lon_var].flatten()
+    yf = mat_data[lat_var].flatten()
     if del_nan:
         # filter out nan values
         non_nan = (~np.isnan(xf)) & (~np.isnan(yf))
@@ -232,7 +247,7 @@ def load_pts_mat(path, lat_ind=None, lon_ind=None, del_nan=False):
     return yf, xf
 
 
-def load_geo_points(path, **kwargs):
+def load_geo_points(data, **kwargs):
     """
     Loads a collection of (lat, lon) points from a given data configuration. Each different file
     type will have different ways of loading and different required parameters.
@@ -240,14 +255,26 @@ def load_geo_points(path, **kwargs):
     .mat file requirements:
         lat_var: variable in the mat file representing the array of latitude values
         lon_var: variable in the mat file representing the array of longitude values
+
+    Args:
+        data: actual data or path to data
     """
-    ext = os.path.splitext(path)[1]
-    if ext == ".mat":
-        lat_var = kwargs.get("lat_var", None)
-        lon_var = kwargs.get("lon_var", None)
-        lats, lons = load_pts_mat(path, lat_ind=lat_var, lon_ind=lon_var)
-        return lats, lons
-    raise ValueError(f"Invalid extension {ext}")
+    if isinstance(data, (np.ndarray, list)):
+        return get_points(np.array(data), dim=2)
+    if isinstance(data, (str, Path)):
+        path = data
+        ext = os.path.splitext(path)[1]
+        if ext == ".mat":
+            lats, lons = load_pts_mat(path, **kwargs)
+            return lats, lons
+        raise ValueError(f"Invalid extension {ext}")
+    raise TypeError(f"Invalid data to load {data}")
+
+
+def wrap_in_kwarg(obj, merge_dict=True, key=None, **kwargs):
+    if isinstance(obj, dict) and merge_dict:
+        return {**obj, **kwargs}
+    return {key: obj, **kwargs}
 
 
 def get_path_cfg(path, **kwargs):
@@ -259,3 +286,19 @@ def get_path_cfg(path, **kwargs):
             return {**path, **kwargs}
         raise KeyError(f"key 'path' not in path config")
     raise TypeError(f"{path} is not a proper path or config")
+
+
+def generate_gif(img_paths, gif_path, gif_delay=25):
+    """Uses imagemagick to generate a gif of the main simulation plot."""
+    input_paths = [str(path) for path in img_paths]
+    sp_in = ["magick", "-delay", str(gif_delay)] + input_paths
+    sp_in.append(str(gif_path))
+    magick_sp = subprocess.Popen(
+        sp_in,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True
+    )
+    stdout, stderr = magick_sp.communicate()
+    logger.info(f"GIF generation magick ouptput: {(stdout, stderr)}")
+    return gif_path

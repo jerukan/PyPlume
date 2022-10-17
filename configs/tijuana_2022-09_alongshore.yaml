@@ -1,6 +1,10 @@
 netcdf_data:
   ocean:
-    path: data/field_netcdfs/tj_plume_1km_2022-09.nc
+    data: data/field_netcdfs/tj_plume_1km_2022-09.nc
+    time_range:
+      # Hurricane Kay timespan
+      - 2022-09-08T06:00
+      - 2022-09-12T00:00
     gapfill_steps:
       - path: pyplume.gapfilling.InterpolationStep
         args:
@@ -18,6 +22,7 @@ parcels_config:
     - pyplume.kernels.AdvectionRK4BorderCheck
     - pyplume.kernels.AgeParticle
     - pyplume.kernels.RandomWalk
+    - pyplume.kernels.DeleteAfter3Days
   time_range:
     # Hurricane Kay timespan
     - 2022-09-08T06:00
@@ -38,15 +43,24 @@ plotting_config:
     E: -117.09
   draw_coasts: false
   plot_features:
+    - path: pyplume.plot_features.ParticleDensityFeature
+      label: particle_density
+      args:
+        domain:
+          S: 32.525
+          N: 32.7
+          W: -117.27
+          E: -117.09
+        coastline: data/coastline.mat
     - path: pyplume.plot_features.NanSeparatedFeature
       label: coastline
       args:
-        path: data/coastOR2Mex_tijuana.mat
+        data: data/coastOR2Mex_tijuana.mat
         color: k
     - path: pyplume.plot_features.StationFeature
       label: station
       args:
-        path: data/wq_stposition.mat
+        data: data/wq_stposition.mat
         labels:
           - Coronado (North Island)
           - Silver Strand

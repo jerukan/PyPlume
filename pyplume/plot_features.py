@@ -100,7 +100,7 @@ class ParticleDensityFeature(PlotFeature):
     def __init__(self, domain, coastline):
         self.domain = domain
         self.coast_lats, self.coast_lons = utils.get_points(coastline, dim=2)
-        self.coast_feature = NanSeparatedFeature(self.coast_lats, self.coast_lons)
+        self.coast_feature = NanSeparatedFeature(self.coast_lats, self.coast_lons, color="k")
         self.all_lats = []
         self.all_lons = []
 

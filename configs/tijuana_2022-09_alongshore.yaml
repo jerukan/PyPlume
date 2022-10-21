@@ -31,8 +31,8 @@ parcels_config:
   repetitions: -1
   instances_per_spawn: 1
   spawn_points: data/spawn_points_mats/glist90zj_pts_position_spawn.mat
-  simulation_dt: 300
-  snapshot_interval: 3600
+  simulation_dt: 600
+  snapshot_interval: 1800
 postprocess_config: {}
 save_snapshots: true
 plotting_config:
@@ -51,7 +51,7 @@ plotting_config:
           N: 32.7
           W: -117.27
           E: -117.09
-        coastline: data/coastline.mat
+        coastline: data/coastOR2Mex_tijuana.mat
     - path: pyplume.plot_features.NanSeparatedFeature
       label: coastline
       args:

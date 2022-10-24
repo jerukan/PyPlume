@@ -235,9 +235,6 @@ def plot_vectorfield(
     def resize_colorbar(event):
         plt.draw()
         posn = ax.get_position()
-        print(posn)
-        print(posn.width)
-        print([posn.x0 + posn.width + 0.01, posn.y0, 0.04, posn.height])
         cbar_ax.set_position([posn.x0 + posn.width + 0.01, posn.y0, 0.04, posn.height])
 
     fig.canvas.mpl_connect("resize_event", resize_colorbar)

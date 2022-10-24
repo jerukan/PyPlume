@@ -1,6 +1,8 @@
 """
 A collection of methods related to plotting.
 """
+import copy
+import datetime
 import logging
 from pathlib import Path
 import sys
@@ -20,11 +22,16 @@ logger = get_logger(__name__)
 DEFAULT_PARTICLE_SIZE = 4
 
 
-def get_carree_axis(domain, land=True):
+def get_carree_axis(domain, projection=None, land=True, fig=None, pos=None):
     ext = [domain["W"], domain["E"], domain["S"], domain["N"]]
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection=ccrs.PlateCarree())
-    ax.set_extent(ext, crs=ccrs.PlateCarree())
+    if projection is None:
+        projection = ccrs.PlateCarree()
+    if fig is None:
+        fig = plt.figure()
+    if pos is None:
+        pos = 111
+    ax = fig.add_subplot(pos, projection=projection)
+    ax.set_extent(ext, crs=projection)
     if land:
         ax.add_feature(cartopy.feature.COASTLINE)
     return fig, ax
@@ -46,31 +53,24 @@ def pad_domain(domain, padding):
     return domain
 
 
-# TODO finish
-def generate_domain(lats, lons, padding=0.005):
-    lat_rng = (ds["lat"].values.min(), ds["lat"].values.max())
-    if lat_rng[0] < lat_min:
-        lat_min = lat_rng[0]
-    if lat_rng[1] > lat_max:
-        lat_max = lat_rng[1]
-    lon_rng = (ds["lon"].values.min(), ds["lon"].values.max())
-    if lon_rng[0] < lon_min:
-        lon_min = lon_rng[0]
-    if lon_rng[1] > lon_max:
-        lon_max = lon_rng[1]
+def generate_domain(lats, lons, padding=0):
+    """Will have funky behavior if the coordinate range loops around back to 0."""
+    lat_rng = (lats.min(), lats.max())
+    lon_rng = (lons.min(), lons.max())
     return dict(
-        S=lat_min - padding,
-        N=lat_max + padding,
-        W=lon_min - padding,
-        E=lon_max + padding,
+        S=lat_rng[0] - padding,
+        N=lat_rng[1] + padding,
+        W=lon_rng[0] - padding,
+        E=lon_rng[1] + padding,
     )
 
 
-def generate_domain_datasets(datasets, padding=0.005):
+def generate_domain_datasets(datasets, padding=0):
     """
     Given a list of datasets or paths to particle netcdf files, generate a domain that encompasses
     every position with some padding.
-    Will probably break if points go from like 178 to -178 longitude or something.
+    
+    Will have funky behavior if the coordinate range loops around back to 0.
     """
     lat_min = 90
     lat_max = -90
@@ -191,6 +191,66 @@ def plot_field(time=None, grid=None, domain=None, land=True, vmax=0.6):
             vmax=vmax, titlestr="Particles and "
         )
     return fig, ax
+
+
+def plot_vectorfield(
+    dataset, show_time=None, domain=None, projection=None, land=True, vmin=None,
+    vmax=None, titlestr=None, fig=None, pos=None, **kwargs
+):
+    if domain is None:
+        domain = generate_domain_datasets([dataset])
+    if fig is None:
+        fig = plt.figure()
+    fig, ax = get_carree_axis(domain, projection=projection, land=land, fig=fig, pos=pos)
+    get_carree_gl(ax)
+    if isinstance(show_time, int):
+        idx = show_time
+    else:
+        idx = np.where(dataset["time"] == show_time)[0][0] if show_time is not None else 0
+    show_time = dataset["time"][idx].values
+    U = dataset["U"][idx]
+    V = dataset["V"][idx]
+    lats = dataset["lat"]
+    lons = dataset["lon"]
+    spd = U ** 2 + V ** 2
+    speed = np.where(spd > 0, np.sqrt(spd), 0)
+    vmin = speed.min() if vmin is None else vmin
+    vmax = speed.max() if vmax is None else vmax
+    ncar_cmap = copy.copy(plt.cm.gist_ncar)
+    ncar_cmap.set_over("k")
+    ncar_cmap.set_under("w")
+    x, y = np.meshgrid(lons, lats)
+    u = np.where(speed > 0., U / speed, 0)
+    v = np.where(speed > 0., V / speed, 0)
+    cs = ax.quiver(
+        np.asarray(x), np.asarray(y), np.asarray(u), np.asarray(v), speed, cmap=ncar_cmap,
+        clim=[vmin, vmax], scale=50, transform=cartopy.crs.PlateCarree()
+    )
+    cs.set_clim(vmin, vmax)
+
+    cbar_ax = fig.add_axes([0, 0, 0, 0])
+    # fig.subplots_adjust(hspace=0, wspace=0, top=0.925, left=0.1)
+    plt.colorbar(cs, cax=cbar_ax)
+
+    def resize_colorbar(event):
+        plt.draw()
+        posn = ax.get_position()
+        print(posn)
+        print(posn.width)
+        print([posn.x0 + posn.width + 0.01, posn.y0, 0.04, posn.height])
+        cbar_ax.set_position([posn.x0 + posn.width + 0.01, posn.y0, 0.04, posn.height])
+
+    fig.canvas.mpl_connect("resize_event", resize_colorbar)
+    resize_colorbar(None)
+
+    if titlestr is None:
+        titlestr = ""
+    else:
+        titlestr = f"{titlestr} "
+    ax.set_title(f"{titlestr}Velocity field at {show_time.astype('datetime64[s]')}")
+
+    return fig, ax
+
 
 def plot_particles(
     lats, lons, lifetimes=None, time=None, grid=None, domain=None, land=True, vmax=0.6, lifetime_max=None,

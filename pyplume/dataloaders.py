@@ -231,6 +231,15 @@ class DataLoader:
             inclusive=inclusive
         )
 
+    def __repr__(self):
+        return repr(self.dataset)
+    
+    def _repr_html_(self):
+        return self.dataset._repr_html_()
+
+    def __str__(self):
+        return str(self.dataset)
+
     def get_mask(self, num_samples=None):
         """
         Generate a mask from the data signifying which coordinates should have data and which ones

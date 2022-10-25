@@ -206,6 +206,8 @@ def plot_vectorfield(
     if isinstance(show_time, int):
         idx = show_time
     else:
+        if isinstance(show_time, str):
+            show_time = np.datetime64(show_time)
         idx = np.where(dataset["time"] == show_time)[0][0] if show_time is not None else 0
     show_time = dataset["time"][idx].values
     U = dataset["U"][idx]

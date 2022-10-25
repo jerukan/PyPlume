@@ -69,8 +69,8 @@ def DeleteOOB(particle, fieldset, time):
         particle.delete()
 
 
-# TODO make this configurable somehow (save method as a string and import! who the fuck knows?)
-# can't add variables outside the method scope
+# NOTE it is impossible to make these kernels configurable
+# if you want to use a different time, you need to make the kernel yourself
 def DeleteAfter3Days(particle, fieldset, time):
     """Deletes a particle after 3 days"""
     LIFETIME = 259200

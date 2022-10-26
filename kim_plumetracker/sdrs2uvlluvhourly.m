@@ -16,7 +16,7 @@ load 'data/wchfradarinfo.mat' stinfo;
 % load sdcodargrid.mat gx gy;
 load 'data/sdcodargrid_hfr.mat' gx gy;
 
-sts = ['SDCI'; 'SDPL'; 'SDBP'];
+sts = ['SDCI'; 'SDPL'; 'SDBP'; 'SDWW'];
 nr = size(sts,1);
 
 [YYYY, MM, DD, hh, mm] = datestr0(t); 

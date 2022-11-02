@@ -35,7 +35,8 @@ class PlotFeature:
     """
     def add_to_plot(self, fig, ax, t, lats, lons, **kwargs):
         """
-        Plots onto a simulation frame plot, with information on particles at that time passed in.
+        Plots onto the main simulation frame plot, with information on particles at that time
+        passed in.
 
         Args:
             ax: the axes that the simulation plot was already drawn on

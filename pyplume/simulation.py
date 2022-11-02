@@ -11,8 +11,7 @@ import sys
 import numpy as np
 from parcels import ParticleSet, ErrorCode, AdvectionRK4, AdvectionRK45, ScipyParticle, JITParticle
 
-from pyplume import get_logger
-import pyplume.utils as utils
+from pyplume import get_logger, utils
 from pyplume.postprocess import ParticleResult
 from pyplume.kernels import DeleteParticle, DeleteParticleVerbose
 

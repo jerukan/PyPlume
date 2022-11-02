@@ -11,9 +11,9 @@ netcdf_data:
           references:
             - USWC_2KM_HOURLY
             - USWC_6KM_HOURLY
-      - path: pyplume.gapfilling.SmoothnStep
-        args:
-          mask: data/field_netcdfs/tj_plume_1km_2022-09_mask.npy
+      # - path: pyplume.gapfilling.SmoothnStep
+      #   args:
+      #     mask: data/field_netcdfs/tj_plume_1km_2022-09_mask.npy
   alongshore: data/field_netcdfs/tj_plume_alongshore_2022-09.nc
 parcels_config:
   save_dir: results

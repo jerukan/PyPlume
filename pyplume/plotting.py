@@ -9,9 +9,11 @@ import sys
 
 import cartopy
 import cartopy.crs as ccrs
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from parcels import plotting
+import seaborn as sns
 import xarray as xr
 
 from pyplume import get_logger
@@ -22,16 +24,47 @@ logger = get_logger(__name__)
 DEFAULT_PARTICLE_SIZE = 4
 
 
-def get_carree_axis(domain, projection=None, land=True, fig=None, pos=None):
-    ext = [domain["W"], domain["E"], domain["S"], domain["N"]]
+def carree_subplots(shape, projection=None, domain=None, land=False):
+    if isinstance(shape, int):
+        raise TypeError("Shape as integer not supported by this method. Pass as tuple.")
+    if projection is None:
+        projection = ccrs.PlateCarree()
+    fig = plt.figure()
+    axs = np.empty(shape, dtype=matplotlib.axes.Axes)
+    i = 1
+    for idx, _ in np.ndenumerate(axs):
+        _, ax = get_carree_axis(domain=domain, projection=projection, land=land, fig=fig, pos=[*shape, i])
+        get_carree_gl(ax)
+        axs[idx] = ax
+        i += 1
+    if axs.shape == (1, 1):
+        return fig, axs[0, 0]
+    elif axs.shape[0] == 1:
+        return fig, axs[0, :]
+    elif axs.shape[1] == 1:
+        return fig, axs[:, 0]
+    return fig, axs
+
+
+def get_carree_axis(domain=None, projection=None, land=False, fig=None, pos=None):
+    """
+    Args:
+        fig: exiting figure to add to if desired
+        pos: position on figure subplots to add axes to
+    """
     if projection is None:
         projection = ccrs.PlateCarree()
     if fig is None:
         fig = plt.figure()
     if pos is None:
         pos = 111
-    ax = fig.add_subplot(pos, projection=projection)
-    ax.set_extent(ext, crs=projection)
+    if isinstance(pos, int):
+        ax = fig.add_subplot(pos, projection=projection)
+    else:
+        ax = fig.add_subplot(*pos, projection=projection)
+    if domain is not None:
+        ext = [domain["W"], domain["E"], domain["S"], domain["N"]]
+        ax.set_extent(ext, crs=projection)
     if land:
         ax.add_feature(cartopy.feature.COASTLINE)
     return fig, ax
@@ -95,14 +128,13 @@ def generate_domain_datasets(datasets, padding=0):
     }
 
 
-def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None, verbose=False):
+def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None):
     """
     Args:
         figsize (tuple): (width, height) in inches (or was it the other way around?)
     """
     if fig is None:
-        if verbose:
-            logger.info("Figure not passed in, figure size unchanged", file=sys.stderr)
+        logger.info("Figure not passed in, figure size unchanged")
     else:
         fig.patch.set_facecolor("w")
         plt.figure(fig.number)
@@ -113,8 +145,7 @@ def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None, verbos
         plt.show()
     if savefile is not None:
         plt.savefig(savefile, bbox_inches="tight" if fit else None)
-        if verbose:
-            logger.info(f"Plot saved to {savefile}", file=sys.stderr)
+        logger.info(f"Plot saved to {savefile}")
         if fig is None:
             plt.close()
         else:
@@ -195,7 +226,7 @@ def plot_field(time=None, grid=None, domain=None, land=True, vmax=0.6):
 
 def plot_vectorfield(
     dataset, show_time=None, domain=None, projection=None, land=True, vmin=None,
-    vmax=None, titlestr=None, fig=None, pos=None, **kwargs
+    vmax=None, titlestr=None, fig=None, pos=None
 ):
     if domain is None:
         domain = generate_domain_datasets([dataset])
@@ -301,4 +332,34 @@ def plot_particles(
         # super jank label the other colorbar since it's in plotting.plotfield
         cbar_ax.set_ylabel("Age (days)\n\n\n\n\n\nVelocity (m/s)", rotation=270)
 
+    return fig, ax
+
+
+def draw_particle_density(lats, lons, bins=None, domain=None, ax=None, title="", **kwargs):
+    """
+    Args:
+        kwargs: other arguments to pass into sns.histplot
+    """
+    if ax is None:
+        fig, ax = carree_subplots((1, 1), domain=domain)
+    else:
+        fig = ax.get_figure()
+    bins = bins if bins is not None else 100
+    ax.set_title(title)
+    sns.histplot(x=lons, y=lats, bins=bins, cbar=True, ax=ax, **kwargs)
+    return fig, ax
+
+
+def draw_coastline(lats, lons, separate_nan=True, domain=None, c=None, ax=None):
+    if ax is None:
+        fig, ax = carree_subplots((1, 1), domain=domain)
+    else:
+        fig = ax.get_figure()
+    if separate_nan:
+        lat_borders = np.split(lats, np.where(np.isnan(lats))[0])
+        lon_borders = np.split(lons, np.where(np.isnan(lons))[0])
+        for i in range(len(lat_borders)):
+            ax.plot(lon_borders[i], lat_borders[i], c=c)
+    else:
+        ax.plot(lons, lats, c=c)
     return fig, ax

@@ -11,12 +11,10 @@ import numpy as np
 from shapely.geometry import LineString
 import xarray as xr
 
-from pyplume import get_logger
+from pyplume import get_logger, plotting, utils
 from pyplume.constants import *
 from pyplume.dataloaders import SurfaceGrid
 from pyplume.plot_features import *
-import pyplume.plotting as plotting
-import pyplume.utils as utils
 
 
 logger = get_logger(__name__)
@@ -57,7 +55,7 @@ class ParticleResult:
         self.sim_result_dir = Path(sim_result_dir) if sim_result_dir is not None else None
         self.snapshot_interval = snapshot_interval
         if isinstance(src, (Path, str)):
-            self.path = src
+            self.path = Path(src)
             self.ds = xr.open_dataset(src)
             self.ds.close()
         elif isinstance(src, xr.Dataset):
@@ -65,6 +63,9 @@ class ParticleResult:
             self.ds = src
         else:
             raise TypeError(f"{src} is not a path or xarray dataset")
+        if self.sim_result_dir is None and self.path is not None:
+            # assume particle file is already in the results directory
+            self.sim_result_dir = self.path.parent
         # assumed to be in data_vars: trajectory, time, lat, lon, z
         # these variables are generated from default particles in Parcels
         self.data_vars = {}
@@ -194,7 +195,7 @@ class ParticleResult:
                 savefile_feat = utils.get_dir(save_dir / name) / f"simframe_{name}_{i}.png"
                 savefile_feats[name] = savefile_feat
                 plotting.draw_plt(savefile=savefile_feat, fig=fig_feat, figsize=figsize)
-        lats, lons = self.get_points_at_t(t)
+        lats, lons = self.get_positions_time(t, when="at")
         mask = self.data_vars["time"] == t  # lol idk just do it again
         ages = None
         if "lifetime" in self.data_vars:
@@ -240,7 +241,7 @@ class ParticleResult:
             t = self.times[0]
             i = 0
             while t <= self.times[-1]:
-                lats, lons = self.get_points_at_t(t)
+                lats, lons = self.get_positions_time(t, when="at")
                 mask = self.data_vars["time"] == t  # lol idk just do it again
                 ages = None
                 if "lifetime" in self.data_vars:
@@ -252,7 +253,7 @@ class ParticleResult:
             # If the delta time between each snapshot is unknown, we'll just use the unique times
             # from the particle files.
             for i in range(len(self.times)):
-                lats, lons = self.get_points_at_t(self.times[i])
+                lats, lons = self.get_positions_time(self.times[i])
                 mask = self.data_vars["time"] == t  # lol idk just do it again
                 ages = None
                 if "lifetime" in self.data_vars:
@@ -301,6 +302,25 @@ class ParticleResult:
         )
         new_ds.to_netcdf(path=self.path if path is None else path)
 
-    def get_points_at_t(self, t: np.datetime64):
-        mask = self.data_vars["time"] == t
-        return self.data_vars["lat"][mask], self.data_vars["lon"][mask]
+    def get_filtered_data_time(self, t: np.datetime64, when="at"):
+        if when not in ("at", "before", "after"):
+            raise ValueError()
+        if when == "at":
+            mask = self.data_vars["time"] == t
+        elif when == "before":
+            mask = self.data_vars["time"] <= t
+        elif when == "after":
+            mask = self.data_vars["time"] >= t
+        filtered = {}
+        for dvar in self.data_vars.keys():
+            filtered[dvar] = self.data_vars[dvar][mask]
+        return filtered
+
+    def get_positions_time(self, t: np.datetime64, when="at"):
+        filtered = self.get_filtered_data_time(t, when=when)
+        return filtered["lat"], filtered["lon"]
+
+
+class ParticleResultComparer:
+    def __init__(self, *particleresults):
+        self.particleresults = particleresults

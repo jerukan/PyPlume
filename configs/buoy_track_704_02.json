@@ -1,0 +1,40 @@
+{
+  "name": "buoy_track_704_02",
+  "netcdf_data": {
+    "ocean": {
+      "path": "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd",
+      "time_range": ["2019-08-16", "2019-08-23"],
+      "lat_range": [27, 33],
+      "lon_range": [-120, -114],
+      "gapfill_steps": []
+    }
+  },
+  "save_snapshots": true,
+  "parcels_config": {
+    "particle_type": "ThreddsParticle",
+    "kernels": ["AdvectionRK4", "AgeParticle"],
+    "time_range": ["2019-08-16T22:01:42", "2019-08-22T10:01:21"],
+    "repeat_dt": -1,
+    "repetitions": -1,
+    "instances_per_spawn": 1,
+    "spawn_points": [
+      [32.76992, -117.71452]
+    ],
+    "simulation_dt": 300,
+    "snapshot_interval": 3600
+  },
+  "postprocess_config": {
+    "buoy": "buoy_data/wavebuoy_704-02.csv"
+  },
+  "plotting_config": {
+    "shown_domain": {
+      "S": 32.35,
+      "N": 32.9,
+      "W": -117.85,
+      "E": -117.55
+    },
+    "save_dir_snapshots": "snapshots",
+    "plot_features": null,
+    "draw_coasts": true
+  }
+}

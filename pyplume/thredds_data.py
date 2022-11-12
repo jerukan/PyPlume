@@ -46,7 +46,7 @@ class HFRNetUCSDLoad:
         )
 
 
-class FmrcHYCOMLoad:
+class HYCOMLoad:
     def __init__(self, time_chunk_size=None):
         self.time_chunk_size = time_chunk_size
     
@@ -57,21 +57,27 @@ class FmrcHYCOMLoad:
             src, chunks=time_chunks, drop_variables=DROP_VARS_FMRC_HYCOM, decode_times=False
         )
         # This particular HYCOM forecast data has different units of time, where
-        # it is "hours since <time from a week ago> UTC", which has to be converted
-        # to propert datetime values
-        # hacky way of getting the time origin of the data
-        t0 = np.datetime64(ds.time.units[12:35])
+        # it is "hours since <some time> UTC", which has to be converted
+        # to proper datetime values
+        if "time_origin" in ds.time.attrs:
+            t0 = np.datetime64(ds.time.time_origin)
+        else:
+            # hacky way of getting the time origin of the data (slice the time out of the string)
+            t0 = np.datetime64(ds.time.units[12:35])
         tmp = ds["time"].data
-        ds["t0"] = np.timedelta64(t0 - np.datetime64("0000-01-01T00:00:00.000"), "h") / np.timedelta64(1, "D")
+        ds["t0"] = (t0 - np.datetime64("0000-01-01T00:00:00.000")) / np.timedelta64(1, "D")
         # replace time coordinate data with actual datetimes
         ds = ds.assign_coords(time=(t0 + np.array(tmp, dtype="timedelta64[h]")))
         # modify metadata
-        ds["time"].attrs["long_name"] = "Forecast time"
+        ds["time"].attrs["long_name"] = "Forecast time for ForecastModelRunCollection"
         ds["time"].attrs["standard_name"] = "time"
         ds["time"].attrs["_CoordinateAxisType"] = "Time"
-        ds["tau"].attrs["units"] = "hours since " + ds["tau"].time_origin
+        ds["time"].attrs["units"] = "UTC"
         # drop depth data
         ds = drop_depth(rename_dataset_vars(ds, VAR_MAPPINGS_FMRC_HYCOM))
+        # change range of longitude values from 0-360 to -180-180
+        # ds["lon"] = (ds["lon"] + 180) % 360 - 180
+        # ds = ds.sortby("lon")
         return ds
 
 
@@ -122,12 +128,17 @@ SRC_THREDDS_HYCOM = DataSource(
     name="HYCOM Thredds Data Server",
     available_datasets=[
         DatasetInfo(
-            id="FMRC_HYCOM",
+            id="GLOBAL_FMRC",
             name="HYCOM + NCODA Global 1/12 Analysis FMRC",
             url="https://tds.hycom.org/thredds/dodsC/GLBy0.08/expt_93.0/FMRC/GLBy0.08_930_FMRC_best.ncd",
+        ),
+        DatasetInfo(
+            id="GLOBAL_HINDCAST",
+            name="HYCOM + NCODA Global 1/12 Analysis Hindcast Data: 3-hourly",
+            url="https://tds.hycom.org/thredds/dodsC/GLBy0.08/expt_93.0/uv3z",
         )
     ],
-    load_method=FmrcHYCOMLoad(time_chunk_size=CHUNK_SIZE_DEFAULT)
+    load_method=HYCOMLoad(time_chunk_size=CHUNK_SIZE_DEFAULT)
 )
 
 

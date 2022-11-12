@@ -3,10 +3,13 @@ from pathlib import Path
 import sys
 import warnings
 
+import dask
 import numpy as np
 
+# large chunk issues
+# dask.config.set(**{'array.slicing.split_large_chunks': True})
 # ignore common deprecation warnings that pop up constantly
-warnings.simplefilter("ignore", UserWarning)
+# warnings.simplefilter("ignore", UserWarning)
 # ignore divide by nan error that happens constantly with parcels
 np.seterr(divide="ignore", invalid="ignore")
 

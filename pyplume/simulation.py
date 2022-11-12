@@ -287,12 +287,12 @@ class ParcelsSimulation:
     def simulation_loop(self, iteration, interval):
         # yes 2 checks are needed to prevent it from breaking
         if len(self.pset) == 0:
-            logger.info("Particle set is empty, simulation loop not run.", file=sys.stderr)
+            logger.info("Particle set is empty, simulation loop not run.")
             return False
         self.pre_loop(iteration, interval)
         self.exec_pset(interval)
         if len(self.pset) == 0:
-            logger.info("Particle set empty after execution, no post-loop run.", file=sys.stderr)
+            logger.info("Particle set empty after execution, no post-loop run.")
             return False
         self.post_loop(iteration, interval)
         return True

@@ -3,6 +3,7 @@ import importlib
 import logging
 from pathlib import Path
 import sys
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -180,6 +181,12 @@ def slice_dataset(ds, time_range=None, lat_range=None, lon_range=None,
     Returns:
         xr.Dataset
     """
+    lat_out_of_range = lat_range[0] < ds["lat"].min() or lat_range[1] > ds["lat"].max()
+    lon_out_of_range = lon_range[0] < ds["lon"].min() or lon_range[1] > ds["lon"].max()
+    if lat_out_of_range:
+        warnings.warn("A latitude value in the defined domain is out of range of the dataset. Make sure your degree range is 0-360 or -180-180")
+    if lon_out_of_range:
+        warnings.warn("A longitude value in the defined domain is out of range of the dataset. Make sure your degree range is 0-360 or -180-180")
     sel_args = {}
     if lat_range is not None:
         if inclusive:
@@ -207,12 +214,16 @@ def slice_dataset(ds, time_range=None, lat_range=None, lon_range=None,
 
 class DataLoader:
     def __init__(
-        self, dataset, datasource=None, time_range=None, lat_range=None, lon_range=None,
-        inclusive=True, **_
+        self, dataset, datasource=None, domain=None, time_range=None, lat_range=None,
+        lon_range=None, inclusive=True, **_
     ):
         self.time_range = time_range
-        self.lat_range = lat_range
-        self.lon_range = lon_range
+        if domain is not None:
+            self.lat_range = [domain["S"], domain["N"]]
+            self.lon_range = [domain["W"], domain["E"]]
+        else:
+            self.lat_range = lat_range
+            self.lon_range = lon_range
         self.inclusive = inclusive
         if datasource is None:
             self.datasource = DEFAULT_DATASOURCE
@@ -227,9 +238,12 @@ class DataLoader:
         else:
             raise TypeError("data is not a valid type")
         self.dataset = slice_dataset(
-            self.full_dataset, time_range=time_range, lat_range=lat_range, lon_range=lon_range,
-            inclusive=inclusive
+            self.full_dataset, time_range=self.time_range, lat_range=self.lat_range,
+            lon_range=self.lon_range, inclusive=self.inclusive
         )
+        if self.dataset.nbytes > 1e9:
+            gigs = self.dataset.nbytes / 1e9
+            warnings.warn(f"The dataset is over a gigabyte ({gigs} gigabytes). Make sure you are working with the right subset of data!")
 
     def __repr__(self):
         return repr(self.dataset)
@@ -520,6 +534,7 @@ class SurfaceGrid:
             kwargs: keyword arguments to pass into FieldSet creation
         """
         kwargs.pop("mesh", None)
+        logger.info(f"Loading dataset of size {self.ds.nbytes / 1e6} MB with shape {self.ds['U'].shape} into fieldset")
         if self.other_fields is not None:
             # spherical mesh
             self.fieldset = dataset_to_fieldset(

@@ -1,21 +1,22 @@
 netcdf_data:
   ocean:
-    data: GLOBAL_HINDCAST
-    datasource: pyplume.thredds_data.SRC_THREDDS_HYCOM
-    domain:
-      # rough estimate of available HFRNet data near New York
-      # southwest: 38.162201, -75.709632
-      # northeast: 41.520008, -69.723751
-      S: 38.162201
-      N: 41.520008
-      # W: -75.709632
-      # E: -69.723751
-      W: 284.290368
-      E: 290.276249
-    time_range:
-      # hurrican henri timespan (cat 1 hurricane/tropical storm near new york)
-      - 2021-08-21T12:00
-      - 2021-08-23T18:00
+    data: data/field_netcdfs/hycom_hurrhenri.nc
+    # data: GLOBAL_HINDCAST
+    # datasource: pyplume.thredds_data.SRC_THREDDS_HYCOM
+    # domain:
+    #   # rough estimate of available HFRNet data near New York
+    #   # southwest: 38.162201, -75.709632
+    #   # northeast: 41.520008, -69.723751
+    #   S: 38.162201
+    #   N: 41.520008
+    #   # W: -75.709632
+    #   # E: -69.723751
+    #   W: 284.290368
+    #   E: 290.276249
+    # time_range:
+    #   # hurrican henri timespan (cat 1 hurricane/tropical storm near new york)
+    #   - 2021-08-21T12:00
+    #   - 2021-08-23T18:00
     boundary_condition: freeslip
 parcels_config:
   save_dir: results
@@ -33,13 +34,22 @@ parcels_config:
   spawn_points:
     -
       label: apoint
-      point: [40.3992, -73.6665]
+      # 40.3992, 286.3335
+      # 38.809053, 285.463217
+      point: [38.809053, 285.463217]
       release: 2021-08-21T12:00
+      # pattern: {
+      #   "type": "grid",
+      #   "args": {
+      #     "size": 3,
+      #     "gapsize": 0.1
+      #   }
+      # }
       pattern: {
-        "type": "grid",
+        "type": "ball",
         "args": {
-          "size": 3,
-          "gapsize": 0.1
+          "radius": 0.05,
+          "numpoints": 30
         }
       }
   simulation_dt: 600
@@ -50,6 +60,6 @@ plotting_config:
   shown_domain:
     S: 38.162201
     N: 41.520008
-    W: -75.709632
-    E: -69.723751
+    W: 284.290368
+    E: 290.276249
   draw_coasts: true

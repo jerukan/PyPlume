@@ -31,13 +31,22 @@ parcels_config:
   spawn_points:
     -
       label: apoint
-      point: [40.3992, -73.6665]
+      # 40.3992, -73.6665
+      # 38.809053, -74.536783
+      point: [38.809053, -74.536783]
       release: 2021-08-21T12:00
+      # pattern: {
+      #   "type": "grid",
+      #   "args": {
+      #     "size": 3,
+      #     "gapsize": 0.1
+      #   }
+      # }
       pattern: {
-        "type": "grid",
+        "type": "ball",
         "args": {
-          "size": 3,
-          "gapsize": 0.1
+          "radius": 0.05,
+          "numpoints": 30
         }
       }
   simulation_dt: 600

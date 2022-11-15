@@ -74,6 +74,16 @@ def create_with_pattern(point, pattern):
             for j in range(-radius, radius + 1):
                 points.append([point[0] + i * kwargs["gapsize"], point[1] + j * kwargs["gapsize"]])
         return points
+    if pattern["type"] in ("ball", "circle"):
+        kwargs = pattern["args"]
+        radius = kwargs["radius"]
+        npoints = kwargs["numpoints"]
+        angs = np.linspace(0, 2 * math.pi, num=npoints)
+        points = []
+        # don't bother vectorizing
+        for ang in angs:
+            points.append([radius * np.cos(ang) + point[0], radius * np.sin(ang) + point[1]])
+        return points
     raise ValueError(f"Unknown pattern {pattern}")    
 
 

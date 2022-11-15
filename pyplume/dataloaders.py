@@ -136,7 +136,8 @@ def drop_depth(ds):
         ds["U"] = ds["U"].sel(depth=0)
     if "depth" in ds["V"].dims:
         ds["V"] = ds["V"].sel(depth=0)
-    ds = ds.drop_vars("depth")
+    if "depth" in ds.dims:
+        ds = ds.drop_vars("depth")
     return ds
 
 

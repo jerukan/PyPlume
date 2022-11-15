@@ -29,8 +29,17 @@ parcels_config:
   repetitions: -1
   instances_per_spawn: 1
   spawn_points:
-    - - 40.3992
-      - -73.6665
+    -
+      label: apoint
+      point: [40.3992, -73.6665]
+      release: 2021-08-21T12:00
+      pattern: {
+        "type": "grid",
+        "args": {
+          "size": 3,
+          "gapsize": 0.1
+        }
+      }
   simulation_dt: 600
   snapshot_interval: 1800
 postprocess_config: {}

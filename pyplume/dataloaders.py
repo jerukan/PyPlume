@@ -136,6 +136,7 @@ def drop_depth(ds):
         ds["U"] = ds["U"].sel(depth=0)
     if "depth" in ds["V"].dims:
         ds["V"] = ds["V"].sel(depth=0)
+    ds = ds.drop_vars("depth")
     return ds
 
 
@@ -181,18 +182,18 @@ def slice_dataset(ds, time_range=None, lat_range=None, lon_range=None,
     Returns:
         xr.Dataset
     """
-    lat_out_of_range = lat_range[0] < ds["lat"].min() or lat_range[1] > ds["lat"].max()
-    lon_out_of_range = lon_range[0] < ds["lon"].min() or lon_range[1] > ds["lon"].max()
-    if lat_out_of_range:
-        warnings.warn("A latitude value in the defined domain is out of range of the dataset. Make sure your degree range is 0-360 or -180-180")
-    if lon_out_of_range:
-        warnings.warn("A longitude value in the defined domain is out of range of the dataset. Make sure your degree range is 0-360 or -180-180")
     sel_args = {}
     if lat_range is not None:
+        lat_out_of_range = lat_range[0] < ds["lat"].min() or lat_range[1] > ds["lat"].max()
+        if lat_out_of_range:
+            warnings.warn("A latitude value in the defined domain is out of range of the dataset. Make sure your degree range is 0-360 or -180-180")
         if inclusive:
             lat_range = utils.include_coord_range(lat_range, ds["lat"].values)
         sel_args["lat"] = slice(lat_range[0], lat_range[1])
     if lon_range is not None:
+        lon_out_of_range = lon_range[0] < ds["lon"].min() or lon_range[1] > ds["lon"].max()
+        if lon_out_of_range:
+            warnings.warn("A longitude value in the defined domain is out of range of the dataset. Make sure your degree range is 0-360 or -180-180")
         if inclusive:
             lon_range = utils.include_coord_range(lon_range, ds["lon"].values)
         sel_args["lon"] = slice(lon_range[0], lon_range[1])

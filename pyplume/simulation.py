@@ -181,8 +181,8 @@ class ParcelsSimulation:
         """Generates spawn information for a single specified location"""
         t_start, t_end = parse_time_range(self.time_range, self.times)
         release = np.datetime64(kwargs.get("release", t_start))
-        if release < t_start:
-            raise ValueError(f"Particle is released {release}, before simulation start {t_start}")
+        if release < t_start or release > t_end:
+            raise ValueError(f"Particle is released {release}, outside of simulation time range {t_start}, {t_end}")
         # convert from datetime to delta seconds
         release = (release - self.times[0]) / np.timedelta64(1, "s")
         t_end = (t_end - self.times[0]) / np.timedelta64(1, "s")

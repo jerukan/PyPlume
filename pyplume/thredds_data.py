@@ -28,7 +28,7 @@ VAR_MAPPINGS_FMRC_HYCOM = {
 }
 DROP_VARS_FMRC_HYCOM = {
     "water_temp", "water_temp_bottom", "salinity", "salinity_bottom", "water_u_bottom",
-    "water_v_bottom", "surf_el"
+    "water_v_bottom", "surf_el", "tau"
 }
 
 
@@ -54,25 +54,8 @@ class HYCOMLoad:
         time_chunks = parse_time_chunk_size(self.time_chunk_size)
         # HYCOM data times cannot be decoded normally
         ds = xr.open_dataset(
-            src, chunks=time_chunks, drop_variables=DROP_VARS_FMRC_HYCOM, decode_times=False
+            src, chunks=time_chunks, drop_variables=DROP_VARS_FMRC_HYCOM
         )
-        # This particular HYCOM forecast data has different units of time, where
-        # it is "hours since <some time> UTC", which has to be converted
-        # to proper datetime values
-        if "time_origin" in ds.time.attrs:
-            t0 = np.datetime64(ds.time.time_origin)
-        else:
-            # hacky way of getting the time origin of the data (slice the time out of the string)
-            t0 = np.datetime64(ds.time.units[12:35])
-        tmp = ds["time"].data
-        ds["t0"] = (t0 - np.datetime64("0000-01-01T00:00:00.000")) / np.timedelta64(1, "D")
-        # replace time coordinate data with actual datetimes
-        ds = ds.assign_coords(time=(t0 + np.array(tmp, dtype="timedelta64[h]")))
-        # modify metadata
-        ds["time"].attrs["long_name"] = "Forecast time for ForecastModelRunCollection"
-        ds["time"].attrs["standard_name"] = "time"
-        ds["time"].attrs["_CoordinateAxisType"] = "Time"
-        ds["time"].attrs["units"] = "UTC"
         # drop depth data
         ds = drop_depth(rename_dataset_vars(ds, VAR_MAPPINGS_FMRC_HYCOM))
         # change range of longitude values from 0-360 to -180-180

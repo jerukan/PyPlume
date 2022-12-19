@@ -21,7 +21,7 @@ parcels_config:
   kernels:
     - parcels.AdvectionRK4
     - pyplume.kernels.AgeParticle
-    - pyplume.kernels.RandomWalk
+    - pyplume.kernels.RandomWalk5cm
   time_range:
     - 2021-08-21T12:00
     - 2021-08-23T18:00
@@ -31,24 +31,23 @@ parcels_config:
   spawn_points:
     -
       label: apoint
-      # 40.3992, -73.6665
-      # 38.809053, -74.536783
-      point: [38.809053, -74.536783]
+      point: [40.3992, -73.6665]
+      # point: [38.809053, -74.536783]
       release: 2021-08-21T12:00
-      # pattern: {
-      #   "type": "grid",
-      #   "args": {
-      #     "size": 3,
-      #     "gapsize": 0.1
-      #   }
-      # }
       pattern: {
-        "type": "ball",
+        "type": "grid",
         "args": {
-          "radius": 0.05,
-          "numpoints": 30
+          "size": 3,
+          "gapsize": 0.05
         }
       }
+      # pattern: {
+      #   "type": "ball",
+      #   "args": {
+      #     "radius": 0.05,
+      #     "numpoints": 30
+      #   }
+      # }
   simulation_dt: 600
   snapshot_interval: 1800
 postprocess_config: {}

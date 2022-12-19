@@ -346,7 +346,7 @@ def draw_particle_density(lats, lons, bins=None, domain=None, ax=None, title="",
         fig = ax.get_figure()
     bins = bins if bins is not None else 100
     ax.set_title(title)
-    sns.histplot(x=lons, y=lats, bins=bins, cbar=True, ax=ax, **kwargs)
+    sns.histplot(x=lons, y=lats, bins=bins, cbar=True, ax=ax, cbar_kws={"label": "Number of particles"}, **kwargs)
     return fig, ax
 
 

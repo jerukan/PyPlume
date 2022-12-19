@@ -27,7 +27,7 @@ def AgeParticle(particle, fieldset, time):
     particle.lifetime += particle.dt
 
 
-def RandomWalk(particle, fieldset, time):
+def RandomWalk5cm(particle, fieldset, time):
     """
     Adds random noise to particle movement (ripped from the plume tracker).
 

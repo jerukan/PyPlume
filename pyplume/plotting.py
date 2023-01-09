@@ -4,6 +4,7 @@ A collection of methods related to plotting.
 import copy
 import datetime
 import logging
+import math
 from pathlib import Path
 import sys
 
@@ -105,10 +106,10 @@ def generate_domain_datasets(datasets, padding=0):
     
     Will have funky behavior if the coordinate range loops around back to 0.
     """
-    lat_min = 90
-    lat_max = -90
-    lon_min = 180
-    lon_max = -180
+    lat_min = math.inf
+    lat_max = -math.inf
+    lon_min = math.inf
+    lon_max = -math.inf
     for ds in datasets:
         lat_rng = (ds["lat"].values.min(), ds["lat"].values.max())
         if lat_rng[0] < lat_min:

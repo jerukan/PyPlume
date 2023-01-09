@@ -187,16 +187,23 @@ def slice_dataset(ds, time_range=None, lat_range=None, lon_range=None,
     if lat_range is not None:
         lat_out_of_range = lat_range[0] < ds["lat"].min() or lat_range[1] > ds["lat"].max()
         if lat_out_of_range:
-            warnings.warn("A latitude value in the defined domain is out of range of the dataset. Make sure your degree range is 0-360 or -180-180")
+            warnings.warn("A latitude value in the defined domain is out of range of the dataset.")
         if inclusive:
             lat_range = utils.include_coord_range(lat_range, ds["lat"].values)
         sel_args["lat"] = slice(lat_range[0], lat_range[1])
     if lon_range is not None:
+        lon_coords = ds["lon"].values
+        range_360 = lon_range[0] > 180 or lon_range[1] > 180
+        coords_360 = np.any(ds["lon"] > 180)
+        if range_360: lon_range = (utils.convert360to180(lon_range[0]), utils.convert360to180(lon_range[1]))
+        if coords_360: lon_coords = utils.convert360to180(lon_coords)
         lon_out_of_range = lon_range[0] < ds["lon"].min() or lon_range[1] > ds["lon"].max()
         if lon_out_of_range:
-            warnings.warn("A longitude value in the defined domain is out of range of the dataset. Make sure your degree range is 0-360 or -180-180")
+            warnings.warn("A longitude value in the defined domain is out of range of the dataset.")
         if inclusive:
-            lon_range = utils.include_coord_range(lon_range, ds["lon"].values)
+            lon_range = utils.include_coord_range(lon_range, lon_coords)
+        # revert conversion
+        if coords_360: lon_range = (utils.convert180to360(lon_range[0]), utils.convert180to360(lon_range[1]))
         sel_args["lon"] = slice(lon_range[0], lon_range[1])
     if time_range is not None:
         if not isinstance(time_range, slice):
@@ -406,7 +413,7 @@ def dataset_to_fieldset(ds, copy=True, raw=True, complete=True, boundary_conditi
     """
 
     if isinstance(boundary_condition, str):
-        kwargs.pop("interp_method", None)
+        del kwargs["interp_method"]
         if boundary_condition.lower() in ("free", "freeslip"):
             interp_method = {"U": "freeslip", "V": "freeslip"}
         elif boundary_condition.lower() in ("partial", "partialslip"):
@@ -460,14 +467,17 @@ class SurfaceGrid:
         Reads from a netcdf file containing ocean current data.
 
         Args:
-            dataset (xr.Dataset): formatted netcdf data
+            dataset (path-like or xr.Dataset): formatted netcdf data or path to it
             fields (list[parcels.Field])
         """
-        self.ds = dataset
+        if isinstance(dataset, (str, Path)):
+            dataset = DataLoader(dataset).dataset
+        self.dataset = dataset
         self.other_fields = other_fields
-        self.times = self.ds["time"].values
-        self.lats = self.ds["lat"].values
-        self.lons = self.ds["lon"].values
+        self.times = self.dataset["time"].values
+        self.lats = self.dataset["lat"].values
+        self.lons = self.dataset["lon"].values
+        self.lon_360 = np.any(self.lons > 180)
         self.timeKDTree = scipy.spatial.KDTree(np.array([self.times]).T)
         self.latKDTree = scipy.spatial.KDTree(np.array([self.lats]).T)
         self.lonKDTree = scipy.spatial.KDTree(np.array([self.lons]).T)
@@ -493,12 +503,12 @@ class SurfaceGrid:
         """
         if len(dataset["U"].shape) == 1:
             # time only dimension
-            for i, t in enumerate(self.ds["time"]):
+            for i, t in enumerate(self.dataset["time"]):
                 wind_uv = dataset.sel(time=t.values, method="nearest")
                 wu = wind_uv["U"].values.item()
                 wv = wind_uv["V"].values.item()
-                self.ds["U"][i] += wu * ratio
-                self.ds["V"][i] += wv * ratio
+                self.dataset["U"][i] += wu * ratio
+                self.dataset["V"][i] += wv * ratio
             self.prep_fieldsets(**self.fs_kwargs)
             self.modified = True
         elif len(dataset["U"].shape) == 3:
@@ -506,16 +516,16 @@ class SurfaceGrid:
                 " individually. This may take a while.", file=sys.stderr)
             # assume dataset has renamed time, lat, lon dimensions
             # oh god why
-            for i, t in enumerate(self.ds["time"]):
-                for j, lat in enumerate(self.ds["lat"]):
-                    for k, lon in enumerate(self.ds["lon"]):
+            for i, t in enumerate(self.dataset["time"]):
+                for j, lat in enumerate(self.dataset["lat"]):
+                    for k, lon in enumerate(self.dataset["lon"]):
                         wind_uv = dataset.sel(
                             time=t.values, lat=lat.values, lon=lon.values, method="nearest"
                         )
                         wu = wind_uv["U"].values.item()
                         wv = wind_uv["V"].values.item()
-                        self.ds["U"][i, j, k] += wu * ratio
-                        self.ds["V"][i, j, k] += wv * ratio
+                        self.dataset["U"][i, j, k] += wu * ratio
+                        self.dataset["V"][i, j, k] += wv * ratio
             self.prep_fieldsets(**self.fs_kwargs)
             self.modified = True
         else:
@@ -536,16 +546,16 @@ class SurfaceGrid:
             kwargs: keyword arguments to pass into FieldSet creation
         """
         kwargs.pop("mesh", None)
-        logger.info(f"Loading dataset of size {self.ds.nbytes / 1e6} MB with shape {self.ds['U'].shape} into fieldset")
+        logger.info(f"Loading dataset of size {self.dataset.nbytes / 1e6} MB with shape {self.dataset['U'].shape} into fieldset")
         if self.other_fields is not None:
             # spherical mesh
             self.fieldset = dataset_to_fieldset(
-                self.ds, complete=False, boundary_condition=boundary_condition, mesh="spherical",
+                self.dataset, complete=False, boundary_condition=boundary_condition, mesh="spherical",
                 **kwargs
             )
             # flat mesh
             self.fieldset_flat = dataset_to_fieldset(
-                self.ds, complete=False, boundary_condition=boundary_condition, mesh="flat",
+                self.dataset, complete=False, boundary_condition=boundary_condition, mesh="flat",
                 **kwargs
             )    
             for fld in self.other_fields:
@@ -556,11 +566,11 @@ class SurfaceGrid:
         else:
             # spherical mesh
             self.fieldset = dataset_to_fieldset(
-                self.ds, boundary_condition=boundary_condition, mesh="spherical", **kwargs
+                self.dataset, boundary_condition=boundary_condition, mesh="spherical", **kwargs
             )
             # flat mesh
             self.fieldset_flat = dataset_to_fieldset(
-                self.ds, boundary_condition=boundary_condition, mesh="flat", **kwargs
+                self.dataset, boundary_condition=boundary_condition, mesh="flat", **kwargs
             )
 
     def get_coords(self) -> tuple:
@@ -592,11 +602,15 @@ class SurfaceGrid:
         Args:
             t (np.datetime64): time
             lat (float)
-            lon (float)
+            lon (float): converted between -180 to 180 and 0 to 360 range if needed
 
         Returns:
             (time index, lat index, lon index)
+            note that any of the indices may be None
         """
+        if lon is not None:
+            if self.lon_360: lon = utils.convert180to360(lon)
+            else: lon = utils.convert360to180(lon)
         return (self.timeKDTree.query([t])[1] if t is not None else None,
             self.latKDTree.query([lat])[1] if lat is not None else None,
             self.lonKDTree.query([lon])[1] if lon is not None else None)
@@ -613,11 +627,11 @@ class SurfaceGrid:
         """
         if not isinstance(t, (int, np.integer)):
             if t < self.times.min() or t > self.times.max():
-                logger.info("Warning: time is out of bounds", file=sys.stderr)
+                logger.info("Warning: time is out of bounds")
         if lat < self.lats.min() or lat > self.lats.max():
-            logger.info("Warning: latitude is out of bounds", file=sys.stderr)
+            logger.info("Warning: latitude is out of bounds")
         if lon < self.lons.min() or lon > self.lons.max():
-            logger.info("Warning: latitude is out of bounds", file=sys.stderr)
+            logger.info("Warning: latitude is out of bounds")
         if isinstance(t, (int, np.integer)):
             t_idx = t
             _, lat_idx, lon_idx = self.get_closest_index(None, lat, lon)
@@ -629,9 +643,9 @@ class SurfaceGrid:
     def check_cache(self):
         # cache the whole array because isel is slow when doing it individually
         if self.u is None or self.modified:
-            self.u = self.ds["U"].values
+            self.u = self.dataset["U"].values
         if self.v is None or self.modified:
-            self.v = self.ds["V"].values
+            self.v = self.dataset["V"].values
         self.modified = False
 
     def get_fs_vector(self, t, lat, lon, flat=True):

@@ -52,7 +52,6 @@ class HYCOMLoad:
     
     def __call__(self, src):
         time_chunks = parse_time_chunk_size(self.time_chunk_size)
-        # HYCOM data times cannot be decoded normally
         ds = xr.open_dataset(
             src, chunks=time_chunks, drop_variables=DROP_VARS_FMRC_HYCOM
         )

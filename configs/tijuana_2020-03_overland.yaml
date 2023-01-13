@@ -15,7 +15,7 @@ parcels_config:
   kernels:
     - parcels.AdvectionRK4
     - pyplume.kernels.AgeParticle
-    - pyplume.kernels.RandomWalk
+    - pyplume.kernels.RandomWalk5cm
   time_range:
     - START
     - END

@@ -4,13 +4,15 @@ A collection of methods related to plotting.
 import copy
 import datetime
 import logging
+import math
 from pathlib import Path
 import sys
 
 import cartopy
 import cartopy.crs as ccrs
-import matplotlib
+import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import numpy as np
 from parcels import plotting
 import seaborn as sns
@@ -30,7 +32,7 @@ def carree_subplots(shape, projection=None, domain=None, land=False):
     if projection is None:
         projection = ccrs.PlateCarree()
     fig = plt.figure()
-    axs = np.empty(shape, dtype=matplotlib.axes.Axes)
+    axs = np.empty(shape, dtype=mpl.axes.Axes)
     i = 1
     for idx, _ in np.ndenumerate(axs):
         _, ax = get_carree_axis(domain=domain, projection=projection, land=land, fig=fig, pos=[*shape, i])
@@ -105,10 +107,10 @@ def generate_domain_datasets(datasets, padding=0):
     
     Will have funky behavior if the coordinate range loops around back to 0.
     """
-    lat_min = 90
-    lat_max = -90
-    lon_min = 180
-    lon_max = -180
+    lat_min = math.inf
+    lat_max = -math.inf
+    lon_min = math.inf
+    lon_max = -math.inf
     for ds in datasets:
         lat_rng = (ds["lat"].values.min(), ds["lat"].values.max())
         if lat_rng[0] < lat_min:
@@ -335,7 +337,7 @@ def plot_particles(
     return fig, ax
 
 
-def draw_particle_density(lats, lons, bins=None, domain=None, ax=None, title="", **kwargs):
+def plot_particle_density(lats, lons, bins=None, domain=None, ax=None, title="", **kwargs):
     """
     Args:
         kwargs: other arguments to pass into sns.histplot
@@ -346,11 +348,11 @@ def draw_particle_density(lats, lons, bins=None, domain=None, ax=None, title="",
         fig = ax.get_figure()
     bins = bins if bins is not None else 100
     ax.set_title(title)
-    sns.histplot(x=lons, y=lats, bins=bins, cbar=True, ax=ax, **kwargs)
+    sns.histplot(x=lons, y=lats, bins=bins, cbar=True, ax=ax, cbar_kws={"label": "Number of particles"}, **kwargs)
     return fig, ax
 
 
-def draw_coastline(lats, lons, separate_nan=True, domain=None, c=None, ax=None):
+def plot_coastline(lats, lons, separate_nan=True, domain=None, c=None, ax=None):
     if ax is None:
         fig, ax = carree_subplots((1, 1), domain=domain)
     else:
@@ -363,3 +365,13 @@ def draw_coastline(lats, lons, separate_nan=True, domain=None, c=None, ax=None):
     else:
         ax.plot(lons, lats, c=c)
     return fig, ax
+
+
+def plot_bounding_box(domain, ax, edgecolor="m", linewidth=1, **kwargs):
+    width = domain["E"] - domain["W"]
+    height = domain["N"] - domain["S"]
+    anchor = (domain["W"], domain["S"])
+    rect = patches.Rectangle(anchor, width, height, facecolor="none", edgecolor=edgecolor, linewidth=linewidth, **kwargs)
+
+    # Add the patch to the Axes
+    ax.add_patch(rect)

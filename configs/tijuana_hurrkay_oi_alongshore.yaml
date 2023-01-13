@@ -12,7 +12,7 @@ parcels_config:
   kernels:
     - pyplume.kernels.AdvectionRK4BorderCheck
     - pyplume.kernels.AgeParticle
-    - pyplume.kernels.RandomWalk
+    - pyplume.kernels.RandomWalk5cm
     - pyplume.kernels.DeleteAfter3Days
   time_range:
     # Hurricane Kay timespan

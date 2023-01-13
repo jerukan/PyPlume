@@ -195,7 +195,7 @@ class ParticleResult:
                 savefile_feat = utils.get_dir(save_dir / name) / f"simframe_{name}_{i}.png"
                 savefile_feats[name] = savefile_feat
                 plotting.draw_plt(savefile=savefile_feat, fig=fig_feat, figsize=figsize)
-        lats, lons = self.get_positions_time(t, when="at")
+        lats, lons = self.get_positions_time(t, query="at")
         mask = self.data_vars["time"] == t  # lol idk just do it again
         ages = None
         if "lifetime" in self.data_vars:
@@ -241,7 +241,7 @@ class ParticleResult:
             t = self.times[0]
             i = 0
             while t <= self.times[-1]:
-                lats, lons = self.get_positions_time(t, when="at")
+                lats, lons = self.get_positions_time(t, query="at")
                 mask = self.data_vars["time"] == t  # lol idk just do it again
                 ages = None
                 if "lifetime" in self.data_vars:
@@ -253,7 +253,7 @@ class ParticleResult:
             # If the delta time between each snapshot is unknown, we'll just use the unique times
             # from the particle files.
             for i in range(len(self.times)):
-                lats, lons = self.get_positions_time(self.times[i])
+                lats, lons = self.get_positions_time(self.times[i], query="at")
                 mask = self.data_vars["time"] == t  # lol idk just do it again
                 ages = None
                 if "lifetime" in self.data_vars:
@@ -302,22 +302,23 @@ class ParticleResult:
         )
         new_ds.to_netcdf(path=self.path if path is None else path)
 
-    def get_filtered_data_time(self, t: np.datetime64, when="at"):
-        if when not in ("at", "before", "after"):
-            raise ValueError()
-        if when == "at":
+    def get_filtered_data_time(self, t: np.datetime64, query="at"):
+        valid_queries = ("at", "before", "after")
+        if query not in valid_queries:
+            raise ValueError(f"Invalid query '{query}'. Valid queries are {valid_queries}")
+        if query == "at":
             mask = self.data_vars["time"] == t
-        elif when == "before":
+        elif query == "before":
             mask = self.data_vars["time"] <= t
-        elif when == "after":
+        elif query == "after":
             mask = self.data_vars["time"] >= t
         filtered = {}
         for dvar in self.data_vars.keys():
             filtered[dvar] = self.data_vars[dvar][mask]
         return filtered
 
-    def get_positions_time(self, t: np.datetime64, when="at"):
-        filtered = self.get_filtered_data_time(t, when=when)
+    def get_positions_time(self, t: np.datetime64, query="at"):
+        filtered = self.get_filtered_data_time(t, query=query)
         return filtered["lat"], filtered["lon"]
 
 

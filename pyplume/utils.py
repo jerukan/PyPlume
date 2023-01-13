@@ -45,8 +45,9 @@ def get_points(points, dim=2, transposed=None):
     if len(points.shape) > 2:
         raise ValueError(f"Incorrect points dimension {points.shape}")
     if transposed is None:
-        # if the points happen to be (d,d), just guess data was passed in as collection of pairs
         if points.shape[1] == dim:
+            # if the points happen to be (d,d), just guess data was passed in as collection of pairs
+            logger.info(f"Shape of points is ambiguous: ({dim}, {dim}). Will transpose by default.")
             return points.T[0], points.T[1]
         return points[0], points[1]
     if transposed:
@@ -302,3 +303,11 @@ def generate_gif(img_paths, gif_path, gif_delay=25):
     stdout, stderr = magick_sp.communicate()
     logger.info(f"GIF generation magick ouptput: {(stdout, stderr)}")
     return gif_path
+
+
+def convert360to180(val):
+    return ((val + 180) % 360) - 180
+
+
+def convert180to360(val):
+    return val % 360

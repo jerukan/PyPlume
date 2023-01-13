@@ -212,6 +212,8 @@ class Gapfiller:
             self.steps.append(step)
 
     def execute(self, target: xr.Dataset, **kwargs) -> xr.Dataset:
+        if not self.steps:
+            return target
         logger.info(f"Executing gapfiller on target {target} with steps {self.steps}")
         u = target["U"].values.copy()
         v = target["V"].values.copy()

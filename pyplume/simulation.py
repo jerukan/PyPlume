@@ -74,6 +74,16 @@ def create_with_pattern(point, pattern):
             for j in range(-radius, radius + 1):
                 points.append([point[0] + i * kwargs["gapsize"], point[1] + j * kwargs["gapsize"]])
         return points
+    if pattern["type"] in ("ball", "circle"):
+        kwargs = pattern["args"]
+        radius = kwargs["radius"]
+        npoints = kwargs["numpoints"]
+        angs = np.linspace(0, 2 * math.pi, num=npoints)
+        points = []
+        # don't bother vectorizing
+        for ang in angs:
+            points.append([radius * np.cos(ang) + point[0], radius * np.sin(ang) + point[1]])
+        return points
     raise ValueError(f"Unknown pattern {pattern}")    
 
 
@@ -181,8 +191,8 @@ class ParcelsSimulation:
         """Generates spawn information for a single specified location"""
         t_start, t_end = parse_time_range(self.time_range, self.times)
         release = np.datetime64(kwargs.get("release", t_start))
-        if release < t_start:
-            raise ValueError(f"Particle is released {release}, before simulation start {t_start}")
+        if release < t_start or release > t_end:
+            raise ValueError(f"Particle is released {release}, outside of simulation time range {t_start}, {t_end}")
         # convert from datetime to delta seconds
         release = (release - self.times[0]) / np.timedelta64(1, "s")
         t_end = (t_end - self.times[0]) / np.timedelta64(1, "s")
@@ -287,12 +297,12 @@ class ParcelsSimulation:
     def simulation_loop(self, iteration, interval):
         # yes 2 checks are needed to prevent it from breaking
         if len(self.pset) == 0:
-            logger.info("Particle set is empty, simulation loop not run.", file=sys.stderr)
+            logger.info("Particle set is empty, simulation loop not run.")
             return False
         self.pre_loop(iteration, interval)
         self.exec_pset(interval)
         if len(self.pset) == 0:
-            logger.info("Particle set empty after execution, no post-loop run.", file=sys.stderr)
+            logger.info("Particle set empty after execution, no post-loop run.")
             return False
         self.post_loop(iteration, interval)
         return True

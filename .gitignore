@@ -21,6 +21,8 @@ results/**
 *.asv
 # logs
 logs/
+# scratch notebook
+scratch.ipynb
 
 ### JupyterNotebooks ###
 .ipynb_checkpoints
@@ -39,20 +41,6 @@ ipython_config.py
 __pycache__/
 *.py[cod]
 *$py.class
-
-# IPython
-
-# pyenv
-.python-version
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
 
 ### VisualStudioCode ###
 .vscode/*

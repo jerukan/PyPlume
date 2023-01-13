@@ -1,4 +1,0 @@
-- additional configurations:
-    - initialize particle spawn grid
-    - individual particle release times
-    - wind data

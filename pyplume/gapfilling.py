@@ -5,12 +5,12 @@ import os
 import sys
 from typing import Tuple
 
-import matlab.engine
 import numpy as np
 import xarray as xr
 
 from pyplume import get_logger
 from pyplume.dataloaders import slice_dataset, SurfaceGrid, DataLoader
+from pyplume.gapfill_algs import dctpls
 import pyplume.utils as utils
 import pyplume.thredds_data as thredds_data
 
@@ -132,7 +132,7 @@ class InterpolationStep(GapfillStep):
         return target_interped_u, target_interped_v
 
 
-class SmoothnStep(GapfillStep):
+class DCTPLSStep(GapfillStep):
     """
     PLS and smoothing with DCT shenanigans
 
@@ -171,32 +171,18 @@ class SmoothnStep(GapfillStep):
         target = SurfaceGrid(target, init_fs=False)
         self.do_validation(target)
 
-        # DCT smoothing and gapfilling using matlab
-        eng = matlab.engine.start_matlab()
-
         target_smoothed_u = u.copy()
         target_smoothed_v = v.copy()
-        u_list = target_smoothed_u.tolist()
-        v_list = target_smoothed_v.tolist()
 
-        logger.info(f"Filling {len(u_list)} fields...")
-        for i in range(len(u_list)):
-            u_mat = matlab.double(u_list[i])
-            v_mat = matlab.double(v_list[i])
-            uv_smooth = eng.smoothn([u_mat, v_mat], "robust")
-            u_array = np.empty(uv_smooth[0].size)
-            v_array = np.empty(uv_smooth[1].size)
-            u_array[:] = uv_smooth[0]
-            v_array[:] = uv_smooth[1]
-            target_smoothed_u[i] = u_array
-            target_smoothed_v[i] = v_array
+        logger.info(f"Filling {len(target_smoothed_u)} fields...")
+        u_smooth, v_smooth = dctpls.smoothn(target_smoothed_u, target_smoothed_v, isrobust=True)
+        target_smoothed_u = u_smooth
+        target_smoothed_v = v_smooth
 
         if self.mask is not None:
-            no_data = np.tile(~self.mask, (target.ds["time"].size, 1, 1))
+            no_data = np.tile(~self.mask, (target.dataset["time"].size, 1, 1))
             target_smoothed_u[no_data] = np.nan
             target_smoothed_v[no_data] = np.nan
-
-        eng.quit()
 
         return target_smoothed_u, target_smoothed_v
 

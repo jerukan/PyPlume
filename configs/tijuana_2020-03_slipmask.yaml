@@ -1,13 +1,13 @@
 netcdf_data:
   ocean:
-    path: data/field_netcdfs/tj_plume_1km_2020-03.nc
+    data: data/field_netcdfs/tj_plume_1km_2020-03.nc
     gapfill_steps:
       - path: pyplume.gapfilling.InterpolationStep
         args:
           references:
             - USWC_2KM_HOURLY
             - USWC_6KM_HOURLY
-      - path: pyplume.gapfilling.SmoothnStep
+      - path: pyplume.gapfilling.DCTPLSStep
         args:
           mask: data/field_netcdfs/tj_plume_1km_2020-03_mask.npy
     boundary_condition: freeslip

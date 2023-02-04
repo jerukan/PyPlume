@@ -33,6 +33,7 @@ class PlotFeature:
     """
     Generic class to represent a feature that should be plotted on a plot of a simulation frame.
     """
+
     def add_to_plot(self, fig, ax, t, lats, lons, **kwargs):
         """
         Plots onto the main simulation frame plot, with information on particles at that time
@@ -80,17 +81,30 @@ class ParticlePlotFeature(PlotFeature):
     """
     Plots particles per frame.
     """
+
     def __init__(self, particle_size=4, cbar=True):
         self.particle_size = particle_size
         self.cbar = cbar
 
-    def add_to_plot(self, fig, ax, t, lats, lons, lifetimes=None, lifetime_max=None, **kwargs):
-        sc = ax.scatter(lons, lats, c=lifetimes, edgecolor="k", vmin=0, vmax=lifetime_max, s=self.particle_size)
+    def add_to_plot(
+        self, fig, ax, t, lats, lons, lifetimes=None, lifetime_max=None, **kwargs
+    ):
+        sc = ax.scatter(
+            lons,
+            lats,
+            c=lifetimes,
+            edgecolor="k",
+            vmin=0,
+            vmax=lifetime_max,
+            s=self.particle_size,
+        )
         if lifetimes is not None and self.cbar:
             cbar_ax = fig.add_axes([0.1, 0, 0.1, 0.1])
             plt.colorbar(sc, cax=cbar_ax)
             posn = ax.get_position()
-            cbar_ax.set_position([posn.x0 + posn.width + 0.14, posn.y0, 0.04, posn.height])
+            cbar_ax.set_position(
+                [posn.x0 + posn.width + 0.14, posn.y0, 0.04, posn.height]
+            )
             cbar_ax.get_yaxis().labelpad = 13
             # super jank label the other colorbar since it's in plotting.plotfield
             cbar_ax.set_ylabel("Age (days)\n\n\n\n\n\nVelocity (m/s)", rotation=270)
@@ -101,7 +115,9 @@ class ParticleDensityFeature(PlotFeature):
     def __init__(self, domain, coastline):
         self.domain = domain
         self.coast_lats, self.coast_lons = utils.get_points(coastline, dim=2)
-        self.coast_feature = NanSeparatedFeature(self.coast_lats, self.coast_lons, color="k")
+        self.coast_feature = NanSeparatedFeature(
+            self.coast_lats, self.coast_lons, color="k"
+        )
         self.all_lats = []
         self.all_lons = []
 
@@ -130,7 +146,10 @@ class ScatterPlotFeature(PlotFeature):
     Represents additional points to plot and track in addition to the particles from a
     Parcels simulation.
     """
-    def __init__(self, lats, lons, labels=None, segments=False, track_dist=0, color=None):
+
+    def __init__(
+        self, lats, lons, labels=None, segments=False, track_dist=0, color=None
+    ):
         self.lats = np.array(lats)
         self.lons = np.array(lons)
         self.points = np.array([lats, lons]).T
@@ -195,7 +214,9 @@ class ScatterPlotFeature(PlotFeature):
                 # check distances to line segments
                 if self.segments is not None:
                     seg_closest, _ = nearest_points(self.segments, point)
-                    dists[i] = utils.haversine(point.y, seg_closest.y, point.x, seg_closest.x)
+                    dists[i] = utils.haversine(
+                        point.y, seg_closest.y, point.x, seg_closest.x
+                    )
             return dists
         # check distance to closest point
         closest_idxs = self.kdtree.query(np.array([lats, lons]).T)[1]
@@ -215,7 +236,9 @@ class ScatterPlotFeature(PlotFeature):
         dists = np.empty((len(self.lats), len(lats)), dtype=np.float64)
         for i in range(len(dists)):
             for j in range(len(dists[i])):
-                dists[i][j] = utils.haversine(self.lats[i], lats[j], self.lons[i], lons[j])
+                dists[i][j] = utils.haversine(
+                    self.lats[i], lats[j], self.lons[i], lons[j]
+                )
         return dists
 
     @classmethod
@@ -231,6 +254,7 @@ class NanSeparatedFeature(ScatterPlotFeature):
     """
     A feature containing multiple line segments where nans separate each collection of segments.
     """
+
     def __init__(self, lats, lons, **kwargs):
         super().__init__(lats, lons, segments=False, **kwargs)
 
@@ -256,6 +280,7 @@ class StationFeature(ScatterPlotFeature):
 
     The table they generate will show how many particles are near each station.
     """
+
     def __init__(self, lats, lons, labels=None, **kwargs):
         if labels is None:
             labels = [f"Station {i}" for i in range(len(lats))]
@@ -287,12 +312,19 @@ class StationFeature(ScatterPlotFeature):
         ax = fig.add_subplot()
         ax.set_axis_off()
         ax.table(
-            cellText=np.array([np.arange(len(counts)) + 1, self.labels, counts, plume_pot]).T,
+            cellText=np.array(
+                [np.arange(len(counts)) + 1, self.labels, counts, plume_pot]
+            ).T,
             cellColours=colors,
-            colLabels=["Station ID", "Station Name", "Particle Count", "Plume Potential"],
-            loc="center"
+            colLabels=[
+                "Station ID",
+                "Station Name",
+                "Particle Count",
+                "Plume Potential",
+            ],
+            loc="center",
         ).auto_set_column_width(col=[0, 1, 2, 3, 4])
-        ax.axis('tight')
+        ax.axis("tight")
         # fig.set_size_inches(7.17, 4)
         return fig, ax
 
@@ -304,6 +336,7 @@ class StationFeature(ScatterPlotFeature):
 
 class LatTrackedPointFeature(ScatterPlotFeature):
     """A single point that tracks how northward/southward the particles around it are."""
+
     def __init__(self, lat, lon, xlim=None, ymax=None, show=True, **kwargs):
         super().__init__([lat], [lon], **kwargs)
         self.xlim = xlim
@@ -334,17 +367,30 @@ class LatTrackedPointFeature(ScatterPlotFeature):
         # matplotlib uses a funny hyphen that doesn't work
         labels = list(map(abs_label_map, ax.get_xticklabels()))
         ax.set_xticklabels(labels)
-        plt.figtext(0.5, -0.01, '(North) ------ Distance from point (km) ------ (South)', horizontalalignment='center') 
+        plt.figtext(
+            0.5,
+            -0.01,
+            "(North) ------ Distance from point (km) ------ (South)",
+            horizontalalignment="center",
+        )
         fig.set_size_inches(6.1, 2.5)
         return fig, ax
 
     @classmethod
     def get_tijuana_mouth(cls):
-        return cls(TIJUANA_MOUTH_POSITION[0], TIJUANA_MOUTH_POSITION[1], xlim=[-16, 4], ymax=0.1, show=False, color="y")
+        return cls(
+            TIJUANA_MOUTH_POSITION[0],
+            TIJUANA_MOUTH_POSITION[1],
+            xlim=[-16, 4],
+            ymax=0.1,
+            show=False,
+            color="y",
+        )
 
 
 class NearcoastDensityFeature(ScatterPlotFeature):
     """Tracks which particles are within a certain distance to the coastline."""
+
     def __init__(self, origin, stations, coastline, xlim=None, ymax=None, **kwargs):
         """
         origin is a single point
@@ -396,7 +442,13 @@ class NearcoastDensityFeature(ScatterPlotFeature):
         bins = np.linspace(xlim[0], xlim[1], 30)
         bins = np.append(bins, self.xlim[1] + 1)
         ax.hist(dists, bins=bins, density=True)
-        ax.scatter(x=station_dists, y=np.full(station_dists.shape, 0.01), c='k', edgecolor='y', zorder=1000)
+        ax.scatter(
+            x=station_dists,
+            y=np.full(station_dists.shape, 0.01),
+            c="k",
+            edgecolor="y",
+            zorder=1000,
+        )
         ax.set_xlim(xlim)
         if self.ymax is not None:
             ax.set_ylim([0, self.ymax])
@@ -404,7 +456,12 @@ class NearcoastDensityFeature(ScatterPlotFeature):
         ax.set_xticklabels(ax.get_xticks())
         labels = list(map(abs_label_map, ax.get_xticklabels()))
         ax.set_xticklabels(labels)
-        plt.figtext(0.5, -0.01, '(North) ------ Distance from point (km) ------ (South)', horizontalalignment='center') 
+        plt.figtext(
+            0.5,
+            -0.01,
+            "(North) ------ Distance from point (km) ------ (South)",
+            horizontalalignment="center",
+        )
         fig.set_size_inches(6.1, 2.5)
         return fig, ax
 
@@ -417,7 +474,7 @@ class NearcoastDensityFeature(ScatterPlotFeature):
             [origin_lats[0], origin_lons[0]],
             [st_lats, st_lons],
             [c_lats, c_lons],
-            **kwargs
+            **kwargs,
         )
 
 
@@ -426,7 +483,9 @@ class BuoyPathFeature(ScatterPlotFeature):
         self.buoy_path = buoy_path
         self.backstep_count = backstep_count
         self.backstep_delta = backstep_delta
-        super().__init__(buoy_path.lats, buoy_path.lons, labels=buoy_path.times, segments=True)
+        super().__init__(
+            buoy_path.lats, buoy_path.lons, labels=buoy_path.times, segments=True
+        )
 
     def add_to_plot(self, fig, ax, t, lats, lons, **kwargs):
         b_lats = []

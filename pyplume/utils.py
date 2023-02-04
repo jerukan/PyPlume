@@ -47,7 +47,9 @@ def get_points(points, dim=2, transposed=None):
     if transposed is None:
         if points.shape[1] == dim:
             # if the points happen to be (d,d), just guess data was passed in as collection of pairs
-            logger.info(f"Shape of points is ambiguous: ({dim}, {dim}). Will transpose by default.")
+            logger.info(
+                f"Shape of points is ambiguous: ({dim}, {dim}). Will transpose by default."
+            )
             return points.T[0], points.T[1]
         return points[0], points[1]
     if transposed:
@@ -62,7 +64,9 @@ def haversine(lat1, lat2, lon1, lon2):
     R = 6378.137  # Radius of earth in KM
     dLat = lat2 * math.pi / 180 - lat1 * math.pi / 180
     dLon = lon2 * math.pi / 180 - lon1 * math.pi / 180
-    a = np.sin(dLat / 2) * np.sin(dLat / 2) + np.cos(lat1 * math.pi / 180) * np.cos(lat2 * math.pi / 180) * np.sin(dLon / 2) * np.sin(dLon / 2)
+    a = np.sin(dLat / 2) * np.sin(dLat / 2) + np.cos(lat1 * math.pi / 180) * np.cos(
+        lat2 * math.pi / 180
+    ) * np.sin(dLon / 2) * np.sin(dLon / 2)
     c = 2 * np.arctan2(a ** (1 / 2), (1 - a) ** (1 / 2))
     d = R * c
     return d * 1000  # meters
@@ -112,7 +116,9 @@ def conv_to_dataarray(arr, darr_ref):
         darr_ref (xr.DataArray): only used to label coordinates, dimensions, and metadata.
             Must have the same shape as arr.
     """
-    return xr.DataArray(arr, coords=darr_ref.coords, dims=darr_ref.dims, attrs=darr_ref.attrs)
+    return xr.DataArray(
+        arr, coords=darr_ref.coords, dims=darr_ref.dims, attrs=darr_ref.attrs
+    )
 
 
 def generate_mask_invalid(data):
@@ -144,9 +150,12 @@ def generate_mask_no_data(data):
         array-like: Boolean mask with the shape of (lat, lon). True values signify data shouldn't
          exist, False values signify they should.
     """
-    if isinstance(data, xr.Dataset): data = data.to_array()[0]
+    if isinstance(data, xr.Dataset):
+        data = data.to_array()[0]
     if len(data.shape) != 3:
-        raise ValueError(f"Incorrect data dimension: expected 3, actual {len(data.shape)}")
+        raise ValueError(
+            f"Incorrect data dimension: expected 3, actual {len(data.shape)}"
+        )
     nan_data = ~np.isnan(data)
     return nan_data.sum(axis=0) == 0
 
@@ -156,12 +165,10 @@ def create_gif(delay, images_path, out_path):
     Use regex with images_path
     """
     magick_sp = subprocess.Popen(
-        [
-            "magick", "-delay", str(delay), images_path, out_path
-        ],
+        ["magick", "-delay", str(delay), images_path, out_path],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        universal_newlines=True
+        universal_newlines=True,
     )
     stdout, stderr = magick_sp.communicate()
     logger.info((stdout, stderr))
@@ -200,7 +207,7 @@ def expand_time_rng(time_rng, precision="h"):
     Args:
         time_rng (np.datetime64, np.datetime64)
         precision (str)
-    
+
     Returns:
         (np.datetime64, np.datetime64)
     """
@@ -295,10 +302,7 @@ def generate_gif(img_paths, gif_path, gif_delay=25):
     sp_in = ["magick", "-delay", str(gif_delay)] + input_paths
     sp_in.append(str(gif_path))
     magick_sp = subprocess.Popen(
-        sp_in,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        universal_newlines=True
+        sp_in, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True
     )
     stdout, stderr = magick_sp.communicate()
     logger.info(f"GIF generation magick ouptput: {(stdout, stderr)}")

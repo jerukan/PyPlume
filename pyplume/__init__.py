@@ -16,6 +16,7 @@ np.seterr(divide="ignore", invalid="ignore")
 
 log_dir = Path("logs/")
 
+
 def get_logger(name):
     logger = logging.getLogger(name)
     if not logger.handlers:
@@ -25,10 +26,13 @@ def get_logger(name):
             log_dir.mkdir(parents=True)
         handler = logging.FileHandler(log_dir / "plumelogs.log")
         handler.setFormatter(
-            logging.Formatter("%(asctime)s,%(msecs)d %(name)s | %(levelname)s | %(message)s")
+            logging.Formatter(
+                "%(asctime)s,%(msecs)d %(name)s | %(levelname)s | %(message)s"
+            )
         )
         logger.addHandler(handler)
     return logger
+
 
 # logging.basicConfig(
 #     filename="logs/output.log",
@@ -46,5 +50,9 @@ def handle_unhandled_exception(exc_type, exc_value, exc_traceback):
     if issubclass(exc_type, KeyboardInterrupt):
         return
     # create a critical level log message with info from the except hook.
-    logger.critical("Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback))
+    logger.critical(
+        "Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback)
+    )
+
+
 sys.excepthook = handle_unhandled_exception

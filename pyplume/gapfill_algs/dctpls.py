@@ -33,26 +33,26 @@ def smoothn(
 
     SMOOTHN provides a fast, automatized and robust discretized spline
     smoothing for data of arbitrary dimension.
- 
+
     Z,_,_ = SMOOTHN(Y) automatically smoothes the uniformly-sampled array Y. Y
     can be any N-D noisy array (time series, images, 3D data,...). Non
     finite data (NaN or Inf) are treated as missing values.
- 
+
     Z,_,_ = SMOOTHN(Y,s=S) smoothes the array Y using the smoothing parameter S.
     S must be a real positive scalar. The larger S is, the smoother the
     output will be. If the smoothing parameter S is omitted (see previous
     option) or empty (i.e. S = []), it is automatically determined by
     minimizing the generalized cross-validation (GCV) score.
- 
+
     Z,_,_ = SMOOTHN(Y,W=W) or Z = SMOOTHN(Y,W=W,s=S) smoothes Y using a weighting
     array W of positive values, which must have the same size as Y. Note
     that a nil weight corresponds to a missing value.
- 
+
     If you want to smooth a vector field or multicomponent data, Y must be
     a cell array. For example, if you need to smooth a 3-D vectorial flow
     (Vx,Vy,Vz), use Y = {Vx,Vy,Vz}. The output Z is also a cell array which
     contains the smoothed components. See examples 5 to 8 below.
- 
+
     Z,S,_ = SMOOTHN(...) also returns the calculated value for the
     smoothness parameter S.
 
@@ -61,7 +61,7 @@ def smoothn(
     ----------------
     Z = SMOOTHN(...,isrobust=True) carries out a robust smoothing that minimizes
     the influence of outlying data.
- 
+
     Other options exist in the form of keyword arguments.
         -----------------
         TolZ:       Termination tolerance on Z (default = 1e-3),
@@ -90,7 +90,7 @@ def smoothn(
     keyword argument:
         spacing = [d1, d2, d3, ...]
     where dI represents the spacing between points in the Ith dimension.
- 
+
     Important note: d1 is the spacing increment for the first
     non-singleton dimension (i.e. the vertical direction for matrices).
 
@@ -165,7 +165,9 @@ def smoothn(
             raise TypeError("A valid weight function (weight) must be chosen")
         weight = weight.lower()
         if weight not in {"bisquare", "talworth", "cauchy"}:
-            raise ValueError("The weight function must be 'bisquare', 'cauchy' or 'talworth'.")
+            raise ValueError(
+                "The weight function must be 'bisquare', 'cauchy' or 'talworth'."
+            )
 
     # ---
     # "Order" criterion (by default m = 3)
@@ -301,10 +303,14 @@ def smoothn(
                 # Because this process is time-consuming, it is performed from
                 # time to time (when the step number - nit - is a power of 2)
                 # ---
-                gcv_f = lambda p: gcv(p, Lambda, aow, DCTy, IsFinite, Wtot, y, nof, noe, m, ny)
-                xpost = fminbound(gcv_f, np.log10(sMinBnd), np.log10(sMaxBnd), xtol=errp)
-            s = 10 ** xpost
-            Gamma = 1.0 / (1 + s * Lambda ** m)
+                gcv_f = lambda p: gcv(
+                    p, Lambda, aow, DCTy, IsFinite, Wtot, y, nof, noe, m, ny
+                )
+                xpost = fminbound(
+                    gcv_f, np.log10(sMinBnd), np.log10(sMaxBnd), xtol=errp
+                )
+            s = 10**xpost
+            Gamma = 1.0 / (1 + s * Lambda**m)
 
             for i in range(ny):
                 z[i] = RF * idctn(Gamma * DCTy[i]) + (1 - RF) * z[i]
@@ -312,7 +318,11 @@ def smoothn(
             # z = RF * dctND(Gamma * DCTy, f=idct) + (1 - RF) * z
             # z = RF * idctn(Gamma * DCTy) + (1 - RF) * z
             # if no weighted/missing data => tol=0 (no iteration)
-            tol = isweighted * norm((np.array(z0) - np.array(z)).flatten()) / norm(np.array(z).flatten())
+            tol = (
+                isweighted
+                * norm((np.array(z0) - np.array(z)).flatten())
+                / norm(np.array(z).flatten())
+            )
 
             z0 = copy.deepcopy(z)  # re-initialization
         exitflag = nit < MaxIter
@@ -322,11 +332,11 @@ def smoothn(
             h = 1
             for i in range(N):
                 if m == 0:  # not recommended - only for numerical purpose
-                    h0 = 1 / (1 + s / dI[i] ** (2 ** m))
+                    h0 = 1 / (1 + s / dI[i] ** (2**m))
                 elif m == 1:
-                    h0 = 1 / np.sqrt(1 + 4 * s / dI[i] ** (2 ** m))
+                    h0 = 1 / np.sqrt(1 + 4 * s / dI[i] ** (2**m))
                 elif m == 2:
-                    h0 = np.sqrt(1 + 16 * s / dI[i] ** (2 ** m))
+                    h0 = np.sqrt(1 + 16 * s / dI[i] ** (2**m))
                     h0 = np.sqrt(1 + h0) / np.sqrt(2) / h0
                 h *= h0
             # --- take robust weights into account
@@ -373,8 +383,8 @@ def gcv(p, Lambda, aow, DCTy, IsFinite, Wtot, y, nof, noe, m, ny):
     The parameter s is based on the input p.
     """
     # ---
-    s = 10 ** p
-    Gamma = 1.0 / (1 + s * Lambda ** m)
+    s = 10**p
+    Gamma = 1.0 / (1 + s * Lambda**m)
     # --- RSS = Residual sum-of-squares
     RSS = 0
     if aow > 0.9:  # aow = 1 means that all of the data are equally weighted
@@ -386,7 +396,9 @@ def gcv(p, Lambda, aow, DCTy, IsFinite, Wtot, y, nof, noe, m, ny):
         # yhat = dctND(Gamma * DCTy, f=idct)
         for i in range(ny):
             yhat = idctn(Gamma * DCTy[i])
-            RSS += norm(np.sqrt(Wtot[IsFinite]) * (y[i][IsFinite] - yhat[IsFinite])) ** 2
+            RSS += (
+                norm(np.sqrt(Wtot[IsFinite]) * (y[i][IsFinite] - yhat[IsFinite])) ** 2
+            )
     # ---
     TrH = np.sum(Gamma)
     GCVscore = RSS / nof / (1.0 - TrH / noe) ** 2
@@ -420,7 +432,9 @@ def RobustWeights(y, z, I, h, wstr):
         c = 4.685
         W = (1 - (u / c) ** 2) ** 2.0 * ((u / c) < 1)  # bisquare weights
     else:
-        raise ValueError("MATLAB:smoothn:IncorrectWeights\nA valid weighting function must be chosen")
+        raise ValueError(
+            "MATLAB:smoothn:IncorrectWeights\nA valid weighting function must be chosen"
+        )
     W[np.isnan(W)] = 0
     return W
 

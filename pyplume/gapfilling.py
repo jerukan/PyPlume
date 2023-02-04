@@ -32,7 +32,7 @@ def get_interped(i, target, ref, invalid_where):
         i (int): index on invalid_where
         ref (SurfaceGrid): reference Dataset
         invalid_where (array-like): (3, n) dimensional array representing all invalid positions
-    
+
     Returns:
         (u, v): (nan, nan) if no data was found, interpolated values otherwise
     """
@@ -52,6 +52,7 @@ class InterpolationStep(GapfillStep):
     """
     Uses linear interpolation
     """
+
     def __init__(self, references):
         self.references = references if references is not None else []
 
@@ -62,12 +63,20 @@ class InterpolationStep(GapfillStep):
         # check references
         for ref in loaded_references:
             ref_times, ref_lats, ref_lons = ref.get_coords()
-            lat_inbounds = (ref_lats[0] <= targ_min[0]) and (ref_lats[-1] >= targ_max[0])
-            lon_inbounds = (ref_lons[0] <= targ_min[1]) and (ref_lons[-1] >= targ_max[1])
-            time_inbounds = (ref_times[0] <= targ_times[0]) and (ref_times[-1] >= targ_times[-1])
+            lat_inbounds = (ref_lats[0] <= targ_min[0]) and (
+                ref_lats[-1] >= targ_max[0]
+            )
+            lon_inbounds = (ref_lons[0] <= targ_min[1]) and (
+                ref_lons[-1] >= targ_max[1]
+            )
+            time_inbounds = (ref_times[0] <= targ_times[0]) and (
+                ref_times[-1] >= targ_times[-1]
+            )
             if not (lat_inbounds and lon_inbounds and time_inbounds):
-                raise ValueError("Incorrect reference dimensions (reference dimension ranges \
-                    should be larger than the target's)")
+                raise ValueError(
+                    "Incorrect reference dimensions (reference dimension ranges \
+                    should be larger than the target's)"
+                )
 
     def process(
         self, u: np.ndarray, v: np.ndarray, target: xr.Dataset, **kwargs
@@ -83,24 +92,33 @@ class InterpolationStep(GapfillStep):
             if isinstance(ref, SurfaceGrid):
                 loaded_references.append(ref)
             elif isinstance(ref, xr.Dataset):
-                loaded_references.append(SurfaceGrid(
-                    # slice the data before loading into SurfaceGrid since it's huge
-                    DataLoader(
-                        ref, time_range=time_range, lat_range=lat_range, lon_range=lon_range,
-                        inclusive=True
-                    ).dataset
-                ))
+                loaded_references.append(
+                    SurfaceGrid(
+                        # slice the data before loading into SurfaceGrid since it's huge
+                        DataLoader(
+                            ref,
+                            time_range=time_range,
+                            lat_range=lat_range,
+                            lon_range=lon_range,
+                            inclusive=True,
+                        ).dataset
+                    )
+                )
             elif isinstance(ref, str):
                 # TODO generalize this
                 # slice the data before loading into SurfaceGrid since it's huge
                 ref = DataLoader(
-                    ref, datasource=thredds_data.SRC_THREDDS_HFRNET_UCSD, time_range=time_range,
-                    lat_range=lat_range, lon_range=lon_range, inclusive=True
+                    ref,
+                    datasource=thredds_data.SRC_THREDDS_HFRNET_UCSD,
+                    time_range=time_range,
+                    lat_range=lat_range,
+                    lon_range=lon_range,
+                    inclusive=True,
                 ).dataset
                 loaded_references.append(SurfaceGrid(ref))
             else:
                 raise TypeError(f"Unrecognized type for {ref}")
-                        
+
         self.do_validation(target, loaded_references)
         invalid = utils.generate_mask_invalid(u)
         num_invalid = invalid.sum()
@@ -140,6 +158,7 @@ class DCTPLSStep(GapfillStep):
     https://www.mathworks.com/help/matlab/matlab-engine-for-python.html
     https://www.mathworks.com/matlabcentral/fileexchange/25634-smoothn
     """
+
     def __init__(self, mask=None):
         """
         Args:
@@ -155,15 +174,21 @@ class DCTPLSStep(GapfillStep):
             # some reason hangs indefinitely on some array operations.
             self.mask = np.array(mask)
         if len(self.mask.shape) != 2:
-            raise ValueError(f"Incorrect number of mask dimensions ({len(self.mask.shape)})")
+            raise ValueError(
+                f"Incorrect number of mask dimensions ({len(self.mask.shape)})"
+            )
 
     def do_validation(self, target):
         if self.mask is None:
             return
         _, targ_lats, targ_lons = target.get_coords()
-        mask_same_res = (len(targ_lats) == len(self.mask)) and (len(targ_lons) == len(self.mask[0]))
+        mask_same_res = (len(targ_lats) == len(self.mask)) and (
+            len(targ_lons) == len(self.mask[0])
+        )
         if not mask_same_res:
-            raise ValueError(f"Mask (shape {(len(self.mask), len(self.mask[0]))}) is not the same lat/lon shape as target (shape {(len(targ_lats), len(targ_lons))})")
+            raise ValueError(
+                f"Mask (shape {(len(self.mask), len(self.mask[0]))}) is not the same lat/lon shape as target (shape {(len(targ_lats), len(targ_lons))})"
+            )
 
     def process(
         self, u: np.ndarray, v: np.ndarray, target: xr.Dataset, **kwargs
@@ -175,7 +200,9 @@ class DCTPLSStep(GapfillStep):
         target_smoothed_v = v.copy()
 
         logger.info(f"Filling {len(target_smoothed_u)} fields...")
-        u_smooth, v_smooth = dctpls.smoothn(target_smoothed_u, target_smoothed_v, isrobust=True)
+        u_smooth, v_smooth = dctpls.smoothn(
+            target_smoothed_u, target_smoothed_v, isrobust=True
+        )
         target_smoothed_u = u_smooth
         target_smoothed_v = v_smooth
 

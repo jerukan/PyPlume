@@ -9,7 +9,14 @@ from pathlib import Path
 import sys
 
 import numpy as np
-from parcels import ParticleSet, ErrorCode, AdvectionRK4, AdvectionRK45, ScipyParticle, JITParticle
+from parcels import (
+    ParticleSet,
+    ErrorCode,
+    AdvectionRK4,
+    AdvectionRK45,
+    ScipyParticle,
+    JITParticle,
+)
 
 from pyplume import get_logger, utils
 from pyplume.postprocess import ParticleResult
@@ -72,7 +79,9 @@ def create_with_pattern(point, pattern):
         radius = kwargs["size"] // 2
         for i in range(-radius, radius + 1):
             for j in range(-radius, radius + 1):
-                points.append([point[0] + i * kwargs["gapsize"], point[1] + j * kwargs["gapsize"]])
+                points.append(
+                    [point[0] + i * kwargs["gapsize"], point[1] + j * kwargs["gapsize"]]
+                )
         return points
     if pattern["type"] in ("ball", "circle"):
         kwargs = pattern["args"]
@@ -82,9 +91,11 @@ def create_with_pattern(point, pattern):
         points = []
         # don't bother vectorizing
         for ang in angs:
-            points.append([radius * np.cos(ang) + point[0], radius * np.sin(ang) + point[1]])
+            points.append(
+                [radius * np.cos(ang) + point[0], radius * np.sin(ang) + point[1]]
+            )
         return points
-    raise ValueError(f"Unknown pattern {pattern}")    
+    raise ValueError(f"Unknown pattern {pattern}")
 
 
 def import_kernel_or_particle(name):
@@ -107,9 +118,19 @@ def insert_default_values(self, cfg):
 
 class ParcelsSimulation:
     def __init__(
-        self, name, grid, spawn_points=None, particle_type=None, save_dir=None,
-        snapshot_interval=None, kernels=None, time_range=None, repetitions=None, repeat_dt=None,
-        instances_per_spawn=None, simulation_dt=None
+        self,
+        name,
+        grid,
+        spawn_points=None,
+        particle_type=None,
+        save_dir=None,
+        snapshot_interval=None,
+        kernels=None,
+        time_range=None,
+        repetitions=None,
+        repeat_dt=None,
+        instances_per_spawn=None,
+        simulation_dt=None,
     ):
         self.name = name
         self.grid = grid
@@ -123,7 +144,9 @@ class ParcelsSimulation:
 
         # load spawn points
         if isinstance(spawn_points, (str, dict)):
-            lats, lons = utils.load_geo_points(**utils.wrap_in_kwarg(spawn_points, key="data"))
+            lats, lons = utils.load_geo_points(
+                **utils.wrap_in_kwarg(spawn_points, key="data")
+            )
             spawn_points = np.array([lats, lons]).T
         elif isinstance(spawn_points, (list, np.ndarray)):
             spawn_points = spawn_points
@@ -150,10 +173,17 @@ class ParcelsSimulation:
             self.particle_type = particle_type
         # set up ParticleSet and ParticleFile
         self.pset = ParticleSet(
-            fieldset=grid.fieldset, pclass=self.particle_type, time=time_arr, lon=p_lons, lat=p_lats
+            fieldset=grid.fieldset,
+            pclass=self.particle_type,
+            time=time_arr,
+            lon=p_lons,
+            lat=p_lats,
         )
         # TODO generalize path lol
-        self.sim_result_dir = utils.get_dir(Path(save_dir) / f"simulation_{name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}")
+        self.sim_result_dir = utils.get_dir(
+            Path(save_dir)
+            / f"simulation_{name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}"
+        )
         self.pfile_path = self.sim_result_dir / f"particlefile.nc"
         self.pfile = self.pset.ParticleFile(self.pfile_path)
         logger.info(
@@ -186,13 +216,14 @@ class ParcelsSimulation:
         self.kernel = None
         self.update_kernel()
 
-        
     def generate_single_particle_spawns(self, **kwargs):
         """Generates spawn information for a single specified location"""
         t_start, t_end = parse_time_range(self.time_range, self.times)
         release = np.datetime64(kwargs.get("release", t_start))
         if release < t_start or release > t_end:
-            raise ValueError(f"Particle is released {release}, outside of simulation time range {t_start}, {t_end}")
+            raise ValueError(
+                f"Particle is released {release}, outside of simulation time range {t_start}, {t_end}"
+            )
         # convert from datetime to delta seconds
         release = (release - self.times[0]) / np.timedelta64(1, "s")
         t_end = (t_end - self.times[0]) / np.timedelta64(1, "s")
@@ -201,7 +232,9 @@ class ParcelsSimulation:
             raise ValueError(f"{point} has incorrect point dimensions")
         repetitions = kwargs.get("repetitions", self.repetitions)
         repeat_dt = kwargs.get("repeat_dt", self.repeat_dt)
-        instances_per_spawn = kwargs.get("instances_per_spawn", self.instances_per_spawn)
+        instances_per_spawn = kwargs.get(
+            "instances_per_spawn", self.instances_per_spawn
+        )
         if repetitions is None:
             repetitions = -1
         if repeat_dt is None:
@@ -255,7 +288,9 @@ class ParcelsSimulation:
                     if earliest_spawn is None:
                         earliest_spawn = release
                     else:
-                        earliest_spawn = release if release < earliest_spawn else earliest_spawn
+                        earliest_spawn = (
+                            release if release < earliest_spawn else earliest_spawn
+                        )
                 else:
                     # position that defaults to START
                     return self.time_range[0]
@@ -265,14 +300,18 @@ class ParcelsSimulation:
         if self.time_range[0] == "START":
             earliest_spawn = self.get_earliest_spawn(spawns)
             self.time_range[0] = earliest_spawn
-        t_start, t_end = parse_time_range(
-            self.time_range, self.times
-        )
-        if (t_start < self.times[0] or t_end < self.times[0] or
-            t_start > self.times[-1] or t_end > self.times[-1]):
-            raise ValueError("Start and end times of simulation are out of bounds\n" +
-                f"ParcelsSimulation range: ({t_start}, {t_end})\n" +
-                f"Allowed domain: ({self.times[0]}, {self.times[-1]})")
+        t_start, t_end = parse_time_range(self.time_range, self.times)
+        if (
+            t_start < self.times[0]
+            or t_end < self.times[0]
+            or t_start > self.times[-1]
+            or t_end > self.times[-1]
+        ):
+            raise ValueError(
+                "Start and end times of simulation are out of bounds\n"
+                + f"ParcelsSimulation range: ({t_start}, {t_end})\n"
+                + f"Allowed domain: ({self.times[0]}, {self.times[-1]})"
+            )
         t_start = (t_start - self.times[0]) / np.timedelta64(1, "s")
         t_end = (t_end - self.times[0]) / np.timedelta64(1, "s")
         return t_start, t_end
@@ -283,7 +322,7 @@ class ParcelsSimulation:
             runtime=timedelta(seconds=runtime),
             dt=timedelta(seconds=self.simulation_dt),
             recovery={ErrorCode.ErrorOutOfBounds: DeleteParticleVerbose},
-            output_file=self.pfile
+            output_file=self.pfile,
         )
 
     def pre_loop(self, iteration, interval):
@@ -322,6 +361,8 @@ class ParcelsSimulation:
         # ParticleFile exports when it closes
         self.pfile.close()
         self.completed = True
-        self.parcels_result = ParticleResult(self.pfile_path, sim_result_dir=self.sim_result_dir)
+        self.parcels_result = ParticleResult(
+            self.pfile_path, sim_result_dir=self.sim_result_dir
+        )
         self.parcels_result.add_grid(self.grid)
         return self.parcels_result

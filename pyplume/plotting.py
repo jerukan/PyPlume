@@ -35,7 +35,9 @@ def carree_subplots(shape, projection=None, domain=None, land=False):
     axs = np.empty(shape, dtype=mpl.axes.Axes)
     i = 1
     for idx, _ in np.ndenumerate(axs):
-        _, ax = get_carree_axis(domain=domain, projection=projection, land=land, fig=fig, pos=[*shape, i])
+        _, ax = get_carree_axis(
+            domain=domain, projection=projection, land=land, fig=fig, pos=[*shape, i]
+        )
         get_carree_gl(ax)
         axs[idx] = ax
         i += 1
@@ -104,7 +106,7 @@ def generate_domain_datasets(datasets, padding=0):
     """
     Given a list of datasets or paths to particle netcdf files, generate a domain that encompasses
     every position with some padding.
-    
+
     Will have funky behavior if the coordinate range loops around back to 0.
     """
     lat_min = math.inf
@@ -126,7 +128,7 @@ def generate_domain_datasets(datasets, padding=0):
         "S": lat_min - padding,
         "N": lat_max + padding,
         "W": lon_min - padding,
-        "E": lon_max + padding
+        "E": lon_max + padding,
     }
 
 
@@ -154,13 +156,24 @@ def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None):
             plt.close(fig)
 
 
-def draw_trajectories_datasets(datasets, names, domain=None, legend=True, scatter=True, savefile=None, titlestr=None, part_size=DEFAULT_PARTICLE_SIZE, padding=0.0, figsize=None):
+def draw_trajectories_datasets(
+    datasets,
+    names,
+    domain=None,
+    legend=True,
+    scatter=True,
+    savefile=None,
+    titlestr=None,
+    part_size=DEFAULT_PARTICLE_SIZE,
+    padding=0.0,
+    figsize=None,
+):
     """
     Takes in Parcels ParticleFile datasets or netcdf file paths and creates plots of those
     trajectories on the same plot.
 
     Args:
-        datasets (array-like): array of particle trajectory datasets containing the same type of 
+        datasets (array-like): array of particle trajectory datasets containing the same type of
          data
     """
     if len(datasets) != len(names):
@@ -181,15 +194,17 @@ def draw_trajectories_datasets(datasets, names, domain=None, legend=True, scatte
                 ax.scatter(ds["lon"][j], ds["lat"][j], s=part_size)
             ax.plot(ds["lon"][j], ds["lat"][j], label=names[i])
             # plot starting point as a black X
-            ax.plot(ds["lon"][j][0], ds["lat"][j][0], 'kx')
+            ax.plot(ds["lon"][j][0], ds["lat"][j][0], "kx")
     if legend:
-        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05))
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.05))
     plt.title("Particle trajectories" if titlestr is None else titlestr)
 
     draw_plt(savefile=savefile, fig=fig, figsize=figsize)
 
 
-def draw_trajectories(lats, lons, times=None, domain=None, points=True, savefile=None, padding=0.0):
+def draw_trajectories(
+    lats, lons, times=None, domain=None, points=True, savefile=None, padding=0.0
+):
     # TODO finish
     if len(lats.shape) == 1:
         lats = np.array([lats])
@@ -216,38 +231,59 @@ def plot_field(time=None, grid=None, domain=None, land=True, vmax=0.6):
         fig, ax = get_carree_axis(domain, land=land)
         get_carree_gl(ax)
     else:
-        show_time = None if time is None else int((time - grid.times[0]) / np.timedelta64(1, "s"))
+        show_time = (
+            None
+            if time is None
+            else int((time - grid.times[0]) / np.timedelta64(1, "s"))
+        )
         if show_time is not None and show_time < 0:
             raise ValueError("Particle simulation time domain goes out of bounds")
         _, fig, ax, _ = plotting.plotfield(
-            field=grid.fieldset.UV, show_time=show_time, domain=domain, land=land, vmin=0,
-            vmax=vmax, titlestr="Particles and "
+            field=grid.fieldset.UV,
+            show_time=show_time,
+            domain=domain,
+            land=land,
+            vmin=0,
+            vmax=vmax,
+            titlestr="Particles and ",
         )
     return fig, ax
 
 
 def plot_vectorfield(
-    dataset, show_time=None, domain=None, projection=None, land=True, vmin=None,
-    vmax=None, titlestr=None, fig=None, pos=None
+    dataset,
+    show_time=None,
+    domain=None,
+    projection=None,
+    land=True,
+    vmin=None,
+    vmax=None,
+    titlestr=None,
+    fig=None,
+    pos=None,
 ):
     if domain is None:
         domain = generate_domain_datasets([dataset])
     if fig is None:
         fig = plt.figure()
-    fig, ax = get_carree_axis(domain, projection=projection, land=land, fig=fig, pos=pos)
+    fig, ax = get_carree_axis(
+        domain, projection=projection, land=land, fig=fig, pos=pos
+    )
     get_carree_gl(ax)
     if isinstance(show_time, int):
         idx = show_time
     else:
         if isinstance(show_time, str):
             show_time = np.datetime64(show_time)
-        idx = np.where(dataset["time"] == show_time)[0][0] if show_time is not None else 0
+        idx = (
+            np.where(dataset["time"] == show_time)[0][0] if show_time is not None else 0
+        )
     show_time = dataset["time"][idx].values
     U = dataset["U"][idx]
     V = dataset["V"][idx]
     lats = dataset["lat"]
     lons = dataset["lon"]
-    spd = U ** 2 + V ** 2
+    spd = U**2 + V**2
     speed = np.where(spd > 0, np.sqrt(spd), 0)
     vmin = speed.min() if vmin is None else vmin
     vmax = speed.max() if vmax is None else vmax
@@ -255,11 +291,18 @@ def plot_vectorfield(
     ncar_cmap.set_over("k")
     ncar_cmap.set_under("w")
     x, y = np.meshgrid(lons, lats)
-    u = np.where(speed > 0., U / speed, 0)
-    v = np.where(speed > 0., V / speed, 0)
+    u = np.where(speed > 0.0, U / speed, 0)
+    v = np.where(speed > 0.0, V / speed, 0)
     cs = ax.quiver(
-        np.asarray(x), np.asarray(y), np.asarray(u), np.asarray(v), speed, cmap=ncar_cmap,
-        clim=[vmin, vmax], scale=50, transform=cartopy.crs.PlateCarree()
+        np.asarray(x),
+        np.asarray(y),
+        np.asarray(u),
+        np.asarray(v),
+        speed,
+        cmap=ncar_cmap,
+        clim=[vmin, vmax],
+        scale=50,
+        transform=cartopy.crs.PlateCarree(),
     )
     cs.set_clim(vmin, vmax)
 
@@ -285,8 +328,16 @@ def plot_vectorfield(
 
 
 def plot_particles(
-    lats, lons, lifetimes=None, time=None, grid=None, domain=None, land=True, vmax=0.6, lifetime_max=None,
-    s=20
+    lats,
+    lons,
+    lifetimes=None,
+    time=None,
+    grid=None,
+    domain=None,
+    land=True,
+    vmax=0.6,
+    lifetime_max=None,
+    s=20,
 ):
     """
     Plot a collection of particles.
@@ -316,14 +367,25 @@ def plot_particles(
         fig, ax = get_carree_axis(domain, land=land)
         get_carree_gl(ax)
     else:
-        show_time = None if time is None else int((time - grid.times[0]) / np.timedelta64(1, "s"))
+        show_time = (
+            None
+            if time is None
+            else int((time - grid.times[0]) / np.timedelta64(1, "s"))
+        )
         if show_time is not None and show_time < 0:
             raise ValueError("Particle simulation time domain goes out of bounds")
         _, fig, ax, _ = plotting.plotfield(
-            field=grid.fieldset.UV, show_time=show_time, domain=domain, land=land, vmin=0,
-            vmax=vmax, titlestr="Particles and "
+            field=grid.fieldset.UV,
+            show_time=show_time,
+            domain=domain,
+            land=land,
+            vmin=0,
+            vmax=vmax,
+            titlestr="Particles and ",
         )
-    sc = ax.scatter(lons, lats, c=lifetimes, edgecolor="k", vmin=0, vmax=lifetime_max, s=s)
+    sc = ax.scatter(
+        lons, lats, c=lifetimes, edgecolor="k", vmin=0, vmax=lifetime_max, s=s
+    )
 
     if lifetimes is not None:
         cbar_ax = fig.add_axes([0.1, 0, 0.1, 0.1])
@@ -337,7 +399,9 @@ def plot_particles(
     return fig, ax
 
 
-def plot_particle_density(lats, lons, bins=None, domain=None, ax=None, title="", **kwargs):
+def plot_particle_density(
+    lats, lons, bins=None, domain=None, ax=None, title="", **kwargs
+):
     """
     Args:
         kwargs: other arguments to pass into sns.histplot
@@ -348,7 +412,15 @@ def plot_particle_density(lats, lons, bins=None, domain=None, ax=None, title="",
         fig = ax.get_figure()
     bins = bins if bins is not None else 100
     ax.set_title(title)
-    sns.histplot(x=lons, y=lats, bins=bins, cbar=True, ax=ax, cbar_kws={"label": "Number of particles"}, **kwargs)
+    sns.histplot(
+        x=lons,
+        y=lats,
+        bins=bins,
+        cbar=True,
+        ax=ax,
+        cbar_kws={"label": "Number of particles"},
+        **kwargs,
+    )
     return fig, ax
 
 
@@ -371,7 +443,15 @@ def plot_bounding_box(domain, ax, edgecolor="m", linewidth=1, **kwargs):
     width = domain["E"] - domain["W"]
     height = domain["N"] - domain["S"]
     anchor = (domain["W"], domain["S"])
-    rect = patches.Rectangle(anchor, width, height, facecolor="none", edgecolor=edgecolor, linewidth=linewidth, **kwargs)
+    rect = patches.Rectangle(
+        anchor,
+        width,
+        height,
+        facecolor="none",
+        edgecolor=edgecolor,
+        linewidth=linewidth,
+        **kwargs,
+    )
 
     # Add the patch to the Axes
     ax.add_patch(rect)

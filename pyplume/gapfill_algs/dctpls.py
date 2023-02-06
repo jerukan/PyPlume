@@ -13,14 +13,14 @@ from scipy.optimize import fminbound
 
 def smoothn(
     *y,
-    W=None,
     s=None,
+    W=None,
     smoothOrder=2,
-    Initial=None,
     spacing=None,
     isrobust=False,
-    MaxIter=100,
     TolZ=1e-3,
+    MaxIter=100,
+    Initial=None,
     weight="bisquare",
     full_output=False,
 ):
@@ -28,71 +28,60 @@ def smoothn(
     Ported directly from the MATLAB smoothn function:
     https://www.mathworks.com/matlabcentral/fileexchange/25634-smoothn
 
-    The below is the exact documentation written by the MATLAB implementation
+    The below is the documentation written by the MATLAB implementation
     but adapted for Python.
 
     SMOOTHN provides a fast, automatized and robust discretized spline
     smoothing for data of arbitrary dimension.
 
-    Z,_,_ = SMOOTHN(Y) automatically smoothes the uniformly-sampled array Y. Y
-    can be any N-D noisy array (time series, images, 3D data,...). Non
-    finite data (NaN or Inf) are treated as missing values.
+    Args:
+        *y (np.ndarray): Variable arguments representing the fields to be smoothed. Each
+            array Y can be any N-D noisy array (time series, images, 3D data,...). Non
+            finite data (NaN or Inf) are treated as missing values. If you want to smooth
+            a vector field or multicomponent data, Y can be supplied multiple arguments.
+            For example, if you need to smooth a 3-D vectorial flow (Vx,Vy,Vz), use
+            Zx,Zy,Zz = smoothn(Vx, Vy, Vz, ...).
+        s (scalar): Smoothes the array Y using the smoothing parameter S. S must be
+            a real positive scalar. The larger S is, the smoother the output will be.
+            If the smoothing parameter S is omitted or None, it is automatically
+            determined by minimizing the generalized cross-validation (GCV) score.
+        W (np.ndarray): Array W of positive values, which must have the same size as
+            Y. Note that a nil weight corresponds to a missing value. If None, all
+            weights are assumed to be 1 and nil values are assigned 0.
+        smoothOrder (0, 1, or 2): Integer value to determine how the bounds of the
+            smoothing parameter s are found. Default value is 2.
+        spacing (array_like): SMOOTHN, by default, assumes that the spacing increments
+            are constant and equal in all the directions (i.e. dx = dy = dz = ...).
+            This means that the smoothness parameter is also similar for each direction.
+            If the increments differ from one direction to the other, it can be useful
+            to adapt these smoothness parameters. You can thus use the following
+            keyword argument:
+                spacing = [d1, d2, d3, ...]
+            where dI represents the spacing between points in the Ith dimension.
+        isrobust (bool): If True, carries out a robust smoothing that minimizes
+            the influence of outlying data (default = False).
+        TolZ (scalar): Robust smoothing option. Termination tolerance on Z
+            (default = 1e-3), TolZ must be in ]0,1[
+        MaxIter (integer): Robust smoothing option. Maximum number of iterations
+            allowed (default = 100).
+        Initial (list of np.ndarray): Robust smoothing option. Initial guess of values
+            for fields in *y. If None (which is default), guess initial value automatically
+            (which is just the original data *y).
+        weight: Robust smoothing option. Weight function for robust smoothing:
+            'bisquare' (default), 'talworth' or 'cauchy'
+        full_output: If True, the function also returns the calculated smoothness
+            parameter S, as well as a boolean EXITFLAG that describes the exit condition
+            of smoothn. Default False.
 
-    Z,_,_ = SMOOTHN(Y,s=S) smoothes the array Y using the smoothing parameter S.
-    S must be a real positive scalar. The larger S is, the smoother the
-    output will be. If the smoothing parameter S is omitted (see previous
-    option) or empty (i.e. S = []), it is automatically determined by
-    minimizing the generalized cross-validation (GCV) score.
-
-    Z,_,_ = SMOOTHN(Y,W=W) or Z = SMOOTHN(Y,W=W,s=S) smoothes Y using a weighting
-    array W of positive values, which must have the same size as Y. Note
-    that a nil weight corresponds to a missing value.
-
-    If you want to smooth a vector field or multicomponent data, Y must be
-    a cell array. For example, if you need to smooth a 3-D vectorial flow
-    (Vx,Vy,Vz), use Y = {Vx,Vy,Vz}. The output Z is also a cell array which
-    contains the smoothed components. See examples 5 to 8 below.
-
-    Z,S,_ = SMOOTHN(...) also returns the calculated value for the
-    smoothness parameter S.
-
-
-    1) ROBUST smoothing
-    ----------------
-    Z = SMOOTHN(...,isrobust=True) carries out a robust smoothing that minimizes
-    the influence of outlying data.
-
-    Other options exist in the form of keyword arguments.
-        -----------------
-        TolZ:       Termination tolerance on Z (default = 1e-3),
-                    OPTIONS.TolZ must be in ]0,1[
-        MaxIter:    Maximum number of iterations allowed
-                    (default = 100)
-        Initial:    Initial value for the iterative process
-                    (default = original data, Y)
-        Weight:     Weight function for robust smoothing:
-                    'bisquare' (default), 'talworth' or 'cauchy'
-        -----------------
-
-    Z,S,EXITFLAG = SMOOTHN(...) returns a boolean value EXITFLAG that
-    describes the exit condition of SMOOTHN:
-        1       SMOOTHN converged.
-        0       Maximum number of iterations was reached.
-
-
-    2) Different spacing increments
-    -------------------------------
-    SMOOTHN, by default, assumes that the spacing increments are constant
-    and equal in all the directions (i.e. dx = dy = dz = ...). This means
-    that the smoothness parameter is also similar for each direction. If
-    the increments differ from one direction to the other, it can be useful
-    to adapt these smoothness parameters. You can thus use the following
-    keyword argument:
-        spacing = [d1, d2, d3, ...]
-    where dI represents the spacing between points in the Ith dimension.
-
-    Important note: d1 is the spacing increment for the first
-    non-singleton dimension (i.e. the vertical direction for matrices).
+    Returns:
+        smoothed Z (np.ndarray): The smoothed fields. If a single array was passed in,
+            a single array is returned. If multiple arrays (multicomponent data) were
+            passed in, then a list of the arrays is returned.
+        S (scalar): Returns if full_output is True. The calculated smoothness parameter.
+        EXITFLAG (bool): Returns if full_output is True. Describes the exit condition
+            of SMOOTHN:
+            1       SMOOTHN converged.
+            0       Maximum number of iterations was reached.
 
     Notes
     -----
@@ -102,7 +91,7 @@ def smoothn(
     https://docs.scipy.org/doc/scipy/reference/generated/scipy.fft.idctn.html
 
 
-    3) REFERENCES (please refer to the two following papers)
+    REFERENCES (please refer to the two following papers)
     ---------
     1) Garcia D, Robust smoothing of gridded data in one and higher
     dimensions with missing values. Computational Statistics & Data

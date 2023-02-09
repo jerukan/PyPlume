@@ -26,7 +26,7 @@ example layout:
       # check gapfilling.py for available gapfillers and arguments
       "gapfill_steps": [
         {
-          "name": "InterpolationStep",
+          "name": "LowResOversample",
           "args": {
             "references": ["USWC_2KM_HOURLY", "USWC_6KM_HOURLY"]
           }

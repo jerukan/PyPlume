@@ -8,7 +8,7 @@
       "lon_range": [-117.32, -117.09],
       "gapfill_steps": [
         {
-          "name": "InterpolationStep",
+          "name": "LowResOversample",
           "args": {
             "references": ["USWC_2KM_HOURLY", "USWC_6KM_HOURLY"]
           }

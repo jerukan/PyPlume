@@ -1,7 +1,7 @@
 from parcels import AdvectionRK4
 
 from pyplume.dataloaders import DataLoader, SurfaceGrid
-from pyplume.gapfilling import Gapfiller, InterpolationStep, SmoothnStep
+from pyplume.gapfilling import Gapfiller, LowResOversample, SmoothnStep
 from pyplume.kernels import AgeParticle, RandomWalk, ThreddsParticle
 from pyplume.plot_features import (
     NanSeparatedFeature,
@@ -29,7 +29,7 @@ loader_2km = DataLoader(ocean_data_source_2km, datasource=SRC_THREDDS_HFRNET_UCS
 loader_6km = DataLoader(ocean_data_source_6km, datasource=SRC_THREDDS_HFRNET_UCSD)
 
 gapfiller = Gapfiller(
-    InterpolationStep([loader_2km.dataset, loader_6km.dataset]),
+    LowResOversample([loader_2km.dataset, loader_6km.dataset]),
     SmoothnStep(mask=loader.get_mask(num_samples=50)),
 )
 

@@ -123,41 +123,57 @@ def conv_to_dataarray(arr, darr_ref):
 
 def generate_mask_invalid(data):
     """
-    Generates a boolean mask signifying which points in the data are invalid. (don't have data
-    but normally should have)
+    Generates a boolean mask signifying which points in the data are invalid (don't have data
+    but normally should have).
+
+    In other words, if at a particular position x for timestep t it is nan, but at timestep s point
+    x has a value, position x at timestep t is considered invalid.
+
+    If position y is nan for all timesteps, it's not considered invalid (data shouldn't exist)
+    in the first place.
+
+    Time is considered to be the first dimension.
 
     Args:
-        data (array-like): an array with the shape of (time, lat, lon).
+        data (array-like): an array with the shape of (time, space...).
 
     Returns:
-        array-like: boolean mask with the same shape as data.
+        array-like: boolean mask with the same shape as data. True signifies invalid point.
     """
-    mask_none = np.tile(generate_mask_no_data(data), (data.shape[0], 1, 1))
-    mask = np.isnan(data)
-    mask[mask_none] = False
-    return mask
+    dataisnan = np.isnan(data)
+    return dataisnan & np.any(~dataisnan, axis=0)
+    # mask_none = np.tile(generate_mask_no_data(data), (data.shape[0], 1, 1))
+    # mask = np.isnan(data)
+    # mask[mask_none] = False
+    # return mask
 
 
-def generate_mask_no_data(data):
+def generate_mask_no_data(data, tile=False):
     """
     Generates a boolean mask signifying which coordinates in the data shouldn't have data and which
     ones should.
 
     Args:
-        data (array-like): an array with the shape of (time, lat, lon).
+        data (array-like): An array with the shape of (time, space...).
+        tile (bool): If True, the mask will match the original shape of the data. Otherwise, it
+            is the shape at a single timestep.
 
     Returns:
         array-like: Boolean mask with the shape of (lat, lon). True values signify data shouldn't
          exist, False values signify they should.
     """
-    if isinstance(data, xr.Dataset):
-        data = data.to_array()[0]
-    if len(data.shape) != 3:
-        raise ValueError(
-            f"Incorrect data dimension: expected 3, actual {len(data.shape)}"
-        )
-    nan_data = ~np.isnan(data)
-    return nan_data.sum(axis=0) == 0
+    mask = np.all(np.isnan(data), axis=0)
+    if tile:
+        return np.tile(mask, (data.shape[0], 1, 1))
+    return mask
+    # if isinstance(data, xr.Dataset):
+    #     data = data.to_array()[0]
+    # if len(data.shape) != 3:
+    #     raise ValueError(
+    #         f"Incorrect data dimension: expected 3, actual {len(data.shape)}"
+    #     )
+    # nan_data = ~np.isnan(data)
+    # return nan_data.sum(axis=0) == 0
 
 
 def create_gif(delay, images_path, out_path):

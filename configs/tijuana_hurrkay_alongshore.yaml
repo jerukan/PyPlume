@@ -4,7 +4,7 @@ netcdf_data:
     # Hurricane Kay timespan
     time_range: [2022-09-08T06:00, 2022-09-12T00:00]
     gapfill_steps:
-      - path: pyplume.gapfilling.InterpolationStep
+      - path: pyplume.gapfilling.LowResOversample
         args:
           references:
             - USWC_2KM_HOURLY

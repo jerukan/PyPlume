@@ -117,8 +117,9 @@ def smoothn(
         return z
     # ---
     # Smoothness parameter and weights
-    # if s != None:
-    #    s = []
+    if s is not None:
+        if s <= 0:
+            raise ValueError("s must be a positive scalar")
     if W is None:
         W = np.ones(sizy)
 
@@ -197,7 +198,7 @@ def smoothn(
     # isrobust
     # ---
     # Automatic smoothing?
-    isauto = not s
+    isauto = s is None
 
     ## Creation of the Lambda tensor
     # ---
@@ -517,15 +518,15 @@ def peaks(n):
     return z
 
 
-def test1():
+def test1(**kwargs):
     plt.figure(1)
     plt.clf()
     # 1-D example
     x = np.linspace(0, 100, 2**8)
     y = np.cos(x / 10) + (x / 50) ** 2 + randn(np.size(x)) / 10
     y[[70, 75, 80]] = [5.5, 5, 6]
-    z = smoothn(y)  # Regular smoothing
-    zr = smoothn(y, isrobust=True)  # Robust smoothing
+    z = smoothn(y, **kwargs)  # Regular smoothing
+    zr = smoothn(y, isrobust=True, **kwargs)  # Robust smoothing
     plt.subplot(121)
     plt.plot(x, y, "r.")
     plt.plot(x, z, "k")

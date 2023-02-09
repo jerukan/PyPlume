@@ -10,7 +10,7 @@ import xarray as xr
 
 from pyplume import get_logger
 from pyplume.dataloaders import slice_dataset, SurfaceGrid, DataLoader
-from pyplume.gapfill_algs import dctpls
+from pyplume.gapfill_algs import dctpls, eof_functions
 import pyplume.utils as utils
 import pyplume.thredds_data as thredds_data
 
@@ -48,9 +48,10 @@ def get_interped(i, target, ref, invalid_where):
     return current_u, current_v
 
 
-class InterpolationStep(GapfillStep):
+class LowResOversample(GapfillStep):
     """
-    Uses linear interpolation
+    Oversamples data from lower resolution data in order to fill gaps in higher resolution
+    data.
     """
 
     def __init__(self, references):
@@ -150,68 +151,87 @@ class InterpolationStep(GapfillStep):
         return target_interped_u, target_interped_v
 
 
-class DCTPLSStep(GapfillStep):
+class DCTPLS(GapfillStep):
     """
     PLS and smoothing with DCT shenanigans
 
-    uses the matlab engine and smoothn.m
-    https://www.mathworks.com/help/matlab/matlab-engine-for-python.html
+    Based off smoothn.m from MATLAB.
     https://www.mathworks.com/matlabcentral/fileexchange/25634-smoothn
+
+    REFERENCES (please refer to the two following papers)
+    ---------
+    1) Garcia D, Robust smoothing of gridded data in one and higher
+    dimensions with missing values. Computational Statistics & Data
+    Analysis, 2010;54:1167-1178.
+    http://www.biomecardio.com/publis/csda10.pdf
+    2) Garcia D, A fast all-in-one method for automated post-processing of
+    PIV data. Exp Fluids, 2011;50:1247-1259.
+    http://www.biomecardio.com/publis/expfluids11.pdf
+
+    Written by Damien Garcia
     """
 
-    def __init__(self, mask=None):
+    def __init__(self, exclude_oob=True, **smoothn_kwargs):
         """
         Args:
-            mask: (lat, lon): True where should exist, False otherwise
+            exclude_oob (bool): If True, exclude values outside the intended data domain.
+            **smoothn_kwargs: Keyword arguments for running the smoothn function from dctpls.py.
         """
-        if mask is None:
-            self.mask = None
-            return
-        if isinstance(mask, str):
-            self.mask = np.load(mask)
-        else:
-            # if we leave this as a DataArray, it could internally store as a dask array, which for
-            # some reason hangs indefinitely on some array operations.
-            self.mask = np.array(mask)
-        if len(self.mask.shape) != 2:
-            raise ValueError(
-                f"Incorrect number of mask dimensions ({len(self.mask.shape)})"
-            )
-
-    def do_validation(self, target):
-        if self.mask is None:
-            return
-        _, targ_lats, targ_lons = target.get_coords()
-        mask_same_res = (len(targ_lats) == len(self.mask)) and (
-            len(targ_lons) == len(self.mask[0])
-        )
-        if not mask_same_res:
-            raise ValueError(
-                f"Mask (shape {(len(self.mask), len(self.mask[0]))}) is not the same lat/lon shape as target (shape {(len(targ_lats), len(targ_lons))})"
-            )
+        self.exclude_oob = exclude_oob
+        self.smoothn_kwargs = {} if smoothn_kwargs is None else smoothn_kwargs
+        # prevent return errors
+        self.smoothn_kwargs["full_output"] = False
 
     def process(
         self, u: np.ndarray, v: np.ndarray, target: xr.Dataset, **kwargs
     ) -> Tuple[np.ndarray, np.ndarray]:
-        target = SurfaceGrid(target, init_fs=False)
-        self.do_validation(target)
-
-        target_smoothed_u = u.copy()
-        target_smoothed_v = v.copy()
-
-        logger.info(f"Filling {len(target_smoothed_u)} fields...")
+        logger.info(f"Filling {len(u)} fields...")
         u_smooth, v_smooth = dctpls.smoothn(
-            target_smoothed_u, target_smoothed_v, isrobust=True
+            u, v, **self.smoothn_kwargs
         )
         target_smoothed_u = u_smooth
         target_smoothed_v = v_smooth
 
-        if self.mask is not None:
-            no_data = np.tile(~self.mask, (target.dataset["time"].size, 1, 1))
-            target_smoothed_u[no_data] = np.nan
-            target_smoothed_v[no_data] = np.nan
+        if self.exclude_oob:
+            nodata_mask = utils.generate_mask_no_data(target["U"], tile=True)
+            target_smoothed_u[nodata_mask] = np.nan
+            target_smoothed_v[nodata_mask] = np.nan
 
         return target_smoothed_u, target_smoothed_v
+
+
+class DINEOF(GapfillStep):
+    """
+    DINEOF spatial gapfilling.
+    """
+
+    def __init__(self, exclude_oob=True, modemax=None, maxits=None, thresh=None):
+        """
+        Args:
+            exclude_oob (bool): If True, exclude values outside the intended data domain.
+        """
+        self.exclude_oob = exclude_oob
+        self.modemax = 10 if modemax is None else modemax
+        self.maxits = 10 if maxits is None else maxits
+        self.thresh = 0.05 if thresh is None else thresh
+
+    def process(
+        self, u: np.ndarray, v: np.ndarray, target: xr.Dataset, **kwargs
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        t, latsz, lonsz = u.shape
+        umask = u.reshape((t, latsz * lonsz))
+        umask = np.ma.array(umask, mask=np.isnan(umask))
+        vmask = v.reshape((t, latsz * lonsz))
+        vmask = np.ma.array(vmask, mask=np.isnan(vmask))
+        ufilled, _ = eof_functions.fill_gappy_EOF(umask, self.modemax, self.maxits, self.thresh)
+        vfilled, _ = eof_functions.fill_gappy_EOF(vmask, self.modemax, self.maxits, self.thresh)
+        ufilled = ufilled.reshape((t, latsz, lonsz))
+        vfilled = vfilled.reshape((t, latsz, lonsz))
+        if self.exclude_oob:
+            nodata_mask = utils.generate_mask_no_data(target["U"], tile=True)
+            ufilled[nodata_mask] = np.nan
+            vfilled[nodata_mask] = np.nan
+        return ufilled, vfilled
 
 
 class Gapfiller:

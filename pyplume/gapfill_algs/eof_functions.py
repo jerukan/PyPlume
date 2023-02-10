@@ -6,6 +6,11 @@ Written by Mika Siegelman 2023/02, last update 2023/02
 import random
 import numpy as np
 
+from pyplume import get_logger
+
+
+logger = get_logger(__name__)
+
 
 def EOF(A):
     """
@@ -35,8 +40,8 @@ def EOF(A):
         u, np.diag(d)
     )  # equivalent to projection of A on new basis, Principal Component
     eof = dict(u=u, d=d, v=v, eigvals=eigvalues, eigvec=eigvec, tvecs=tvecs)
-    # print("The Eigenvalues:",eigvalues)
-    # print("Variance of temporal amplitudes:",tvecs.var(axis=0))
+    # logger.info("The Eigenvalues:",eigvalues)
+    # logger.info("Variance of temporal amplitudes:",tvecs.var(axis=0))
 
     return eof
 
@@ -81,9 +86,9 @@ def optimize_filled(Amaskin, maskT, nm, maxits, thresh):
         Amask0[maskT] = Arec[maskT]  # fill your "bad" values with reconstructed values
         mse_rec = mse(Arec[maskT])
         errorcheck = np.abs(mse_rec - mse_i) / mse_i
-        print(ni, errorcheck)
+        logger.info(ni, errorcheck)
         if ni > 0 and errorcheck < thresh:
-            print("Mode %s Reached convergence during iterative filling" % nm)
+            logger.info("Mode %s Reached convergence during iterative filling" % nm)
             break
         mse_i = mse_rec
     return Amask0
@@ -125,11 +130,11 @@ def optimize_N(Amaskin, modemax, valmask, maskT, vvalues, values_mse, thresh):
             break
 
         if (nm == modemax) and (msediff > 0):
-            print("Warning: Using %s did not reach convergence" % modemax)
+            logger.warning("Warning: Using %s did not reach convergence" % modemax)
 
     if nm < modemax:
         nm = nm - 1  # because the previous mode reconstruction is better
-    print("Optimum number of modes: %s" % nm)
+    logger.info("Optimum number of modes: %s" % nm)
     return nm, Amask0
 
 

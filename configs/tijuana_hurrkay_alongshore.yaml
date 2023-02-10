@@ -1,16 +1,15 @@
 netcdf_data:
   ocean:
     data: data/field_netcdfs/tj_plume_1km_2022-09.nc
-    time_range:
-      # Hurricane Kay timespan
-      - 2022-09-08T06:00
-      - 2022-09-12T00:00
+    # Hurricane Kay timespan
+    time_range: [2022-09-08T06:00, 2022-09-12T00:00]
     gapfill_steps:
-      - path: pyplume.gapfilling.InterpolationStep
+      - path: pyplume.gapfilling.LowResOversample
         args:
           references:
             - USWC_2KM_HOURLY
             - USWC_6KM_HOURLY
+      # DCT-PLS gapfilling. It's very aggressive on smoothing.
       # - path: pyplume.gapfilling.SmoothnStep
       #   args:
       #     mask: data/field_netcdfs/tj_plume_1km_2022-09_mask.npy
@@ -23,10 +22,8 @@ parcels_config:
     - pyplume.kernels.AgeParticle
     - pyplume.kernels.RandomWalk5cm
     - pyplume.kernels.DeleteAfter3Days
-  time_range:
-    # Hurricane Kay timespan
-    - 2022-09-08T06:00
-    - 2022-09-12T00:00
+  # Hurricane Kay timespan
+  time_range: [2022-09-08T06:00, 2022-09-12T00:00]
   repeat_dt: 3600
   repetitions: -1
   instances_per_spawn: 1

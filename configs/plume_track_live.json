@@ -9,7 +9,7 @@
       "lon_range": [-117.27, -117.09],
       "gapfill_steps": [
         {
-          "path": "pyplume.gapfilling.InterpolationStep",
+          "path": "pyplume.gapfilling.LowResOversample",
           "args": {
             "references": ["USWC_2KM_HOURLY", "USWC_6KM_HOURLY"]
           }

@@ -23,7 +23,7 @@ VAR_MAPPINGS_DEFAULT = {
     "lon": {"lon", "longitude", "long", "x"},
     "time": {"time", "t"},
     "U": {"u", "water_u"},
-    "V": {"v", "water_v"}
+    "V": {"v", "water_v"},
 }
 # controls xarray dask chunks, needed for large datasets
 CHUNK_SIZE_DEFAULT = "100MB"
@@ -42,15 +42,19 @@ class DataSource:
         Args:
             load_method (str -> xr.Dataset)
         """
-        if id is None: raise TypeError("NoneType received")
+        if id is None:
+            raise TypeError("NoneType received")
         self.id = id
         self.name = name if name is not None else "Data source"
-        self.available_datasets = available_datasets if available_datasets is not None else []
+        self.available_datasets = (
+            available_datasets if available_datasets is not None else []
+        )
         self.load_method = load_method if load_method is not None else xr.open_dataset
 
     def get_dataset_info_by_id(self, id) -> DatasetInfo:
         with_id = list(filter(lambda ds: ds.id == id, self.available_datasets))
-        if len(with_id) == 0: return None
+        if len(with_id) == 0:
+            return None
         return with_id[0]
 
     def load_source(self, src):
@@ -98,7 +102,9 @@ class SimpleLoad:
         self.time_chunks = parse_time_chunk_size(time_chunk_size)
 
     def __call__(self, src):
-        ds = xr.open_dataset(src, chunks=self.time_chunks, drop_variables=self.drop_vars)
+        ds = xr.open_dataset(
+            src, chunks=self.time_chunks, drop_variables=self.drop_vars
+        )
         return rename_dataset_vars(ds, self.mappings)
 
 
@@ -114,7 +120,8 @@ def rename_dataset_vars(ds, mappings=None):
                 ...
             }
     """
-    if mappings is None: mappings = VAR_MAPPINGS_DEFAULT
+    if mappings is None:
+        mappings = VAR_MAPPINGS_DEFAULT
     rename_map = {}
     for var in ds.variables.keys():
         for match in mappings.keys():
@@ -146,8 +153,10 @@ def get_time_slice(time_range, inclusive=False, ref_coords=None, precision="h"):
     time_range[0] = np.datetime64(time_range[0])
     time_range[1] = np.datetime64(time_range[1])
     if time_range[0] == time_range[1]:
-        return slice(np.datetime64(time_range[0], precision),
-                     np.datetime64(time_range[1], precision) + np.timedelta64(1, precision))
+        return slice(
+            np.datetime64(time_range[0], precision),
+            np.datetime64(time_range[1], precision) + np.timedelta64(1, precision),
+        )
     if len(time_range) == 2:
         if inclusive:
             if ref_coords is not None:
@@ -160,7 +169,9 @@ def get_time_slice(time_range, inclusive=False, ref_coords=None, precision="h"):
             if ref_coords is not None:
                 time_range = utils.include_coord_range(time_range[0:2], ref_coords)
             time_range = (time_range[0], time_range[1], interval)
-        return slice(np.datetime64(time_range[0]), np.datetime64(time_range[1]), time_range[2])
+        return slice(
+            np.datetime64(time_range[0]), np.datetime64(time_range[1]), time_range[2]
+        )
     raise ValueError("time_range is not a proper value")
 
 
@@ -170,8 +181,9 @@ def get_latest_span(delta):
     return (time_now - delta, time_now)
 
 
-def slice_dataset(ds, time_range=None, lat_range=None, lon_range=None,
-        inclusive=False) -> xr.Dataset:
+def slice_dataset(
+    ds, time_range=None, lat_range=None, lon_range=None, inclusive=False
+) -> xr.Dataset:
     """
     Params:
         ds (xr.Dataset): formatted dataset
@@ -185,9 +197,13 @@ def slice_dataset(ds, time_range=None, lat_range=None, lon_range=None,
     """
     sel_args = {}
     if lat_range is not None:
-        lat_out_of_range = lat_range[0] < ds["lat"].min() or lat_range[1] > ds["lat"].max()
+        lat_out_of_range = (
+            lat_range[0] < ds["lat"].min() or lat_range[1] > ds["lat"].max()
+        )
         if lat_out_of_range:
-            warnings.warn("A latitude value in the defined domain is out of range of the dataset.")
+            warnings.warn(
+                "A latitude value in the defined domain is out of range of the dataset."
+            )
         if inclusive:
             lat_range = utils.include_coord_range(lat_range, ds["lat"].values)
         sel_args["lat"] = slice(lat_range[0], lat_range[1])
@@ -195,15 +211,28 @@ def slice_dataset(ds, time_range=None, lat_range=None, lon_range=None,
         lon_coords = ds["lon"].values
         range_360 = lon_range[0] > 180 or lon_range[1] > 180
         coords_360 = np.any(ds["lon"] > 180)
-        if range_360: lon_range = (utils.convert360to180(lon_range[0]), utils.convert360to180(lon_range[1]))
-        if coords_360: lon_coords = utils.convert360to180(lon_coords)
-        lon_out_of_range = lon_range[0] < ds["lon"].min() or lon_range[1] > ds["lon"].max()
+        if range_360:
+            lon_range = (
+                utils.convert360to180(lon_range[0]),
+                utils.convert360to180(lon_range[1]),
+            )
+        if coords_360:
+            lon_coords = utils.convert360to180(lon_coords)
+        lon_out_of_range = (
+            lon_range[0] < ds["lon"].min() or lon_range[1] > ds["lon"].max()
+        )
         if lon_out_of_range:
-            warnings.warn("A longitude value in the defined domain is out of range of the dataset.")
+            warnings.warn(
+                "A longitude value in the defined domain is out of range of the dataset."
+            )
         if inclusive:
             lon_range = utils.include_coord_range(lon_range, lon_coords)
         # revert conversion
-        if coords_360: lon_range = (utils.convert180to360(lon_range[0]), utils.convert180to360(lon_range[1]))
+        if coords_360:
+            lon_range = (
+                utils.convert180to360(lon_range[0]),
+                utils.convert180to360(lon_range[1]),
+            )
         sel_args["lon"] = slice(lon_range[0], lon_range[1])
     if time_range is not None:
         if not isinstance(time_range, slice):
@@ -211,7 +240,9 @@ def slice_dataset(ds, time_range=None, lat_range=None, lon_range=None,
                 time_range = (ds["time"].values[0], time_range[1])
             if time_range[1] == "END":
                 time_range = (time_range[0], ds["time"].values[-1])
-            time_slice = get_time_slice(time_range, inclusive=inclusive, ref_coords=ds["time"].values)
+            time_slice = get_time_slice(
+                time_range, inclusive=inclusive, ref_coords=ds["time"].values
+            )
         else:
             time_slice = time_range
         sel_args["time"] = time_slice
@@ -223,8 +254,15 @@ def slice_dataset(ds, time_range=None, lat_range=None, lon_range=None,
 
 class DataLoader:
     def __init__(
-        self, dataset, datasource=None, domain=None, time_range=None, lat_range=None,
-        lon_range=None, inclusive=True, **_
+        self,
+        dataset,
+        datasource=None,
+        domain=None,
+        time_range=None,
+        lat_range=None,
+        lon_range=None,
+        inclusive=True,
+        **_,
     ):
         self.time_range = time_range
         if domain is not None:
@@ -247,16 +285,21 @@ class DataLoader:
         else:
             raise TypeError("data is not a valid type")
         self.dataset = slice_dataset(
-            self.full_dataset, time_range=self.time_range, lat_range=self.lat_range,
-            lon_range=self.lon_range, inclusive=self.inclusive
+            self.full_dataset,
+            time_range=self.time_range,
+            lat_range=self.lat_range,
+            lon_range=self.lon_range,
+            inclusive=self.inclusive,
         )
         if self.dataset.nbytes > 1e9:
             gigs = self.dataset.nbytes / 1e9
-            warnings.warn(f"The dataset is over a gigabyte ({gigs} gigabytes). Make sure you are working with the right subset of data!")
+            warnings.warn(
+                f"The dataset is over a gigabyte ({gigs} gigabytes). Make sure you are working with the right subset of data!"
+            )
 
     def __repr__(self):
         return repr(self.dataset)
-    
+
     def _repr_html_(self):
         return self.dataset._repr_html_()
 
@@ -279,15 +322,19 @@ class DataLoader:
             step = size // num_samples
             time_slice = slice(0, size, step)
         sample_ds = slice_dataset(
-            self.full_dataset.isel(time=time_slice), lat_range=self.lat_range,
-            lon_range=self.lon_range, inclusive=self.inclusive
+            self.full_dataset.isel(time=time_slice),
+            lat_range=self.lat_range,
+            lon_range=self.lon_range,
+            inclusive=self.inclusive,
         )
         mask = ~utils.generate_mask_no_data(sample_ds["U"].values)
         logger.info(f"Generated mask for {self}")
         return mask
 
     def save(self, path):
-        logger.info(f"Megabytes to save for {self}: {self.dataset.nbytes / 1024 / 1024}")
+        logger.info(
+            f"Megabytes to save for {self}: {self.dataset.nbytes / 1024 / 1024}"
+        )
         result = self.dataset.to_netcdf(path)
         logger.info(f"Finished save for {self}")
         return result
@@ -322,16 +369,14 @@ def arrays_to_particleds(time, lat, lon) -> xr.Dataset:
         times (np.ndarray[np.datetime64]): 2d array
         lats (np.ndarray[float]): 2d array
         lons (np.ndarray[float]): 2d array
-        
+
     Returns:
         xr.Dataset
     """
     lat = np.array(lat, dtype=np.float32)
     lon = np.array(lon, dtype=np.float32)
     trajectory = np.repeat(
-        np.arange(time.shape[0])[np.newaxis, :].T,
-        time.shape[1],
-        axis=1
+        np.arange(time.shape[0])[np.newaxis, :].T, time.shape[1], axis=1
     )
     ds = xr.Dataset(
         {
@@ -353,7 +398,7 @@ def buoycsv_to_particleds(csv_path) -> xr.Dataset:
 
     Args:
         path (path-like): path to csv file
-    
+
     Returns:
         xr.Dataset
     """
@@ -397,7 +442,9 @@ def clean_erddap_ds(ds):
     return clean_ds
 
 
-def dataset_to_fieldset(ds, copy=True, raw=True, complete=True, boundary_condition=None, **kwargs) -> FieldSet:
+def dataset_to_fieldset(
+    ds, copy=True, raw=True, complete=True, boundary_condition=None, **kwargs
+) -> FieldSet:
     """
     Creates a parcels FieldSet with an ocean current xarray Dataset.
     copy is true by default since Parcels has a habit of turning nan values into 0s.
@@ -429,16 +476,22 @@ def dataset_to_fieldset(ds, copy=True, raw=True, complete=True, boundary_conditi
     if raw:
         fieldset = FieldSet.from_data(
             {"U": ds["U"].values, "V": ds["V"].values},
-            {"time": ds["time"].values, "lat": ds["lat"].values, "lon": ds["lon"].values},
-            interp_method=interp_method, **kwargs
+            {
+                "time": ds["time"].values,
+                "lat": ds["lat"].values,
+                "lon": ds["lon"].values,
+            },
+            interp_method=interp_method,
+            **kwargs,
         )
     else:
         fieldset = FieldSet.from_xarray_dataset(
-                ds,
-                dict(U="U", V="V"),
-                dict(lat="lat", lon="lon", time="time"),
-                interp_method=interp_method, **kwargs
-            )
+            ds,
+            dict(U="U", V="V"),
+            dict(lat="lat", lon="lon", time="time"),
+            interp_method=interp_method,
+            **kwargs,
+        )
     if complete:
         fieldset.check_complete()
     return fieldset
@@ -446,11 +499,17 @@ def dataset_to_fieldset(ds, copy=True, raw=True, complete=True, boundary_conditi
 
 def dataset_to_vectorfield(ds, u_name, v_name, uv_name) -> VectorField:
     fu = Field.from_xarray(
-        ds["U"], u_name, dict(lat="lat", lon="lon", time="time"), interp_method="nearest"
+        ds["U"],
+        u_name,
+        dict(lat="lat", lon="lon", time="time"),
+        interp_method="nearest",
     )
     fu.units = GeographicPolar()
     fv = Field.from_xarray(
-        ds["V"], v_name, dict(lat="lat", lon="lon", time="time"), interp_method="nearest"
+        ds["V"],
+        v_name,
+        dict(lat="lat", lon="lon", time="time"),
+        interp_method="nearest",
     )
     fv.units = Geographic()
     return VectorField(uv_name, fu, fv)
@@ -462,7 +521,15 @@ class SurfaceGrid:
 
     TODO generate the mask of where data should be available
     """
-    def __init__(self, dataset, init_fs=True, other_fields=None, boundary_condition=None, **fs_kwargs):
+
+    def __init__(
+        self,
+        dataset,
+        init_fs=True,
+        other_fields=None,
+        boundary_condition=None,
+        **fs_kwargs,
+    ):
         """
         Reads from a netcdf file containing ocean current data.
 
@@ -484,7 +551,9 @@ class SurfaceGrid:
         self.boundary_condition = boundary_condition
         self.fs_kwargs = fs_kwargs if fs_kwargs is not None else {}
         if init_fs:
-            self.prep_fieldsets(boundary_condition=self.boundary_condition, **self.fs_kwargs)
+            self.prep_fieldsets(
+                boundary_condition=self.boundary_condition, **self.fs_kwargs
+            )
         else:
             self.fieldset = None
             self.fieldset_flat = None
@@ -512,15 +581,21 @@ class SurfaceGrid:
             self.prep_fieldsets(**self.fs_kwargs)
             self.modified = True
         elif len(dataset["U"].shape) == 3:
-            logger.info("Ocean current vector modifications with wind vectors must be done"
-                " individually. This may take a while.", file=sys.stderr)
+            logger.info(
+                "Ocean current vector modifications with wind vectors must be done"
+                " individually. This may take a while.",
+                file=sys.stderr,
+            )
             # assume dataset has renamed time, lat, lon dimensions
             # oh god why
             for i, t in enumerate(self.dataset["time"]):
                 for j, lat in enumerate(self.dataset["lat"]):
                     for k, lon in enumerate(self.dataset["lon"]):
                         wind_uv = dataset.sel(
-                            time=t.values, lat=lat.values, lon=lon.values, method="nearest"
+                            time=t.values,
+                            lat=lat.values,
+                            lon=lon.values,
+                            method="nearest",
                         )
                         wu = wind_uv["U"].values.item()
                         wv = wind_uv["V"].values.item()
@@ -546,18 +621,26 @@ class SurfaceGrid:
             kwargs: keyword arguments to pass into FieldSet creation
         """
         kwargs.pop("mesh", None)
-        logger.info(f"Loading dataset of size {self.dataset.nbytes / 1e6} MB with shape {self.dataset['U'].shape} into fieldset")
+        logger.info(
+            f"Loading dataset of size {self.dataset.nbytes / 1e6} MB with shape {self.dataset['U'].shape} into fieldset"
+        )
         if self.other_fields is not None:
             # spherical mesh
             self.fieldset = dataset_to_fieldset(
-                self.dataset, complete=False, boundary_condition=boundary_condition, mesh="spherical",
-                **kwargs
+                self.dataset,
+                complete=False,
+                boundary_condition=boundary_condition,
+                mesh="spherical",
+                **kwargs,
             )
             # flat mesh
             self.fieldset_flat = dataset_to_fieldset(
-                self.dataset, complete=False, boundary_condition=boundary_condition, mesh="flat",
-                **kwargs
-            )    
+                self.dataset,
+                complete=False,
+                boundary_condition=boundary_condition,
+                mesh="flat",
+                **kwargs,
+            )
             for fld in self.other_fields:
                 self.add_field_to_fieldset(self.fieldset, fld)
                 self.add_field_to_fieldset(self.fieldset_flat, fld)
@@ -566,11 +649,17 @@ class SurfaceGrid:
         else:
             # spherical mesh
             self.fieldset = dataset_to_fieldset(
-                self.dataset, boundary_condition=boundary_condition, mesh="spherical", **kwargs
+                self.dataset,
+                boundary_condition=boundary_condition,
+                mesh="spherical",
+                **kwargs,
             )
             # flat mesh
             self.fieldset_flat = dataset_to_fieldset(
-                self.dataset, boundary_condition=boundary_condition, mesh="flat", **kwargs
+                self.dataset,
+                boundary_condition=boundary_condition,
+                mesh="flat",
+                **kwargs,
             )
 
     def get_coords(self) -> tuple:
@@ -580,7 +669,7 @@ class SurfaceGrid:
         """
         return self.times, self.lats, self.lons
 
-    def get_domain(self, dtype='float32') -> dict:
+    def get_domain(self, dtype="float32") -> dict:
         """
         Args:
             dtype: specify what type to convert the coordinates to. The data is normally stored in
@@ -609,11 +698,15 @@ class SurfaceGrid:
             note that any of the indices may be None
         """
         if lon is not None:
-            if self.lon_360: lon = utils.convert180to360(lon)
-            else: lon = utils.convert360to180(lon)
-        return (self.timeKDTree.query([t])[1] if t is not None else None,
+            if self.lon_360:
+                lon = utils.convert180to360(lon)
+            else:
+                lon = utils.convert360to180(lon)
+        return (
+            self.timeKDTree.query([t])[1] if t is not None else None,
             self.latKDTree.query([lat])[1] if lat is not None else None,
-            self.lonKDTree.query([lon])[1] if lon is not None else None)
+            self.lonKDTree.query([lon])[1] if lon is not None else None,
+        )
 
     def get_closest_current(self, t, lat, lon):
         """
@@ -639,7 +732,7 @@ class SurfaceGrid:
             t_idx, lat_idx, lon_idx = self.get_closest_index(t, lat, lon)
         self.check_cache()
         return self.u[t_idx, lat_idx, lon_idx], self.v[t_idx, lat_idx, lon_idx]
-    
+
     def check_cache(self):
         # cache the whole array because isel is slow when doing it individually
         if self.u is None or self.modified:
@@ -661,7 +754,10 @@ class SurfaceGrid:
             flat (bool): if true, use the flat fieldset. otherwise use the spherical fieldset
         """
         if flat:
-            return self.fieldset_flat.U[t, 0, lat, lon], self.fieldset_flat.V[t, 0, lat, lon]
+            return (
+                self.fieldset_flat.U[t, 0, lat, lon],
+                self.fieldset_flat.V[t, 0, lat, lon],
+            )
         return self.fieldset.U[t, 0, lat, lon], self.fieldset.V[t, 0, lat, lon]
 
     @classmethod
@@ -702,12 +798,18 @@ class BuoyPath:
         end = self.times[idx + 1]
         seconds = (time - start) / np.timedelta64(1, "s")
         seconds_total = (end - start) / np.timedelta64(1, "s")
-        lat = self.lats[i] + (self.lats[i + 1] - self.lats[i]) * (seconds / seconds_total)
-        lon = self.lons[i] + (self.lons[i + 1] - self.lons[i]) * (seconds / seconds_total)
+        lat = self.lats[i] + (self.lats[i + 1] - self.lats[i]) * (
+            seconds / seconds_total
+        )
+        lon = self.lons[i] + (self.lons[i + 1] - self.lons[i]) * (
+            seconds / seconds_total
+        )
         return lat, lon
 
     @classmethod
-    def from_csv(cls, path, lat_key="latitude", lon_key="longitude", time_key="timestamp"):
+    def from_csv(
+        cls, path, lat_key="latitude", lon_key="longitude", time_key="timestamp"
+    ):
         """
         Reads buoy position data from a csv
         """
@@ -715,6 +817,7 @@ class BuoyPath:
         # just in case for some reason it isn't already sorted by time
         df = df.sort_values(time_key)
         return cls(
-            df[lat_key].values, df[lon_key].values,
-            df[time_key].values.astype("datetime64[s]")
+            df[lat_key].values,
+            df[lon_key].values,
+            df[time_key].values.astype("datetime64[s]"),
         )

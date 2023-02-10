@@ -16,6 +16,7 @@ class ThreddsParticle(JITParticle):
     Not actually Thredds specific, just a particle that tracks its own lifetime, spawntime,
     and when it goes out of bounds.
     """
+
     lifetime = Variable("lifetime", initial=0, dtype=np.float32)
     spawntime = Variable("spawntime", initial=attrgetter("time"), dtype=np.float32)
     # out of bounds
@@ -84,8 +85,11 @@ def DeleteParticle(particle, fieldset, time):
 
 
 def DeleteParticleVerbose(particle, fieldset, time):
-    print(f"Particle [{particle.id}] lost "
-          f"({particle.time}, {particle.depth}, {particle.lat}, {particle.lon})", file=sys.stderr)
+    print(
+        f"Particle [{particle.id}] lost "
+        f"({particle.time}, {particle.depth}, {particle.lat}, {particle.lon})",
+        file=sys.stderr,
+    )
     particle.delete()
 
 
@@ -113,21 +117,41 @@ def AdvectionRK4BorderCheck(particle, fieldset, time):
     """
     (u1, v1) = fieldset.CUV[particle]
     if math.fabs(u1) > 0 or math.fabs(v1) > 0:
-        lon1, lat1 = (particle.lon + u1*.5*particle.dt, particle.lat + v1*.5*particle.dt)
-        u2, v2 = fieldset.CUV[time + .5 * particle.dt, particle.depth, lat1, lon1, particle]
-        lon2, lat2 = (particle.lon + u2*.5*particle.dt, particle.lat + v2*.5*particle.dt)
-        u3, v3 = fieldset.CUV[time + .5 * particle.dt, particle.depth, lat2, lon2, particle]
-        lon3, lat3 = (particle.lon + u3*particle.dt, particle.lat + v3*particle.dt)
+        lon1, lat1 = (
+            particle.lon + u1 * 0.5 * particle.dt,
+            particle.lat + v1 * 0.5 * particle.dt,
+        )
+        u2, v2 = fieldset.CUV[
+            time + 0.5 * particle.dt, particle.depth, lat1, lon1, particle
+        ]
+        lon2, lat2 = (
+            particle.lon + u2 * 0.5 * particle.dt,
+            particle.lat + v2 * 0.5 * particle.dt,
+        )
+        u3, v3 = fieldset.CUV[
+            time + 0.5 * particle.dt, particle.depth, lat2, lon2, particle
+        ]
+        lon3, lat3 = (particle.lon + u3 * particle.dt, particle.lat + v3 * particle.dt)
         u4, v4 = fieldset.CUV[time + particle.dt, particle.depth, lat3, lon3, particle]
-        particle.lon += (u1 + 2*u2 + 2*u3 + u4) / 6. * particle.dt
-        particle.lat += (v1 + 2*v2 + 2*v3 + v4) / 6. * particle.dt
+        particle.lon += (u1 + 2 * u2 + 2 * u3 + u4) / 6.0 * particle.dt
+        particle.lat += (v1 + 2 * v2 + 2 * v3 + v4) / 6.0 * particle.dt
     else:
         (u1, v1) = fieldset.UV[particle]
-        lon1, lat1 = (particle.lon + u1*.5*particle.dt, particle.lat + v1*.5*particle.dt)
-        (u2, v2) = fieldset.UV[time + .5 * particle.dt, particle.depth, lat1, lon1, particle]
-        lon2, lat2 = (particle.lon + u2*.5*particle.dt, particle.lat + v2*.5*particle.dt)
-        (u3, v3) = fieldset.UV[time + .5 * particle.dt, particle.depth, lat2, lon2, particle]
-        lon3, lat3 = (particle.lon + u3*particle.dt, particle.lat + v3*particle.dt)
+        lon1, lat1 = (
+            particle.lon + u1 * 0.5 * particle.dt,
+            particle.lat + v1 * 0.5 * particle.dt,
+        )
+        (u2, v2) = fieldset.UV[
+            time + 0.5 * particle.dt, particle.depth, lat1, lon1, particle
+        ]
+        lon2, lat2 = (
+            particle.lon + u2 * 0.5 * particle.dt,
+            particle.lat + v2 * 0.5 * particle.dt,
+        )
+        (u3, v3) = fieldset.UV[
+            time + 0.5 * particle.dt, particle.depth, lat2, lon2, particle
+        ]
+        lon3, lat3 = (particle.lon + u3 * particle.dt, particle.lat + v3 * particle.dt)
         (u4, v4) = fieldset.UV[time + particle.dt, particle.depth, lat3, lon3, particle]
-        particle.lon += (u1 + 2*u2 + 2*u3 + u4) / 6. * particle.dt
-        particle.lat += (v1 + 2*v2 + 2*v3 + v4) / 6. * particle.dt
+        particle.lon += (u1 + 2 * u2 + 2 * u3 + u4) / 6.0 * particle.dt
+        particle.lat += (v1 + 2 * v2 + 2 * v3 + v4) / 6.0 * particle.dt

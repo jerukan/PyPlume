@@ -22,6 +22,7 @@ logger = get_logger(__name__)
 
 class TimedFrame:
     """Class that stores information about a single simulation plot"""
+
     def __init__(self, time, path, lats, lons, ages=None, **kwargs):
         self.time = time
         self.path = path
@@ -43,6 +44,7 @@ class ParticleResult:
 
     NOTE this currently only works with simulations with ThreddsParticle particle classes.
     """
+
     # for the main plot that draws the particles per frame
     MAIN_PARTICLE_PLOT_NAME = "particles"
     counter = 0
@@ -52,7 +54,9 @@ class ParticleResult:
         Args:
             src: path to ParticleFile or just the dataset itself
         """
-        self.sim_result_dir = Path(sim_result_dir) if sim_result_dir is not None else None
+        self.sim_result_dir = (
+            Path(sim_result_dir) if sim_result_dir is not None else None
+        )
         self.snapshot_interval = snapshot_interval
         if isinstance(src, (Path, str)):
             self.path = Path(src)
@@ -87,7 +91,9 @@ class ParticleResult:
         self.grid = None
         self.frames = None
         self.plot_features = {
-            ParticleResult.MAIN_PARTICLE_PLOT_NAME: ParticlePlotFeature(particle_size=20)
+            ParticleResult.MAIN_PARTICLE_PLOT_NAME: ParticlePlotFeature(
+                particle_size=20
+            )
         }
         self.coastline = None
 
@@ -107,9 +113,18 @@ class ParticleResult:
             nan_where = np.where(np.isnan(self.data_vars["lat"][i]))[0]
             # LineString can't handle nan values, filter them out
             if len(nan_where) > 0 and nan_where[0] > 1:
-                trajectory = LineString(np.array([self.data_vars["lon"][i][:nan_where[0]], self.data_vars["lat"][i][:nan_where[0]]]).T)
+                trajectory = LineString(
+                    np.array(
+                        [
+                            self.data_vars["lon"][i][: nan_where[0]],
+                            self.data_vars["lat"][i][: nan_where[0]],
+                        ]
+                    ).T
+                )
             elif len(nan_where) == 0:
-                trajectory = LineString(np.array([self.data_vars["lon"][i], self.data_vars["lat"][i]]).T)
+                trajectory = LineString(
+                    np.array([self.data_vars["lon"][i], self.data_vars["lat"][i]]).T
+                )
             else:
                 # found an all nan particle (somehow)
                 continue
@@ -119,7 +134,15 @@ class ParticleResult:
                 for j in range(1, self.data_vars["lat"].shape[1]):
                     if np.isnan(self.data_vars["lon"][i, j]):
                         break
-                    part_seg = LineString([(self.data_vars["lon"][i, j - 1], self.data_vars["lat"][i, j - 1]), (self.data_vars["lon"][i, j], self.data_vars["lat"][i, j])])
+                    part_seg = LineString(
+                        [
+                            (
+                                self.data_vars["lon"][i, j - 1],
+                                self.data_vars["lat"][i, j - 1],
+                            ),
+                            (self.data_vars["lon"][i, j], self.data_vars["lat"][i, j]),
+                        ]
+                    )
                     if self.coastline.intersects(part_seg):
                         for var in self.data_vars.keys():
                             if np.issubdtype(self.data_vars[var].dtype, np.datetime64):
@@ -133,17 +156,32 @@ class ParticleResult:
         self.grid = grid
         gtimes, _, _ = grid.get_coords()
         # check if particle set is in-bounds of the given grid
-        if np.nanmin(self.data_vars["time"]) < gtimes.min() or np.nanmax(self.data_vars["time"]) > gtimes.max():
+        if (
+            np.nanmin(self.data_vars["time"]) < gtimes.min()
+            or np.nanmax(self.data_vars["time"]) > gtimes.max()
+        ):
             raise ValueError("Time out of bounds")
 
     def add_plot_feature(self, feature: PlotFeature, label=None):
         if label is None:
-            self.plot_features[f"{feature.__class__.__name__}_{ParticleResult.counter}"] = feature
+            self.plot_features[
+                f"{feature.__class__.__name__}_{ParticleResult.counter}"
+            ] = feature
             ParticleResult.counter += 1
         else:
             self.plot_features[label] = feature
 
-    def plot_feature(self, feature: PlotFeature, fig, ax, t: np.datetime64, lats, lons, lifetimes, lifetime_max):
+    def plot_feature(
+        self,
+        feature: PlotFeature,
+        fig,
+        ax,
+        t: np.datetime64,
+        lats,
+        lons,
+        lifetimes,
+        lifetime_max,
+    ):
         """Plots a feature at a given time."""
         feature.add_to_plot(fig, ax, t, lats, lons)
         fig_feat, ax_feat = feature.generate_external_plot(
@@ -164,14 +202,20 @@ class ParticleResult:
         mask = self.data_vars["time"] == t
         curr_lats = self.data_vars["lat"][mask]
         curr_lons = self.data_vars["lon"][mask]
-        lifetimes = self.data_vars["lifetime"][mask] / 86400 if "lifetime" in self.data_vars else None
+        lifetimes = (
+            self.data_vars["lifetime"][mask] / 86400
+            if "lifetime" in self.data_vars
+            else None
+        )
         fig, ax = plotting.plot_field(time=t, grid=self.grid, domain=domain, land=land)
 
         figs = {}
         axs = {}
         # get feature plots
         for name, feature in self.plot_features.items():
-            fig_feat, ax_feat = self.plot_feature(feature, fig, ax, t, curr_lats, curr_lons, lifetimes, lifetime_max)
+            fig_feat, ax_feat = self.plot_feature(
+                feature, fig, ax, t, curr_lats, curr_lons, lifetimes, lifetime_max
+            )
             figs[name] = fig_feat
             axs[name] = ax_feat
         return fig, ax, figs, axs
@@ -184,15 +228,26 @@ class ParticleResult:
 
     def save_at_t(self, t, i, save_dir, figsize, domain, land):
         """Generate and save plots at a timestamp, given a bunch of information."""
-        lifetime_max = np.nanmax(self.data_vars["lifetime"]) / 86400  if "lifetime" in self.data_vars else None
-        fig, _, figs, _ = self.plot_at_t(t, domain=domain, land=land, lifetime_max=lifetime_max)
-        savefile = utils.get_dir(save_dir / ParticleResult.MAIN_PARTICLE_PLOT_NAME) / f"simframe_{i}.png"
+        lifetime_max = (
+            np.nanmax(self.data_vars["lifetime"]) / 86400
+            if "lifetime" in self.data_vars
+            else None
+        )
+        fig, _, figs, _ = self.plot_at_t(
+            t, domain=domain, land=land, lifetime_max=lifetime_max
+        )
+        savefile = (
+            utils.get_dir(save_dir / ParticleResult.MAIN_PARTICLE_PLOT_NAME)
+            / f"simframe_{i}.png"
+        )
         plotting.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
         savefile_feats = {}
         # plot and save every desired feature
         for name, fig_feat in figs.items():
             if fig_feat is not None:
-                savefile_feat = utils.get_dir(save_dir / name) / f"simframe_{name}_{i}.png"
+                savefile_feat = (
+                    utils.get_dir(save_dir / name) / f"simframe_{name}_{i}.png"
+                )
                 savefile_feats[name] = savefile_feat
                 plotting.draw_plt(savefile=savefile_feat, fig=fig_feat, figsize=figsize)
         lats, lons = self.get_positions_time(t, query="at")
@@ -200,15 +255,21 @@ class ParticleResult:
         ages = None
         if "lifetime" in self.data_vars:
             ages = self.data_vars["lifetime"][mask]
-        self.frames.append(TimedFrame(t, savefile, lats, lons, ages=ages, **savefile_feats))
+        self.frames.append(
+            TimedFrame(t, savefile, lats, lons, ages=ages, **savefile_feats)
+        )
         return savefile, savefile_feats
 
-    def generate_all_plots(self, figsize=None, domain=None, land=True, clear_folder=False):
+    def generate_all_plots(
+        self, figsize=None, domain=None, land=True, clear_folder=False
+    ):
         """
         Generates plots and then saves them.
         """
         if self.sim_result_dir is None:
-            raise ValueError("Please specify a path for sim_result_dir to save the plots")
+            raise ValueError(
+                "Please specify a path for sim_result_dir to save the plots"
+            )
         save_dir = self.sim_result_dir / "plots"
         utils.get_dir(save_dir)
         if clear_folder:
@@ -217,7 +278,14 @@ class ParticleResult:
         if self.snapshot_interval is not None:
             # The delta time between each snapshot is defined in the parcels config. This lets us avoid
             # the in-between timestamps where a single particle gets deleted.
-            total_plots = int((self.times[-1] - self.times[0]) / np.timedelta64(1, "s") / self.snapshot_interval) + 1
+            total_plots = (
+                int(
+                    (self.times[-1] - self.times[0])
+                    / np.timedelta64(1, "s")
+                    / self.snapshot_interval
+                )
+                + 1
+            )
             t = self.times[0]
             i = 0
             while t <= self.times[-1]:
@@ -258,7 +326,9 @@ class ParticleResult:
                 ages = None
                 if "lifetime" in self.data_vars:
                     ages = self.data_vars["lifetime"][mask]
-                self.frames.append(TimedFrame(self.times[i], None, lats, lons, ages=ages))
+                self.frames.append(
+                    TimedFrame(self.times[i], None, lats, lons, ages=ages)
+                )
         return self.frames
 
     def generate_gif(self, gif_delay=25):
@@ -274,7 +344,8 @@ class ParticleResult:
     def write_feature_dists(self, feat_names):
         for feat_name in feat_names:
             feat = self.plot_features[feat_name]
-            if not isinstance(feat, ScatterPlotFeature): continue
+            if not isinstance(feat, ScatterPlotFeature):
+                continue
             dists = np.zeros(self.shape, dtype=float)
             for time in self.times:
                 mask = self.data_vars["time"] == time
@@ -293,19 +364,24 @@ class ParticleResult:
         if self.path is not None and path is None and not override:
             if os.path.isfile(path):
                 raise FileExistsError(f"{path} already exists. Set override=True.")
-            raise FileExistsError(f"Unspecified path will override {path}. Set override=True.")
+            raise FileExistsError(
+                f"Unspecified path will override {path}. Set override=True."
+            )
         if self.path is None and path is None:
             raise ValueError("No path specified and no previous path was passed in.")
         new_ds = xr.Dataset(
             data_vars={var: (self.ds.dims, arr) for var, arr in self.data_vars.items()},
-            coords=self.ds.coords, attrs=self.ds.attrs
+            coords=self.ds.coords,
+            attrs=self.ds.attrs,
         )
         new_ds.to_netcdf(path=self.path if path is None else path)
 
     def get_filtered_data_time(self, t: np.datetime64, query="at"):
         valid_queries = ("at", "before", "after")
         if query not in valid_queries:
-            raise ValueError(f"Invalid query '{query}'. Valid queries are {valid_queries}")
+            raise ValueError(
+                f"Invalid query '{query}'. Valid queries are {valid_queries}"
+            )
         if query == "at":
             mask = self.data_vars["time"] == t
         elif query == "before":

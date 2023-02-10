@@ -59,11 +59,17 @@ def prep_sim_from_cfg(cfg) -> ParcelsSimulation:
         del alongshore_cfg["path"]
         coast_ds = DataLoader(**alongshore_cfg).dataset
         fu = Field.from_xarray(
-            coast_ds["U"], "CU", dict(lat="lat", lon="lon", time="time"), interp_method="nearest"
+            coast_ds["U"],
+            "CU",
+            dict(lat="lat", lon="lon", time="time"),
+            interp_method="nearest",
         )
         fu.units = GeographicPolar()
         fv = Field.from_xarray(
-            coast_ds["V"], "CV", dict(lat="lat", lon="lon", time="time"), interp_method="nearest"
+            coast_ds["V"],
+            "CV",
+            dict(lat="lat", lon="lon", time="time"),
+            interp_method="nearest",
         )
         fv.units = Geographic()
         fuv = VectorField("CUV", fu, fv)
@@ -77,7 +83,9 @@ def prep_sim_from_cfg(cfg) -> ParcelsSimulation:
             if wind_data["add_to_field_directly"]:
                 grid.modify_with_wind(wind_ds, ratio=wind_data["ratio"])
             else:
-                raise NotImplementedError("Wind kernel not implemented. Set add_to_field_directly to true")
+                raise NotImplementedError(
+                    "Wind kernel not implemented. Set add_to_field_directly to true"
+                )
     name = cfg["name"]
     logger.info(f"Preparing simulation {name}")
     sim = ParcelsSimulation(name, grid, **cfg["parcels_config"])
@@ -86,7 +94,9 @@ def prep_sim_from_cfg(cfg) -> ParcelsSimulation:
 
 def handle_postprocessing(result, postprocess_cfg):
     if postprocess_cfg.get("coastline", None) not in EMPTY:
-        lats, lons = utils.load_geo_points(**utils.get_path_cfg(postprocess_cfg["coastline"]))
+        lats, lons = utils.load_geo_points(
+            **utils.get_path_cfg(postprocess_cfg["coastline"])
+        )
         result.add_coastline(lats, lons)
         result.process_coastline_collisions()
         logger.info("processed collisions")
@@ -95,8 +105,9 @@ def handle_postprocessing(result, postprocess_cfg):
             BuoyPathFeature.load_from_external(
                 postprocess_cfg["buoy"],
                 backstep_delta=np.timedelta64(1, "h"),
-                backstep_count=12
-            ), label="buoy"
+                backstep_count=12,
+            ),
+            label="buoy",
         )
         result.write_feature_dists(["buoy"])
         logger.info("processed buoy distances")
@@ -119,7 +130,7 @@ def process_results(sim, cfg):
         sim.parcels_result.generate_all_plots(
             domain=plotting_cfg.get("shown_domain", None),
             land=plotting_cfg.get("draw_coasts", False),
-            figsize=(13, 8)
+            figsize=(13, 8),
         )
         try:
             logger.info(sim.parcels_result.generate_gif())

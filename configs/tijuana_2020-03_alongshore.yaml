@@ -1,15 +1,16 @@
 netcdf_data:
   ocean:
-    path: data/field_netcdfs/tj_plume_1km_2020-03.nc
+    data: data/field_netcdfs/tj_plume_1km_2020-03.nc
     gapfill_steps:
-      - path: pyplume.gapfilling.InterpolationStep
+      # - path: pyplume.gapfilling.LowResOversample
+      #   args:
+      #     references: [USWC_2KM_HOURLY, USWC_6KM_HOURLY]
+      # - path: pyplume.gapfilling.DCTPLS
+      #   args:
+      #     exclude_oob: true
+      - path: pyplume.gapfilling.DINEOF
         args:
-          references:
-            - USWC_2KM_HOURLY
-            - USWC_6KM_HOURLY
-      - path: pyplume.gapfilling.SmoothnStep
-        args:
-          mask: data/field_netcdfs/tj_plume_1km_2020-03_mask.npy
+          exclude_oob: true
   alongshore: data/field_netcdfs/tijuana_alongshore.nc
 parcels_config:
   save_dir: results
@@ -40,12 +41,12 @@ plotting_config:
     - path: pyplume.plot_features.NanSeparatedFeature
       label: coastline
       args:
-        path: data/coastOR2Mex_tijuana.mat
+        data: data/coastOR2Mex_tijuana.mat
         color: k
     - path: pyplume.plot_features.StationFeature
       label: station
       args:
-        path: data/wq_stposition.mat
+        data: data/wq_stposition.mat
         labels:
           - Coronado (North Island)
           - Silver Strand

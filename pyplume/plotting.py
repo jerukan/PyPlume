@@ -222,34 +222,6 @@ def draw_trajectories(
         pass
 
 
-def plot_field(time=None, grid=None, domain=None, land=True, vmax=0.6):
-    if grid is None and domain is None:
-        raise ValueError("grid or domain must be provided")
-    elif grid is not None and domain is None:
-        domain = grid.get_domain()
-    if grid is None:
-        fig, ax = get_carree_axis(domain, land=land)
-        get_carree_gl(ax)
-    else:
-        show_time = (
-            None
-            if time is None
-            else int((time - grid.times[0]) / np.timedelta64(1, "s"))
-        )
-        if show_time is not None and show_time < 0:
-            raise ValueError("Particle simulation time domain goes out of bounds")
-        _, fig, ax, _ = plotting.plotfield(
-            field=grid.fieldset.UV,
-            show_time=show_time,
-            domain=domain,
-            land=land,
-            vmin=0,
-            vmax=vmax,
-            titlestr="Particles and ",
-        )
-    return fig, ax
-
-
 def plot_vectorfield(
     dataset,
     show_time=None,
@@ -452,6 +424,5 @@ def plot_bounding_box(domain, ax, edgecolor="m", linewidth=1, **kwargs):
         linewidth=linewidth,
         **kwargs,
     )
-
     # Add the patch to the Axes
     ax.add_patch(rect)

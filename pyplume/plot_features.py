@@ -330,7 +330,7 @@ class StationFeature(ScatterPlotFeature):
 
     @classmethod
     def load_from_external(cls, data, labels=None, track_dist=1000, **kwargs):
-        lats, lons = utils.load_geo_points(data, lat_var="ywq", lon_var="xwq")
+        lats, lons = utils.load_geo_points(data)
         return cls(lats, lons, labels=labels, track_dist=track_dist, **kwargs)
 
 

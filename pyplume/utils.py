@@ -232,7 +232,41 @@ def expand_time_rng(time_rng, precision="h"):
     return start_time, end_time
 
 
-def load_pts_mat(path, lat_var=None, lon_var=None, del_nan=False):
+def load_pos_from_dict(data, lat_key=None, lon_key=None, infer_keys=True):
+    """
+    Guess keys for latitude and longitude, this is not robust at all.
+
+    Args:
+
+    Returns:
+        lat data
+        lon data
+    """
+    possible_lat_keys = {"y", "lat", "lats", "latitude", "latitudes"}
+    possible_lon_keys = {"x", "lon", "lons", "longitude", "longitudes"}
+    def guess_key(keys, possibilities):
+        guessed = None
+        for key in keys:
+            if key.lower() in possibilities:
+                guessed = key
+                logger.info(f"Guessed key as {key}")
+                return guessed
+        if guessed is None:
+            for possib in possibilities:
+                for key in keys:
+                    if key.lower()[:len(possib)] == possib:
+                        guessed = key
+                        logger.info(f"Guessed key as {key}")
+                        return guessed
+        raise IndexError(f"No key could be guessed from keys {keys}")
+    if lat_key is None and infer_keys:
+        lat_key = guess_key(data.keys(), possible_lat_keys)
+    if lon_key is None and infer_keys:
+        lon_key = guess_key(data.keys(), possible_lon_keys)
+    return data[lat_key], data[lon_key]
+
+
+def load_pts_mat(path, lat_key=None, lon_key=None, del_nan=False):
     """
     Loads points from a pts mat from the TJ Plume Tracker.
     Only points where both lat and lon are non-nan are returned.
@@ -244,25 +278,9 @@ def load_pts_mat(path, lat_var=None, lon_var=None, del_nan=False):
         np.ndarray: [lats], [lons]
     """
     mat_data = scipy.io.loadmat(path)
-    # guess keys for latitude and longitude, this is not robust at all
-    if lat_var is None:
-        for key in mat_data.keys():
-            if "y" in key.lower() or "lat" in key.lower():
-                lat_var = key
-                logger.info(f"Guessed latitude key as {key}")
-                break
-    if lat_var is None:
-        raise IndexError(f"No latitude or y key could be guessed in {path}")
-    if lon_var is None:
-        for key in mat_data.keys():
-            if "x" in key.lower() or "lon" in key.lower():
-                lon_var = key
-                logger.info(f"Guessed longitude key as {key}")
-                break
-    if lon_var is None:
-        raise IndexError(f"No longitude or x key could be guessed in {path}")
-    xf = mat_data[lon_var].flatten()
-    yf = mat_data[lat_var].flatten()
+    yf, xf = load_pos_from_dict(mat_data, lat_key=lat_key, lon_key=lon_key, infer_keys=True)
+    xf = np.ravel(xf)
+    yf = np.ravel(yf)
     if del_nan:
         # filter out nan values
         non_nan = (~np.isnan(xf)) & (~np.isnan(yf))
@@ -277,11 +295,15 @@ def load_geo_points(data, **kwargs):
     type will have different ways of loading and different required parameters.
 
     .mat file requirements:
-        lat_var: variable in the mat file representing the array of latitude values
-        lon_var: variable in the mat file representing the array of longitude values
+        lat_key: variable in the mat file representing the array of latitude values
+        lon_key: variable in the mat file representing the array of longitude values
 
     Args:
         data: actual data or path to data
+
+    Returns:
+        lats (array): flattened
+        lons (array): flattened
     """
     if isinstance(data, (np.ndarray, list)):
         return get_points(np.array(data), dim=2)
@@ -291,8 +313,14 @@ def load_geo_points(data, **kwargs):
         if ext == ".mat":
             lats, lons = load_pts_mat(path, **kwargs)
             return lats, lons
+        if ext == ".npy":
+            npdata = np.load(path)
+            if isinstance(npdata, dict):
+                lats, lons = load_pos_from_dict(data, **kwargs)
+                return np.ravel(lats), np.ravel(lons)
+            return get_points(npdata, dim=2)
         raise ValueError(f"Invalid extension {ext}")
-    raise TypeError(f"Invalid data to load {data}")
+    raise TypeError(f"Invalid data type")
 
 
 def wrap_in_kwarg(obj, merge_dict=True, key=None, **kwargs):

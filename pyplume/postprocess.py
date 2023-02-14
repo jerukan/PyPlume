@@ -207,7 +207,7 @@ class ParticleResult:
             if "lifetime" in self.data_vars
             else None
         )
-        fig, ax = plotting.plot_field(time=t, grid=self.grid, domain=domain, land=land)
+        fig, ax = plotting.plot_vectorfield(self.grid.dataset, show_time=t, domain=domain, land=land)
 
         figs = {}
         axs = {}

@@ -236,7 +236,8 @@ class DINEOF(GapfillStep):
 
 class Gapfiller:
     def __init__(self, *args):
-        self.steps = list(args)
+        self.steps = []
+        self.add_steps(*args)
 
     def add_steps(self, *args):
         for step in args:

@@ -290,10 +290,10 @@ class StationFeature(ScatterPlotFeature):
         """Any point with points near them are colored red, otherwise they are blue."""
         counts = self.count_near(lats, lons)
         ax.scatter(
-            self.lons[counts == 0], self.lats[counts == 0], c="b", s=60, edgecolor="k"
+            self.lons[counts == 0], self.lats[counts == 0], c="b", s=60, edgecolor="k", zorder=3
         )
         ax.scatter(
-            self.lons[counts > 0], self.lats[counts > 0], c="r", s=60, edgecolor="k"
+            self.lons[counts > 0], self.lats[counts > 0], c="r", s=60, edgecolor="k", zorder=3
         )
         return fig, ax
 
@@ -363,6 +363,7 @@ class LatTrackedPointFeature(ScatterPlotFeature):
         if self.ymax is not None:
             ax.set_ylim([0, self.ymax])
         # generate tick labels
+        ax.set_xticks(ax.get_xticks())
         ax.set_xticklabels(ax.get_xticks())
         # matplotlib uses a funny hyphen that doesn't work
         labels = list(map(abs_label_map, ax.get_xticklabels()))
@@ -453,7 +454,9 @@ class NearcoastDensityFeature(ScatterPlotFeature):
         if self.ymax is not None:
             ax.set_ylim([0, self.ymax])
         # generate tick labels
+        ax.set_xticks(ax.get_xticks())
         ax.set_xticklabels(ax.get_xticks())
+        # matplotlib uses a funny hyphen that doesn't work
         labels = list(map(abs_label_map, ax.get_xticklabels()))
         ax.set_xticklabels(labels)
         plt.figtext(

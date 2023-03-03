@@ -233,6 +233,7 @@ def plot_vectorfield(
     titlestr=None,
     fig=None,
     pos=None,
+    cbar=True
 ):
     if domain is None:
         domain = generate_domain_datasets([dataset])
@@ -242,17 +243,32 @@ def plot_vectorfield(
         domain, projection=projection, land=land, fig=fig, pos=pos
     )
     get_carree_gl(ax)
+    interp = False
     if isinstance(show_time, int):
         idx = show_time
+        show_time = dataset["time"][idx].values
     else:
         if isinstance(show_time, str):
             show_time = np.datetime64(show_time)
-        idx = (
-            np.where(dataset["time"] == show_time)[0][0] if show_time is not None else 0
-        )
-    show_time = dataset["time"][idx].values
-    U = dataset["U"][idx]
-    V = dataset["V"][idx]
+        found_idxs = np.where(dataset["time"] == show_time)
+        if len(found_idxs[0]) == 0:
+            idx = np.where(dataset["time"] <= show_time)[0][-1]
+            interp = True
+        else:
+            idx = (
+                found_idxs[0][0] if show_time is not None else 0
+            )
+    if interp:
+        lower_time = dataset["time"][idx].values
+        upper_time = dataset["time"][idx + 1].values
+        dist = (show_time - lower_time) / np.timedelta64(1, "s")
+        width = (upper_time - lower_time) / np.timedelta64(1, "s")
+        ratio = dist / width
+        U = (1 - ratio) * dataset["U"][idx] + ratio * dataset["U"][idx + 1]
+        V = (1 - ratio) * dataset["V"][idx] + ratio * dataset["V"][idx + 1]
+    else:
+        U = dataset["U"][idx]
+        V = dataset["V"][idx]
     lats = dataset["lat"]
     lons = dataset["lon"]
     spd = U**2 + V**2
@@ -278,17 +294,18 @@ def plot_vectorfield(
     )
     cs.set_clim(vmin, vmax)
 
-    cbar_ax = fig.add_axes([0, 0, 0, 0])
-    # fig.subplots_adjust(hspace=0, wspace=0, top=0.925, left=0.1)
-    plt.colorbar(cs, cax=cbar_ax)
+    if cbar:
+        cbar_ax = fig.add_axes([0, 0, 0, 0])
+        # fig.subplots_adjust(hspace=0, wspace=0, top=0.925, left=0.1)
+        plt.colorbar(cs, cax=cbar_ax, label="Current vector velocity (m/s)")
 
-    def resize_colorbar(event):
-        plt.draw()
-        posn = ax.get_position()
-        cbar_ax.set_position([posn.x0 + posn.width + 0.01, posn.y0, 0.04, posn.height])
+        def resize_colorbar(event):
+            plt.draw()
+            posn = ax.get_position()
+            cbar_ax.set_position([posn.x0 + posn.width + 0.01, posn.y0, 0.04, posn.height])
 
-    fig.canvas.mpl_connect("resize_event", resize_colorbar)
-    resize_colorbar(None)
+        fig.canvas.mpl_connect("resize_event", resize_colorbar)
+        resize_colorbar(None)
 
     if titlestr is None:
         titlestr = ""
@@ -396,16 +413,18 @@ def plot_particle_density(
     return fig, ax
 
 
-def plot_coastline(lats, lons, separate_nan=True, domain=None, c=None, ax=None):
+def plot_coastline(lats, lons, separate_nan=True, domain=None, c=None, linewidth=None, ax=None):
     if ax is None:
         fig, ax = carree_subplots((1, 1), domain=domain)
     else:
         fig = ax.get_figure()
+    if c is None:
+        c = "k"
     if separate_nan:
         lat_borders = np.split(lats, np.where(np.isnan(lats))[0])
         lon_borders = np.split(lons, np.where(np.isnan(lons))[0])
         for i in range(len(lat_borders)):
-            ax.plot(lon_borders[i], lat_borders[i], c=c)
+            ax.plot(lon_borders[i], lat_borders[i], c=c, linewidth=linewidth)
     else:
         ax.plot(lons, lats, c=c)
     return fig, ax

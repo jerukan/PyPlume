@@ -307,11 +307,13 @@ class ParcelsSimulation:
             or t_start > self.times[-1]
             or t_end > self.times[-1]
         ):
-            raise ValueError(
-                "Start and end times of simulation are out of bounds\n"
-                + f"ParcelsSimulation range: ({t_start}, {t_end})\n"
-                + f"Allowed domain: ({self.times[0]}, {self.times[-1]})"
-            )
+            # TODO time extrapolation
+            # raise ValueError(
+            #     "Start and end times of simulation are out of bounds\n"
+            #     + f"ParcelsSimulation range: ({t_start}, {t_end})\n"
+            #     + f"Allowed domain: ({self.times[0]}, {self.times[-1]})"
+            # )
+            pass
         t_start = (t_start - self.times[0]) / np.timedelta64(1, "s")
         t_end = (t_end - self.times[0]) / np.timedelta64(1, "s")
         return t_start, t_end

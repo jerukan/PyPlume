@@ -160,7 +160,9 @@ class ParticleResult:
             np.nanmin(self.data_vars["time"]) < gtimes.min()
             or np.nanmax(self.data_vars["time"]) > gtimes.max()
         ):
-            raise ValueError("Time out of bounds")
+            # TODO time extrapolation
+            # raise ValueError("Time out of bounds")
+            pass
 
     def add_plot_feature(self, feature: PlotFeature, label=None):
         if label is None:

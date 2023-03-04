@@ -75,17 +75,25 @@ def prep_sim_from_cfg(cfg) -> ParcelsSimulation:
         fuv = VectorField("CUV", fu, fv)
         fields = [fuv]
     # set boundary condition of fields
-    grid = SurfaceGrid(ds, other_fields=fields, boundary_condition=boundary_condition)
+    allow_time_extrapolation = ocean_cfg.get("allow_time_extrapolation", False)
+    fs_kwargs = {"allow_time_extrapolation": allow_time_extrapolation}
+    grid = SurfaceGrid(ds, other_fields=fields, boundary_condition=boundary_condition, **fs_kwargs)
     # load wind data if it exists
     wind_data = cfg["netcdf_data"].get("wind", None)
     if wind_data not in EMPTY:
-        with xr.open_dataset(wind_data["path"]) as wind_ds:
-            if wind_data["add_to_field_directly"]:
-                grid.modify_with_wind(wind_ds, ratio=wind_data["ratio"])
-            else:
-                raise NotImplementedError(
-                    "Wind kernel not implemented. Set add_to_field_directly to true"
-                )
+        # TODO fix this hardcoding help oh god
+        wind_ds = utils.load_timeseries_data(wind_data["path"])
+        # wind_ds["U"] = np.cos(np.deg2rad(wind_ds["dir"])) * wind_ds["speed"]
+        # wind_ds["V"] = np.sin(np.deg2rad(wind_ds["dir"])) * wind_ds["speed"]
+        wind_ds["U"] = wind_ds["u"]
+        wind_ds["V"] = wind_ds["v"]
+        # with xr.open_dataset(wind_data["path"]) as wind_ds:
+        if wind_data["add_to_field_directly"]:
+            grid.modify_with_wind(wind_ds, ratio=wind_data["ratio"])
+        else:
+            raise NotImplementedError(
+                "Wind kernel not implemented. Set add_to_field_directly to true"
+            )
     name = cfg["name"]
     logger.info(f"Preparing simulation {name}")
     sim = ParcelsSimulation(name, grid, **cfg["parcels_config"])

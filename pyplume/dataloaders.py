@@ -29,66 +29,6 @@ VAR_MAPPINGS_DEFAULT = {
 CHUNK_SIZE_DEFAULT = "100MB"
 
 
-@dataclass
-class DatasetInfo:
-    id: str
-    name: str
-    url: str
-
-
-class DataSource:
-    def __init__(self, id=None, name=None, available_datasets=None, load_method=None):
-        """
-        Args:
-            load_method (str -> xr.Dataset)
-        """
-        if id is None:
-            raise TypeError("NoneType received")
-        self.id = id
-        self.name = name if name is not None else "Data source"
-        self.available_datasets = (
-            available_datasets if available_datasets is not None else []
-        )
-        self.load_method = load_method if load_method is not None else xr.open_dataset
-
-    def get_dataset_info_by_id(self, id) -> DatasetInfo:
-        with_id = list(filter(lambda ds: ds.id == id, self.available_datasets))
-        if len(with_id) == 0:
-            return None
-        return with_id[0]
-
-    def load_source(self, src):
-        """
-        Loads a dataset from some source, and processes it so it is a standard format
-        for the simulation to read.
-
-        TODO verify correct data variables are in the dataset
-
-        Args:
-            src (str or path-like): the id to the data, or the url/path to the data
-
-        Returns:
-            xr.Dataset: a dataset in the standardized format
-        """
-        ds_info = self.get_dataset_info_by_id(src)
-        if ds_info is not None:
-            logger.info(f"Loading data type {ds_info.id} from {ds_info.url}")
-            ds = self.load_method(ds_info.url)
-            logger.info(f"Loaded data type {ds_info.id} from {ds_info.url}")
-            return ds
-        logger.info(f"Loading dataset from {src}")
-        try:
-            ds = self.load_method(src)
-            logger.info(f"Loaded dataset from {src}")
-            return ds
-        except ValueError as e:
-            # xarray ValueError loading failures are pretty vague. We give a bit more info on them
-            raise RuntimeError(f"Something went wrong with loading {src}") from e
-
-
-DEFAULT_DATASOURCE = DataSource(id="default", name="Default data source")
-
-
 def parse_time_chunk_size(time_chunk_size):
     if time_chunk_size is not None:
         return {"time": time_chunk_size}
@@ -105,7 +45,7 @@ class SimpleLoad:
         ds = xr.open_dataset(
             src, chunks=self.time_chunks, drop_variables=self.drop_vars
         )
-        return rename_dataset_vars(ds, self.mappings)
+        return replace_inf_with_nan(drop_depth(rename_dataset_vars(ds, self.mappings)))
 
 
 def rename_dataset_vars(ds, mappings=None):
@@ -140,11 +80,18 @@ def drop_depth(ds):
         ds (xr.Dataset): standardized vector field
     """
     if "depth" in ds["U"].dims:
-        ds["U"] = ds["U"].sel(depth=0)
+        ds["U"] = ds["U"].isel(depth=0)
     if "depth" in ds["V"].dims:
-        ds["V"] = ds["V"].sel(depth=0)
+        ds["V"] = ds["V"].isel(depth=0)
     if "depth" in ds.dims:
-        ds = ds.drop_vars("depth")
+        ds = ds.drop_dims("depth")
+    return ds
+
+
+def replace_inf_with_nan(ds):
+    whereinf = np.where(np.isinf(ds["U"]))
+    ds["U"][whereinf] = np.nan
+    ds["V"][whereinf] = np.nan
     return ds
 
 
@@ -250,6 +197,66 @@ def slice_dataset(
     if len(sliced_data["time"]) == 0:
         raise ValueError("No timestamps inside given time interval")
     return sliced_data
+
+
+@dataclass
+class DatasetInfo:
+    id: str
+    name: str
+    url: str
+
+
+class DataSource:
+    def __init__(self, id=None, name=None, available_datasets=None, load_method=None):
+        """
+        Args:
+            load_method (str -> xr.Dataset)
+        """
+        if id is None:
+            raise TypeError("NoneType received")
+        self.id = id
+        self.name = name if name is not None else "Data source"
+        self.available_datasets = (
+            available_datasets if available_datasets is not None else []
+        )
+        self.load_method = load_method if load_method is not None else SimpleLoad(mappings=VAR_MAPPINGS_DEFAULT)
+
+    def get_dataset_info_by_id(self, id) -> DatasetInfo:
+        with_id = list(filter(lambda ds: ds.id == id, self.available_datasets))
+        if len(with_id) == 0:
+            return None
+        return with_id[0]
+
+    def load_source(self, src):
+        """
+        Loads a dataset from some source, and processes it so it is a standard format
+        for the simulation to read.
+
+        TODO verify correct data variables are in the dataset
+
+        Args:
+            src (str or path-like): the id to the data, or the url/path to the data
+
+        Returns:
+            xr.Dataset: a dataset in the standardized format
+        """
+        ds_info = self.get_dataset_info_by_id(src)
+        if ds_info is not None:
+            logger.info(f"Loading data type {ds_info.id} from {ds_info.url}")
+            ds = self.load_method(ds_info.url)
+            logger.info(f"Loaded data type {ds_info.id} from {ds_info.url}")
+            return ds
+        logger.info(f"Loading dataset from {src}")
+        try:
+            ds = self.load_method(src)
+            logger.info(f"Loaded dataset from {src}")
+            return ds
+        except ValueError as e:
+            # xarray ValueError loading failures are pretty vague. We give a bit more info on them
+            raise RuntimeError(f"Something went wrong with loading {src}") from e
+
+
+DEFAULT_DATASOURCE = DataSource(id="default", name="Default data source")
 
 
 class DataLoader:
@@ -460,7 +467,8 @@ def dataset_to_fieldset(
     """
 
     if isinstance(boundary_condition, str):
-        del kwargs["interp_method"]
+        if "interp_method" in kwargs:
+            del kwargs["interp_method"]
         if boundary_condition.lower() in ("free", "freeslip"):
             interp_method = {"U": "freeslip", "V": "freeslip"}
         elif boundary_condition.lower() in ("partial", "partialslip"):
@@ -562,7 +570,7 @@ class SurfaceGrid:
         self.v = None
         self.modified = False
 
-    def modify_with_wind(self, dataset, ratio=1.0):
+    def modify_with_wind(self, dataset, ratio=0.03):
         """
         Directly modify the ocean vector dataset and update the fieldsets.
 

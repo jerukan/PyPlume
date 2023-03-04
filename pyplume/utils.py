@@ -268,7 +268,7 @@ def load_pos_from_dict(data, lat_key=None, lon_key=None, infer_keys=True):
 
 def load_pts_mat(path, lat_key=None, lon_key=None, del_nan=False):
     """
-    Loads points from a pts mat from the TJ Plume Tracker.
+    Loads points from a mat file.
     Only points where both lat and lon are non-nan are returned.
 
     Args:
@@ -321,6 +321,30 @@ def load_geo_points(data, **kwargs):
             return get_points(npdata, dim=2)
         raise ValueError(f"Invalid extension {ext}")
     raise TypeError(f"Invalid data type")
+
+
+def load_timeseries_data(data, **kwargs):
+    if isinstance(data, (str, Path)):
+        path = data
+        ext = os.path.splitext(path)[1]
+        if ext == ".mat":
+            data_vars = {}
+            mat_data = scipy.io.loadmat(path)
+            time = mat_data["time"].flatten()
+            del mat_data["time"]
+            for key, val in mat_data.items():
+                if isinstance(val, np.ndarray):
+                    val = val.flatten()
+                    if val.shape == time.shape:
+                        data_vars[key] = (["time"], val)
+            ds = xr.Dataset(
+                data_vars=data_vars,
+                coords={"time": time}
+            )
+            return ds
+        raise ValueError(f"Invalid extension {ext}")
+    raise TypeError(f"Invalid data type")
+
 
 
 def wrap_in_kwarg(obj, merge_dict=True, key=None, **kwargs):

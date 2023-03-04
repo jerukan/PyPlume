@@ -153,7 +153,8 @@ class ScatterPlotFeature(PlotFeature):
         self.lats = np.array(lats)
         self.lons = np.array(lons)
         self.points = np.array([lats, lons]).T
-        self.kdtree = scipy.spatial.KDTree(self.points)
+        # TODO: scipy is causing kernel crashes in jupyter
+        # self.kdtree = scipy.spatial.KDTree(self.points)
         self.labels = labels
         if self.labels is not None:
             if len(self.labels) != len(self.lats):
@@ -512,12 +513,19 @@ class BuoyPathFeature(ScatterPlotFeature):
         return cls(BuoyPath.from_csv(**utils.get_path_cfg(data)), **kwargs)
 
 
-class WindVectorFeature(ScatterPlotFeature):
+class WindVectorFeature(PlotFeature):
+    def __init__(self, times, u, v):
+        self.times = times
+        self.u = u
+        self.v = v
+
     def add_to_plot(self, fig, ax, t, lats, lons, **kwargs):
-        if "wind" not in kwargs:
-            return
-        wind_u, wind_v = kwargs["wind"]  # tuple of u, v
-        wind_ax = fig.add_axes([0.1, 0, 0.1, 0.1])
+        ax.annotate("asdf", (0, 0), xycoords="axes fraction")
+        return fig, ax
+    
+    @classmethod
+    def load_from_external(cls, data, **kwargs):
+        return cls()
 
 
 def construct_features_from_configs(*feature_configs):

@@ -6,6 +6,7 @@ import sys
 from typing import Tuple
 
 import numpy as np
+from parcels.tools.statuscodes import FieldOutOfBoundError, TimeExtrapolationError
 import xarray as xr
 
 from pyplume import get_logger
@@ -73,11 +74,11 @@ class LowResOversample(GapfillStep):
             time_inbounds = (ref_times[0] <= targ_times[0]) and (
                 ref_times[-1] >= targ_times[-1]
             )
-            if not (lat_inbounds and lon_inbounds and time_inbounds):
-                raise ValueError(
-                    "Incorrect reference dimensions (reference dimension ranges \
-                    should be larger than the target's)"
-                )
+            # if not (lat_inbounds and lon_inbounds and time_inbounds):
+            #     raise ValueError(
+            #         "Incorrect reference dimensions (reference dimension ranges \
+            #         should be larger than the target's)"
+            #     )
 
     def process(
         self, u: np.ndarray, v: np.ndarray, target: xr.Dataset, **kwargs
@@ -121,7 +122,9 @@ class LowResOversample(GapfillStep):
                 raise TypeError(f"Unrecognized type for {ref}")
 
         self.do_validation(target, loaded_references)
-        invalid = utils.generate_mask_invalid(u)
+        # TODO: setting for invalid or everywhere
+        # invalid = utils.generate_mask_invalid(u)
+        invalid = np.isnan(u)
         num_invalid = invalid.sum()
         logger.info(f"total invalid values on target data: {num_invalid}")
 
@@ -132,11 +135,14 @@ class LowResOversample(GapfillStep):
         for ref in loaded_references:
             invalid_pos_new = np.where(invalid_interped)
             num_invalid_new = int(invalid_interped.sum())
-            arr_u = np.zeros(num_invalid_new)
-            arr_v = np.zeros(num_invalid_new)
+            arr_u = np.full(num_invalid_new, np.nan)
+            arr_v = np.full(num_invalid_new, np.nan)
             logger.info(f"Attempting to interpolate {num_invalid_new} points...")
             for i in range(num_invalid_new):
-                c_u, c_v = get_interped(i, target, ref, invalid_pos_new)
+                try:
+                    c_u, c_v = get_interped(i, target, ref, invalid_pos_new)
+                except (FieldOutOfBoundError, TimeExtrapolationError):
+                    continue
                 arr_u[i] = c_u
                 arr_v[i] = c_v
             target_interped_u[invalid_pos_new] = arr_u

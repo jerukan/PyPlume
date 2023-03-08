@@ -31,6 +31,7 @@ def load_pos_from_dict(data, lat_key=None, lon_key=None, infer_keys=True):
     """
     possible_lat_keys = {"y", "lat", "lats", "latitude", "latitudes"}
     possible_lon_keys = {"x", "lon", "lons", "longitude", "longitudes"}
+
     def guess_key(keys, possibilities):
         guessed = None
         for key in keys:
@@ -41,11 +42,12 @@ def load_pos_from_dict(data, lat_key=None, lon_key=None, infer_keys=True):
         if guessed is None:
             for possib in possibilities:
                 for key in keys:
-                    if key.lower()[:len(possib)] == possib:
+                    if key.lower()[: len(possib)] == possib:
                         guessed = key
                         logger.info(f"Guessed key as {key}")
                         return guessed
         raise IndexError(f"No key could be guessed from keys {keys}")
+
     if lat_key is None and infer_keys:
         lat_key = guess_key(data.keys(), possible_lat_keys)
     if lon_key is None and infer_keys:
@@ -65,7 +67,9 @@ def load_pts_mat(path, lat_key=None, lon_key=None, del_nan=False):
         np.ndarray: [lats], [lons]
     """
     mat_data = scipy.io.loadmat(path)
-    yf, xf = load_pos_from_dict(mat_data, lat_key=lat_key, lon_key=lon_key, infer_keys=True)
+    yf, xf = load_pos_from_dict(
+        mat_data, lat_key=lat_key, lon_key=lon_key, infer_keys=True
+    )
     xf = np.ravel(xf)
     yf = np.ravel(yf)
     if del_nan:
@@ -132,10 +136,7 @@ def load_timeseries_data(data, **kwargs):
                     val = val.flatten()
                     if val.shape == time.shape:
                         data_vars[key] = (["time"], val)
-            ds = xr.Dataset(
-                data_vars=data_vars,
-                coords={"time": time}
-            )
+            ds = xr.Dataset(data_vars=data_vars, coords={"time": time})
             return ds
         if ext in (".nc", ".nc4"):
             return xr.open_dataset(path)
@@ -149,10 +150,7 @@ def load_timeseries_data(data, **kwargs):
                 col = df[colname]
                 if val.shape == time.shape:
                     data_vars[colname] = (["time"], col)
-            ds = xr.Dataset(
-                data_vars=data_vars,
-                coords={"time": time}
-            )
+            ds = xr.Dataset(data_vars=data_vars, coords={"time": time})
             return ds
         raise ValueError(f"Invalid extension {ext}")
     raise TypeError(f"Invalid data type {type(data)}")
@@ -165,11 +163,12 @@ def _remove_redundant_maps(mapping):
             mapping_copy[k] = v
     return mapping_copy
 
+
 WIND_MAPPINGS = {
     "dir": {"dir", "direction", "ang", "angle"},
     "mag": {"mag", "spd", "speed", "magnitude"},
     "U": {"u"},
-    "V": {"v"}
+    "V": {"v"},
 }
 
 
@@ -195,15 +194,19 @@ def load_wind_dataset(data, **kwargs):
     key_mappings = guess_wind_keys(ds.data_vars)
     inv_map = {v: k for k, v in key_mappings.items()}
     ds = ds.rename_vars(name_dict=inv_map)
-    if ("dir" in key_mappings or "mag" in key_mappings) and ("U" in key_mappings or "V" in key_mappings):
-        raise ValueError("It is ambiguous if both polar and cartesian velocity information are provided in the wind dataset.")
+    if ("dir" in key_mappings or "mag" in key_mappings) and (
+        "U" in key_mappings or "V" in key_mappings
+    ):
+        raise ValueError(
+            "It is ambiguous if both polar and cartesian velocity information are provided in the wind dataset."
+        )
     if "dir" in key_mappings:
         if degrees:
             dirs = np.deg2rad(ds["dir"])
         else:
             dirs = ds["dir"]
         if bearing:
-            dirs = (np.pi / 2) - dirs 
+            dirs = (np.pi / 2) - dirs
         ds["U"] = ds["mag"] * np.cos(dirs)
         ds["V"] = ds["mag"] * np.sin(dirs)
         if incoming:
@@ -247,13 +250,18 @@ def guess_ocean_datavars(keys):
             if target in key.lower():
                 found.append(key)
         return found
+
     for found in ("U", "V"):
         if found not in mappings.keys():
             possible = find_containing(found.lower())
             if len(possible) < 1:
-                raise ValueError(f"No column for '{found}' data found in {keys}. Specify the U and V data keys with 'u_key' and 'v_key'!")
+                raise ValueError(
+                    f"No column for '{found}' data found in {keys}. Specify the U and V data keys with 'u_key' and 'v_key'!"
+                )
             if len(possible) > 1:
-                raise ValueError(f"Column for '{found}' data ambiguous in {keys}. Specify the U and V data keys with 'u_key' and 'v_key'!")
+                raise ValueError(
+                    f"Column for '{found}' data ambiguous in {keys}. Specify the U and V data keys with 'u_key' and 'v_key'!"
+                )
             mappings[found] = possible[0]
     return _remove_redundant_maps(mappings)
 
@@ -286,10 +294,12 @@ class SimpleLoad:
             src, chunks=self.time_chunks, drop_variables=self.drop_vars
         )
         return rename_dataset_vars(ds, self.mappings)
-    
+
 
 class DefaultLoad:
-    def __init__(self, uv_map=None, coord_map=None, drop_vars=None, time_chunk_size=None):
+    def __init__(
+        self, uv_map=None, coord_map=None, drop_vars=None, time_chunk_size=None
+    ):
         self.drop_vars = drop_vars if drop_vars is not None else set()
         if time_chunk_size is None:
             time_chunk_size = CHUNK_SIZE_DEFAULT
@@ -298,10 +308,24 @@ class DefaultLoad:
         self.coord_map = coord_map
 
     def __call__(self, src):
-        try:
-            ds = xr.open_dataset(src, chunks=self.time_chunks, drop_variables=self.drop_vars)
-        except ValueError as e:
-            raise ValueError("There may be an issue with decoding times in one of the variables. Drop any unnecessary time variables with 'drop_vars'!") from e
+        if isinstance(src, xr.Dataset):
+            ds = src
+        else:
+            try:
+                ds = xr.open_dataset(
+                    src, chunks=self.time_chunks, drop_variables=self.drop_vars
+                )
+            except ValueError as e:
+                errmsg = str(e)
+                if "decode time units" in errmsg.lower():
+                    raise ValueError(
+                        "There may be an issue with decoding times in one of the variables. Drop any unnecessary time variables with 'drop_vars'!"
+                    ) from e
+                if "did not find a match" in errmsg.lower():
+                    raise ValueError(
+                        f"Could not open {src}. Are you opening a NetCDF file and is the path/url correct?"
+                    ) from e
+                raise e
         if self.uv_map is None:
             datavar_map = guess_ocean_datavars(ds.data_vars)
         else:
@@ -468,71 +492,11 @@ def slice_dataset(
     return sliced_data
 
 
-@dataclass
-class DatasetInfo:
-    id: str
-    name: str
-    url: str
-
-
-class DataSource:
-    def __init__(self, id=None, name=None, available_datasets=None, load_method=None):
-        """
-        Args:
-            load_method (str -> xr.Dataset)
-        """
-        if id is None:
-            raise TypeError("id cannot be None")
-        self.id = id
-        self.name = name if name is not None else "Data source"
-        self.available_datasets = (
-            available_datasets if available_datasets is not None else []
-        )
-        self.load_method = load_method if load_method is not None else DefaultLoad()
-
-    def get_dataset_info_by_id(self, id) -> DatasetInfo:
-        with_id = list(filter(lambda ds: ds.id == id, self.available_datasets))
-        if len(with_id) == 0:
-            return None
-        return with_id[0]
-
-    def load_source(self, src):
-        """
-        Loads a dataset from some source, and processes it so it is a standard format
-        for the simulation to read.
-
-        TODO verify correct data variables are in the dataset
-
-        Args:
-            src (str or path-like): the id to the data, or the url/path to the data
-
-        Returns:
-            xr.Dataset: a dataset in the standardized format
-        """
-        ds_info = self.get_dataset_info_by_id(src)
-        if ds_info is not None:
-            logger.info(f"Loading data type {ds_info.id} from {ds_info.url}")
-            ds = self.load_method(ds_info.url)
-            logger.info(f"Loaded data type {ds_info.id} from {ds_info.url}")
-            return ds
-        logger.info(f"Loading dataset from {src}")
-        try:
-            ds = self.load_method(src)
-            logger.info(f"Loaded dataset from {src}")
-            return ds
-        except ValueError as e:
-            # xarray ValueError loading failures are pretty vague. We give a bit more info on them
-            raise RuntimeError(f"Something went wrong with loading {src}") from e
-
-
-DEFAULT_DATASOURCE = DataSource(id="default", name="Default data source")
-
-
 class DataLoader:
     def __init__(
         self,
         dataset,
-        datasource=None,
+        load_method=None,
         domain=None,
         time_range=None,
         lat_range=None,
@@ -540,6 +504,10 @@ class DataLoader:
         inclusive=True,
         **_,
     ):
+        """
+        Args:
+            load_method (str -> xr.Dataset)
+        """
         self.time_range = time_range
         if domain is not None:
             self.lat_range = [domain["S"], domain["N"]]
@@ -548,26 +516,25 @@ class DataLoader:
             self.lat_range = lat_range
             self.lon_range = lon_range
         self.inclusive = inclusive
-        if datasource is None:
-            self.datasource = DEFAULT_DATASOURCE
-        elif isinstance(datasource, str):
-            self.datasource = utils.import_attr(datasource)
-        else:
-            self.datasource = datasource
+        self.load_method = load_method if load_method is not None else DefaultLoad()
         if isinstance(dataset, xr.Dataset):
             self.full_dataset = dataset
         elif isinstance(dataset, (str, Path)):
-            self.full_dataset = self.datasource.load_source(dataset)
+            self.full_dataset = self.load_method(dataset)
         else:
             raise TypeError("data is not a valid type")
         required_coords = ("time", "lat", "lon")
         required_datavars = ("U", "V")
         for req in required_coords:
             if req not in self.full_dataset.coords:
-                raise ValueError(f"Coordinate {req} not in dataset. Rename or add it to the dataset!")
+                raise ValueError(
+                    f"Coordinate {req} not in dataset. Rename or add it to the dataset!"
+                )
         for req in required_datavars:
             if req not in self.full_dataset.data_vars:
-                raise ValueError(f"Variable {req} not in dataset. Rename or add it to the dataset!")
+                raise ValueError(
+                    f"Variable {req} not in dataset. Rename or add it to the dataset!"
+                )
         self.dataset = slice_dataset(
             self.full_dataset,
             time_range=self.time_range,
@@ -895,7 +862,6 @@ class SurfaceGrid:
 
     def add_field_to_fieldset(self, fieldset, field, name=None):
         if isinstance(field, VectorField):
-            print(f"add vector field {field}")
             fieldset.add_vector_field(field)
         elif isinstance(field, Field):
             fieldset.add_field(field, name=name)
@@ -1046,15 +1012,6 @@ class SurfaceGrid:
                 self.fieldset_flat.V[t, 0, lat, lon],
             )
         return self.fieldset.U[t, 0, lat, lon], self.fieldset.V[t, 0, lat, lon]
-
-    @classmethod
-    def from_url_or_path(cls, path, dssrc: DataSource, **kwargs):
-        """
-        Args:
-            kwargs: keyword arguments for SurfaceGrid
-        """
-        ds = dssrc.load_source(path)
-        return cls(ds, **kwargs)
 
 
 class BuoyPath:

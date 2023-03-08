@@ -1,7 +1,6 @@
 ocean_data:
   - name: hfrnet
-    data: USEC_6KM_HOURLY
-    datasource: pyplume.thredds_data.SRC_THREDDS_HFRNET_UCSD
+    data: http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/6km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_6km_Resolution_Hourly_RTV_best.ncd
     domain:
       # rough estimate of available HFRNet data near New York
       # southwest: 38.162201, -75.709632
@@ -17,8 +16,7 @@ ocean_data:
     boundary_condition: freeslip
   - name: hycom
     data: data/field_netcdfs/hycom_hurrhenri.nc
-    # data: GLOBAL_HINDCAST
-    # datasource: pyplume.thredds_data.SRC_THREDDS_HYCOM
+    # data: https://tds.hycom.org/thredds/dodsC/GLBy0.08/expt_93.0/uv3z
     # domain:
     #   # rough estimate of available HFRNet data near New York
     #   # southwest: 38.162201, -75.709632

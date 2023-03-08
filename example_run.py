@@ -1,22 +1,20 @@
 from parcels import AdvectionRK4
 
 from pyplume.dataloaders import DataLoader, SurfaceGrid
-from pyplume.gapfilling import Gapfiller, LowResOversample, SmoothnStep
-from pyplume.kernels import AgeParticle, RandomWalk, ThreddsParticle
+from pyplume.gapfilling import Gapfiller, LowResOversample, DCTPLS
+from pyplume.kernels import AgeParticle, RandomWalk5cm, ThreddsParticle
 from pyplume.plot_features import (
     NanSeparatedFeature,
     NearcoastDensityFeature,
     StationFeature,
 )
 from pyplume.simulation import ParcelsSimulation
-from pyplume.thredds_data import SRC_THREDDS_HFRNET_UCSD
 
 
 ocean_data_source = "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/hourly/RTV/HFRADAR_US_West_Coast_1km_Resolution_Hourly_RTV_best.ncd"
 
 loader = DataLoader(
     ocean_data_source,
-    datasource=SRC_THREDDS_HFRNET_UCSD,
     time_range=["2020-02-09T01:00", "2020-02-14T01:00"],
     lat_range=[32.525, 32.7],
     lon_range=[-117.27, -117.09],
@@ -25,12 +23,12 @@ loader = DataLoader(
 ocean_data_source_2km = "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/2km/hourly/RTV/HFRADAR_US_West_Coast_2km_Resolution_Hourly_RTV_best.ncd"
 ocean_data_source_6km = "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/hourly/RTV/HFRADAR_US_West_Coast_1km_Resolution_Hourly_RTV_best.ncd"
 
-loader_2km = DataLoader(ocean_data_source_2km, datasource=SRC_THREDDS_HFRNET_UCSD)
-loader_6km = DataLoader(ocean_data_source_6km, datasource=SRC_THREDDS_HFRNET_UCSD)
+loader_2km = DataLoader(ocean_data_source_2km)
+loader_6km = DataLoader(ocean_data_source_6km)
 
 gapfiller = Gapfiller(
     LowResOversample([loader_2km.dataset, loader_6km.dataset]),
-    SmoothnStep(mask=loader.get_mask(num_samples=50)),
+    DCTPLS(mask=loader.get_mask(num_samples=50)),
 )
 
 filled_ds = gapfiller.execute(target=loader.dataset)
@@ -44,7 +42,7 @@ sim = ParcelsSimulation(
     save_dir="results",
     particle_type=ThreddsParticle,
     snapshot_interval=3600,
-    kernels=[AdvectionRK4, AgeParticle, RandomWalk],
+    kernels=[AdvectionRK4, AgeParticle, RandomWalk5cm],
     time_range=["2020-02-09T01:00", "2020-02-14T01:00"],
     repetitions=-1,
     repeat_dt=3600,

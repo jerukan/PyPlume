@@ -291,10 +291,20 @@ class StationFeature(ScatterPlotFeature):
         """Any point with points near them are colored red, otherwise they are blue."""
         counts = self.count_near(lats, lons)
         ax.scatter(
-            self.lons[counts == 0], self.lats[counts == 0], c="b", s=60, edgecolor="k", zorder=3
+            self.lons[counts == 0],
+            self.lats[counts == 0],
+            c="b",
+            s=60,
+            edgecolor="k",
+            zorder=3,
         )
         ax.scatter(
-            self.lons[counts > 0], self.lats[counts > 0], c="r", s=60, edgecolor="k", zorder=3
+            self.lons[counts > 0],
+            self.lats[counts > 0],
+            c="r",
+            s=60,
+            edgecolor="k",
+            zorder=3,
         )
         return fig, ax
 
@@ -522,7 +532,7 @@ class WindVectorFeature(PlotFeature):
     def add_to_plot(self, fig, ax, t, lats, lons, **kwargs):
         ax.annotate("asdf", (0, 0), xycoords="axes fraction")
         return fig, ax
-    
+
     @classmethod
     def load_from_external(cls, data, **kwargs):
         return cls()

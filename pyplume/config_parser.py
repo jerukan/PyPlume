@@ -16,7 +16,13 @@ import yaml
 
 from pyplume import get_logger
 from pyplume.constants import EMPTY
-from pyplume.dataloaders import DataSource, DataLoader, DefaultLoad, SurfaceGrid, load_wind_dataset, load_geo_points
+from pyplume.dataloaders import (
+    DataLoader,
+    DefaultLoad,
+    SurfaceGrid,
+    load_wind_dataset,
+    load_geo_points,
+)
 import pyplume.utils as utils
 from pyplume.simulation import ParcelsSimulation
 from pyplume.plot_features import BuoyPathFeature, construct_features_from_configs
@@ -57,7 +63,9 @@ def load_ocean_cfg(cfg):
         elif u_key is not None and v_key is not None:
             uv_map = {"U": u_key, "V": v_key}
         else:
-            raise ValueError("You cannot only specify either a U or V key, you must define both.")
+            raise ValueError(
+                "You cannot only specify either a U or V key, you must define both."
+            )
         time_key = cfg.pop("time_key", None)
         lat_key = cfg.pop("lat_key", None)
         lon_key = cfg.pop("lon_key", None)
@@ -66,10 +74,12 @@ def load_ocean_cfg(cfg):
         elif time_key is not None and lat_key is not None and lon_key is not None:
             coord_map = {"time": time_key, "lat": lat_key, "lon": lon_key}
         else:
-            raise ValueError("You cannot only specify either a time, lat, or lon key, you must define them all.")
+            raise ValueError(
+                "You cannot only specify either a time, lat, or lon key, you must define them all."
+            )
         drop_vars = cfg.pop("drop_vars", None)
-        dsource = DataSource(id="idk", name="idk", load_method=DefaultLoad(uv_map=uv_map, coord_map=coord_map, drop_vars=drop_vars))
-    ds = DataLoader(ds_path, datasource=dsource, **cfg).dataset
+        load_method = DefaultLoad(uv_map=uv_map, coord_map=coord_map, drop_vars=drop_vars)
+    ds = DataLoader(ds_path, load_method=load_method, **cfg).dataset
     gapfiller = Gapfiller.load_from_config(*cfg.get("gapfill_steps", []))
     ds = gapfiller.execute(ds)
     fields = []
@@ -98,7 +108,9 @@ def load_ocean_cfg(cfg):
     # set boundary condition of fields
     allow_time_extrapolation = cfg.get("allow_time_extrapolation", False)
     fs_kwargs = {"allow_time_extrapolation": allow_time_extrapolation}
-    grid = SurfaceGrid(ds, other_fields=fields, boundary_condition=boundary_condition, **fs_kwargs)
+    grid = SurfaceGrid(
+        ds, other_fields=fields, boundary_condition=boundary_condition, **fs_kwargs
+    )
     # load wind data if it exists
     wind_cfg = cfg.get("wind", None)
     if wind_cfg not in EMPTY:
@@ -113,7 +125,10 @@ def load_ocean_cfg(cfg):
 def prep_sim_from_cfg(cfg):
     simset_name = cfg["name"]
     parcels_cfg = cfg["parcels_config"]
-    parcels_cfg["save_dir"] = Path(parcels_cfg["save_dir"]) / f"{simset_name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}"
+    parcels_cfg["save_dir"] = (
+        Path(parcels_cfg["save_dir"])
+        / f"{simset_name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}"
+    )
     sims = []
     # ocean is required, no check
     ocean_cfgs = cfg["ocean_data"]
@@ -135,9 +150,7 @@ def prep_sim_from_cfg(cfg):
 
 def handle_postprocessing(result, postprocess_cfg):
     if postprocess_cfg.get("coastline", None) not in EMPTY:
-        lats, lons = load_geo_points(
-            **utils.get_path_cfg(postprocess_cfg["coastline"])
-        )
+        lats, lons = load_geo_points(**utils.get_path_cfg(postprocess_cfg["coastline"]))
         result.add_coastline(lats, lons)
         result.process_coastline_collisions()
         logger.info("processed collisions")

@@ -7,8 +7,8 @@ ocean_data:
       - path: pyplume.gapfilling.LowResOversample
         args:
           references:
-            - USWC_2KM_HOURLY
-            - USWC_6KM_HOURLY
+            - http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/2km/hourly/RTV/HFRADAR_US_West_Coast_2km_Resolution_Hourly_RTV_best.ncd
+            - http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd
       # DCT-PLS gapfilling. It's very aggressive on smoothing.
       # - path: pyplume.gapfilling.SmoothnStep
       #   args:

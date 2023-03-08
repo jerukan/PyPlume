@@ -365,7 +365,9 @@ class ParcelsSimulation:
         self.pfile.close()
         self.completed = True
         self.parcels_result = ParticleResult(
-            self.pfile_path, sim_result_dir=self.sim_result_dir, snapshot_interval=self.snapshot_interval
+            self.pfile_path,
+            sim_result_dir=self.sim_result_dir,
+            snapshot_interval=self.snapshot_interval,
         )
         self.parcels_result.add_grid(self.grid)
         return self.parcels_result

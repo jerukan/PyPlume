@@ -233,7 +233,7 @@ def plot_vectorfield(
     titlestr=None,
     fig=None,
     pos=None,
-    cbar=True
+    cbar=True,
 ):
     if domain is None:
         domain = generate_domain_datasets([dataset])
@@ -255,9 +255,7 @@ def plot_vectorfield(
             idx = np.where(dataset["time"] <= show_time)[0][-1]
             interp = True
         else:
-            idx = (
-                found_idxs[0][0] if show_time is not None else 0
-            )
+            idx = found_idxs[0][0] if show_time is not None else 0
     if interp:
         lower_time = dataset["time"][idx].values
         upper_time = dataset["time"][idx + 1].values
@@ -302,7 +300,9 @@ def plot_vectorfield(
         def resize_colorbar(event):
             plt.draw()
             posn = ax.get_position()
-            cbar_ax.set_position([posn.x0 + posn.width + 0.01, posn.y0, 0.04, posn.height])
+            cbar_ax.set_position(
+                [posn.x0 + posn.width + 0.01, posn.y0, 0.04, posn.height]
+            )
 
         fig.canvas.mpl_connect("resize_event", resize_colorbar)
         resize_colorbar(None)
@@ -413,7 +413,9 @@ def plot_particle_density(
     return fig, ax
 
 
-def plot_coastline(lats, lons, separate_nan=True, domain=None, c=None, linewidth=None, ax=None):
+def plot_coastline(
+    lats, lons, separate_nan=True, domain=None, c=None, linewidth=None, ax=None
+):
     if ax is None:
         fig, ax = carree_subplots((1, 1), domain=domain)
     else:

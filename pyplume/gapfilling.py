@@ -13,7 +13,6 @@ from pyplume import get_logger
 from pyplume.dataloaders import slice_dataset, SurfaceGrid, DataLoader
 from pyplume.gapfill_algs import dctpls, eof_functions
 import pyplume.utils as utils
-import pyplume.thredds_data as thredds_data
 
 
 logger = get_logger(__name__)
@@ -93,7 +92,7 @@ class LowResOversample(GapfillStep):
             logger.info(f"Loading interp reference {ref}")
             if isinstance(ref, SurfaceGrid):
                 loaded_references.append(ref)
-            elif isinstance(ref, xr.Dataset):
+            elif isinstance(ref, (xr.Dataset, str)):
                 loaded_references.append(
                     SurfaceGrid(
                         # slice the data before loading into SurfaceGrid since it's huge
@@ -106,18 +105,6 @@ class LowResOversample(GapfillStep):
                         ).dataset
                     )
                 )
-            elif isinstance(ref, str):
-                # TODO generalize this
-                # slice the data before loading into SurfaceGrid since it's huge
-                ref = DataLoader(
-                    ref,
-                    datasource=thredds_data.SRC_THREDDS_HFRNET_UCSD,
-                    time_range=time_range,
-                    lat_range=lat_range,
-                    lon_range=lon_range,
-                    inclusive=True,
-                ).dataset
-                loaded_references.append(SurfaceGrid(ref))
             else:
                 raise TypeError(f"Unrecognized type for {ref}")
 
@@ -192,9 +179,7 @@ class DCTPLS(GapfillStep):
         self, u: np.ndarray, v: np.ndarray, target: xr.Dataset, **kwargs
     ) -> Tuple[np.ndarray, np.ndarray]:
         logger.info(f"Filling {len(u)} fields...")
-        u_smooth, v_smooth = dctpls.smoothn(
-            u, v, **self.smoothn_kwargs
-        )
+        u_smooth, v_smooth = dctpls.smoothn(u, v, **self.smoothn_kwargs)
         target_smoothed_u = u_smooth
         target_smoothed_v = v_smooth
 
@@ -229,8 +214,12 @@ class DINEOF(GapfillStep):
         umask = np.ma.array(umask, mask=np.isnan(umask))
         vmask = v.reshape((t, latsz * lonsz))
         vmask = np.ma.array(vmask, mask=np.isnan(vmask))
-        ufilled, _ = eof_functions.fill_gappy_EOF(umask, self.modemax, self.maxits, self.thresh)
-        vfilled, _ = eof_functions.fill_gappy_EOF(vmask, self.modemax, self.maxits, self.thresh)
+        ufilled, _ = eof_functions.fill_gappy_EOF(
+            umask, self.modemax, self.maxits, self.thresh
+        )
+        vfilled, _ = eof_functions.fill_gappy_EOF(
+            vmask, self.modemax, self.maxits, self.thresh
+        )
         ufilled = ufilled.reshape((t, latsz, lonsz))
         vfilled = vfilled.reshape((t, latsz, lonsz))
         if self.exclude_oob:

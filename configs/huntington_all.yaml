@@ -1,25 +1,23 @@
-name: huntington_all
-netcdf_data:
-  ocean:
-    path: http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd
-    datasource: pyplume.thredds_data.SRC_THREDDS_HFRNET_UCSD
+ocean_data:
+  - name: hfrnet
+    data: http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd
     time_range: [2021-10-01, 2021-10-09]
     lat_range: [32, 34.2]
     lon_range: [-119, -117.4]
     gapfill_steps: []
     boundary_condition: null
-  wind:
-    path: data/field_netcdfs/ndbc_46025_wind.nc
-    ratio: 0.03
-    add_to_field_directly: true
-  alongshore: data/field_netcdfs/socal_alongshore.nc
+    wind:
+      data: data/field_netcdfs/ndbc_46025_wind.nc
+      ratio: 0.03
+      add_to_field_directly: true
+    alongshore: data/field_netcdfs/socal_alongshore.nc
 parcels_config:
   save_dir: results
   particle_type: pyplume.kernels.ThreddsParticle
   kernels:
     - pyplume.kernels.AdvectionRK4BorderCheck
     - pyplume.kernels.AgeParticle
-    - pyplume.kernels.RandomWalk
+    - pyplume.kernels.RandomWalk5cm
   time_range:
     - START
     - END

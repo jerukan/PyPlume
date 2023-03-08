@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import importlib
 import logging
+import os
 from pathlib import Path
 import sys
 import warnings
@@ -17,6 +18,200 @@ import pyplume.utils as utils
 
 logger = get_logger(__name__)
 
+
+def load_pos_from_dict(data, lat_key=None, lon_key=None, infer_keys=True):
+    """
+    Guess keys for latitude and longitude, this is not robust at all.
+
+    Args:
+
+    Returns:
+        lat data
+        lon data
+    """
+    possible_lat_keys = {"y", "lat", "lats", "latitude", "latitudes"}
+    possible_lon_keys = {"x", "lon", "lons", "longitude", "longitudes"}
+    def guess_key(keys, possibilities):
+        guessed = None
+        for key in keys:
+            if key.lower() in possibilities:
+                guessed = key
+                logger.info(f"Guessed key as {key}")
+                return guessed
+        if guessed is None:
+            for possib in possibilities:
+                for key in keys:
+                    if key.lower()[:len(possib)] == possib:
+                        guessed = key
+                        logger.info(f"Guessed key as {key}")
+                        return guessed
+        raise IndexError(f"No key could be guessed from keys {keys}")
+    if lat_key is None and infer_keys:
+        lat_key = guess_key(data.keys(), possible_lat_keys)
+    if lon_key is None and infer_keys:
+        lon_key = guess_key(data.keys(), possible_lon_keys)
+    return data[lat_key], data[lon_key]
+
+
+def load_pts_mat(path, lat_key=None, lon_key=None, del_nan=False):
+    """
+    Loads points from a mat file.
+    Only points where both lat and lon are non-nan are returned.
+
+    Args:
+        path: path to mat file
+
+    Returns:
+        np.ndarray: [lats], [lons]
+    """
+    mat_data = scipy.io.loadmat(path)
+    yf, xf = load_pos_from_dict(mat_data, lat_key=lat_key, lon_key=lon_key, infer_keys=True)
+    xf = np.ravel(xf)
+    yf = np.ravel(yf)
+    if del_nan:
+        # filter out nan values
+        non_nan = (~np.isnan(xf)) & (~np.isnan(yf))
+        xf = xf[np.where(non_nan)]
+        yf = yf[np.where(non_nan)]
+    return yf, xf
+
+
+def load_geo_points(data, **kwargs):
+    """
+    Loads a collection of (lat, lon) points from a given data configuration. Each different file
+    type will have different ways of loading and different required parameters.
+
+    .mat file requirements:
+        lat_key: variable in the mat file representing the array of latitude values
+        lon_key: variable in the mat file representing the array of longitude values
+
+    Args:
+        data: actual data or path to data
+
+    Returns:
+        lats (array): flattened
+        lons (array): flattened
+    """
+    if isinstance(data, (np.ndarray, list)):
+        return utils.get_points(np.array(data), dim=2)
+    if isinstance(data, (str, Path)):
+        path = data
+        ext = os.path.splitext(path)[1]
+        if ext == ".mat":
+            lats, lons = load_pts_mat(path, **kwargs)
+            return lats, lons
+        if ext == ".npy":
+            npdata = np.load(path)
+            if isinstance(npdata, dict):
+                lats, lons = load_pos_from_dict(data, **kwargs)
+                return np.ravel(lats), np.ravel(lons)
+            return utils.get_points(npdata, dim=2)
+        raise ValueError(f"Invalid extension {ext}")
+    raise TypeError(f"Invalid data type {type(data)}")
+
+
+def load_timeseries_data(data, **kwargs):
+    """
+    Timeseries data as a xarray dataset.
+
+    The time axis is assumed to be named "time".
+
+    Returns:
+        xr.Dataset
+    """
+    if isinstance(data, (str, Path)):
+        path = data
+        ext = os.path.splitext(path)[1]
+        if ext == ".mat":
+            data_vars = {}
+            mat_data = scipy.io.loadmat(path)
+            time = mat_data["time"].flatten()
+            del mat_data["time"]
+            for key, val in mat_data.items():
+                if isinstance(val, np.ndarray):
+                    val = val.flatten()
+                    if val.shape == time.shape:
+                        data_vars[key] = (["time"], val)
+            ds = xr.Dataset(
+                data_vars=data_vars,
+                coords={"time": time}
+            )
+            return ds
+        if ext in (".nc", ".nc4"):
+            return xr.open_dataset(path)
+        if ext in (".txt", ".csv"):
+            data_vars = {}
+            sep = kwargs.get("sep", None)
+            df = pd.read_csv(path, sep=sep)
+            time = df["time"]
+            df = df.drop(columns=("time"))
+            for colname in df.columns:
+                col = df[colname]
+                if val.shape == time.shape:
+                    data_vars[colname] = (["time"], col)
+            ds = xr.Dataset(
+                data_vars=data_vars,
+                coords={"time": time}
+            )
+            return ds
+        raise ValueError(f"Invalid extension {ext}")
+    raise TypeError(f"Invalid data type {type(data)}")
+
+
+def _remove_redundant_maps(mapping):
+    mapping_copy = {}
+    for k, v in mapping.items():
+        if k != v:
+            mapping_copy[k] = v
+    return mapping_copy
+
+WIND_MAPPINGS = {
+    "dir": {"dir", "direction", "ang", "angle"},
+    "mag": {"mag", "spd", "speed", "magnitude"},
+    "U": {"u"},
+    "V": {"v"}
+}
+
+
+def guess_wind_keys(keys):
+    mappings = {}
+    checked = set()
+    for key in keys:
+        for target, possible in WIND_MAPPINGS.items():
+            if key.lower() in possible and target not in checked:
+                mappings[target] = key
+                checked.add(target)
+    return _remove_redundant_maps(mappings)
+
+
+def load_wind_dataset(data, **kwargs):
+    incoming = kwargs.get("incoming", True)
+    degrees = kwargs.get("degrees", True)
+    bearing = kwargs.get("bearing", False)
+    if isinstance(data, xr.Dataset):
+        ds = data
+    else:
+        ds = load_timeseries_data(data, **kwargs)
+    key_mappings = guess_wind_keys(ds.data_vars)
+    inv_map = {v: k for k, v in key_mappings.items()}
+    ds = ds.rename_vars(name_dict=inv_map)
+    if ("dir" in key_mappings or "mag" in key_mappings) and ("U" in key_mappings or "V" in key_mappings):
+        raise ValueError("It is ambiguous if both polar and cartesian velocity information are provided in the wind dataset.")
+    if "dir" in key_mappings:
+        if degrees:
+            dirs = np.deg2rad(ds["dir"])
+        else:
+            dirs = ds["dir"]
+        if bearing:
+            dirs = (np.pi / 2) - dirs 
+        ds["U"] = ds["mag"] * np.cos(dirs)
+        ds["V"] = ds["mag"] * np.sin(dirs)
+        if incoming:
+            ds["U"] = -ds["U"]
+            ds["V"] = -ds["V"]
+    return ds
+
+
 VAR_MAPPINGS_DEFAULT = {
     "depth": {"depth", "z"},
     "lat": {"lat", "latitude", "y"},
@@ -25,8 +220,53 @@ VAR_MAPPINGS_DEFAULT = {
     "U": {"u", "water_u"},
     "V": {"v", "water_v"},
 }
+COORD_MAPPINGS = {
+    "depth": {"depth", "z"},
+    "lat": {"lat", "latitude", "y"},
+    "lon": {"lon", "longitude", "long", "x"},
+    "time": {"time", "t"},
+}
 # controls xarray dask chunks, needed for large datasets
 CHUNK_SIZE_DEFAULT = "100MB"
+
+
+def guess_ocean_datavars(keys):
+    mappings = {}
+    # look for keys in the format of "u total", "v total"
+    # or just find keys that are "u" or "v"
+    # total currents
+    for key in keys:
+        if ("u" in key.lower() and "tot" in key.lower()) or ("u" == key.lower()):
+            mappings["U"] = key
+        if ("v" in key.lower() and "tot" in key.lower()) or ("v" == key.lower()):
+            mappings["V"] = key
+    # attempt to look for uv keys, assume they look like "usomething" or "vsomething"
+    def find_containing(target):
+        found = []
+        for key in keys:
+            if target in key.lower():
+                found.append(key)
+        return found
+    for found in ("U", "V"):
+        if found not in mappings.keys():
+            possible = find_containing(found.lower())
+            if len(possible) < 1:
+                raise ValueError(f"No column for '{found}' data found in {keys}. Specify the U and V data keys with 'u_key' and 'v_key'!")
+            if len(possible) > 1:
+                raise ValueError(f"Column for '{found}' data ambiguous in {keys}. Specify the U and V data keys with 'u_key' and 'v_key'!")
+            mappings[found] = possible[0]
+    return _remove_redundant_maps(mappings)
+
+
+def guess_ocean_coords(keys):
+    mappings = {}
+    checked = set()
+    for key in keys:
+        for target, possible in COORD_MAPPINGS.items():
+            if key.lower() in possible and target not in checked:
+                mappings[target] = key
+                checked.add(target)
+    return _remove_redundant_maps(mappings)
 
 
 def parse_time_chunk_size(time_chunk_size):
@@ -45,7 +285,36 @@ class SimpleLoad:
         ds = xr.open_dataset(
             src, chunks=self.time_chunks, drop_variables=self.drop_vars
         )
-        return replace_inf_with_nan(drop_depth(rename_dataset_vars(ds, self.mappings)))
+        return rename_dataset_vars(ds, self.mappings)
+    
+
+class DefaultLoad:
+    def __init__(self, uv_map=None, coord_map=None, drop_vars=None, time_chunk_size=None):
+        self.drop_vars = drop_vars if drop_vars is not None else set()
+        if time_chunk_size is None:
+            time_chunk_size = CHUNK_SIZE_DEFAULT
+        self.time_chunks = parse_time_chunk_size(time_chunk_size)
+        self.uv_map = uv_map
+        self.coord_map = coord_map
+
+    def __call__(self, src):
+        try:
+            ds = xr.open_dataset(src, chunks=self.time_chunks, drop_variables=self.drop_vars)
+        except ValueError as e:
+            raise ValueError("There may be an issue with decoding times in one of the variables. Drop any unnecessary time variables with 'drop_vars'!") from e
+        if self.uv_map is None:
+            datavar_map = guess_ocean_datavars(ds.data_vars)
+        else:
+            datavar_map = _remove_redundant_maps(self.uv_map)
+        inv_datavar_map = {v: k for k, v in datavar_map.items()}
+        if self.coord_map is None:
+            coord_map = guess_ocean_coords(ds.coords)
+        else:
+            coord_map = _remove_redundant_maps(self.coord_map)
+        inv_coord_map = {v: k for k, v in coord_map.items()}
+        ds = ds.rename(inv_datavar_map)
+        ds = ds.rename(inv_coord_map)
+        return ds
 
 
 def rename_dataset_vars(ds, mappings=None):
@@ -213,13 +482,13 @@ class DataSource:
             load_method (str -> xr.Dataset)
         """
         if id is None:
-            raise TypeError("NoneType received")
+            raise TypeError("id cannot be None")
         self.id = id
         self.name = name if name is not None else "Data source"
         self.available_datasets = (
             available_datasets if available_datasets is not None else []
         )
-        self.load_method = load_method if load_method is not None else SimpleLoad(mappings=VAR_MAPPINGS_DEFAULT)
+        self.load_method = load_method if load_method is not None else DefaultLoad()
 
     def get_dataset_info_by_id(self, id) -> DatasetInfo:
         with_id = list(filter(lambda ds: ds.id == id, self.available_datasets))
@@ -291,6 +560,14 @@ class DataLoader:
             self.full_dataset = self.datasource.load_source(dataset)
         else:
             raise TypeError("data is not a valid type")
+        required_coords = ("time", "lat", "lon")
+        required_datavars = ("U", "V")
+        for req in required_coords:
+            if req not in self.full_dataset.coords:
+                raise ValueError(f"Coordinate {req} not in dataset. Rename or add it to the dataset!")
+        for req in required_datavars:
+            if req not in self.full_dataset.data_vars:
+                raise ValueError(f"Variable {req} not in dataset. Rename or add it to the dataset!")
         self.dataset = slice_dataset(
             self.full_dataset,
             time_range=self.time_range,
@@ -298,6 +575,8 @@ class DataLoader:
             lon_range=self.lon_range,
             inclusive=self.inclusive,
         )
+        self.dataset.load()
+        self.dataset = replace_inf_with_nan(drop_depth(self.dataset))
         if self.dataset.nbytes > 1e9:
             gigs = self.dataset.nbytes / 1e9
             warnings.warn(
@@ -570,7 +849,7 @@ class SurfaceGrid:
         self.v = None
         self.modified = False
 
-    def modify_with_wind(self, dataset, ratio=0.03):
+    def modify_with_wind(self, dataset, ratio):
         """
         Directly modify the ocean vector dataset and update the fieldsets.
 

@@ -21,7 +21,7 @@ from shapely.ops import nearest_points
 
 from pyplume import get_logger
 from pyplume.constants import *
-from pyplume.dataloaders import BuoyPath
+from pyplume.dataloaders import BuoyPath, load_geo_points
 from pyplume.plotting import get_carree_axis, get_carree_gl
 import pyplume.utils as utils
 
@@ -137,7 +137,7 @@ class ParticleDensityFeature(PlotFeature):
         """
         Loads from mat files only right now.
         """
-        lats, lons = utils.load_geo_points(coastline)
+        lats, lons = load_geo_points(coastline)
         return cls(domain, [lats, lons], **kwargs)
 
 
@@ -247,8 +247,8 @@ class ScatterPlotFeature(PlotFeature):
         """
         Loads from mat files only right now.
         """
-        lats, lons = utils.load_geo_points(data)
-        return cls(lats, lons, segments=True, track_dist=track_dist, **kwargs)
+        lats, lons = load_geo_points(data)
+        return cls(lats, lons, segments=False, track_dist=track_dist, **kwargs)
 
 
 class NanSeparatedFeature(ScatterPlotFeature):
@@ -268,7 +268,7 @@ class NanSeparatedFeature(ScatterPlotFeature):
 
     @classmethod
     def load_from_external(cls, data, **kwargs):
-        lats, lons = utils.load_geo_points(data, del_nan=False)
+        lats, lons = load_geo_points(data, del_nan=False)
         inst = cls(lats, lons, track_dist=0, **kwargs)
         return inst
 
@@ -331,7 +331,7 @@ class StationFeature(ScatterPlotFeature):
 
     @classmethod
     def load_from_external(cls, data, labels=None, track_dist=1000, **kwargs):
-        lats, lons = utils.load_geo_points(data)
+        lats, lons = load_geo_points(data)
         return cls(lats, lons, labels=labels, track_dist=track_dist, **kwargs)
 
 
@@ -471,9 +471,9 @@ class NearcoastDensityFeature(ScatterPlotFeature):
 
     @classmethod
     def load_from_external(cls, origin, stations, coastline, **kwargs):
-        origin_lats, origin_lons = utils.load_geo_points(origin)
-        st_lats, st_lons = utils.load_geo_points(stations)
-        c_lats, c_lons = utils.load_geo_points(coastline)
+        origin_lats, origin_lons = load_geo_points(origin)
+        st_lats, st_lons = load_geo_points(stations)
+        c_lats, c_lons = load_geo_points(coastline)
         return cls(
             [origin_lats[0], origin_lons[0]],
             [st_lats, st_lons],

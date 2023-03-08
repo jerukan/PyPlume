@@ -19,6 +19,7 @@ from parcels import (
 )
 
 from pyplume import get_logger, utils
+from pyplume.dataloaders import load_geo_points
 from pyplume.postprocess import ParticleResult
 from pyplume.kernels import DeleteParticle, DeleteParticleVerbose
 
@@ -144,7 +145,7 @@ class ParcelsSimulation:
 
         # load spawn points
         if isinstance(spawn_points, (str, dict)):
-            lats, lons = utils.load_geo_points(
+            lats, lons = load_geo_points(
                 **utils.wrap_in_kwarg(spawn_points, key="data")
             )
             spawn_points = np.array([lats, lons]).T

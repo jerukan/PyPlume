@@ -6,6 +6,7 @@ from pathlib import Path
 import os
 import subprocess
 import sys
+from typing import Generator
 
 import numpy as np
 from shapely.geometry import LineString
@@ -20,23 +21,6 @@ from pyplume.plot_features import *
 logger = get_logger(__name__)
 
 
-class TimedFrame:
-    """Class that stores information about a single simulation plot"""
-
-    def __init__(self, time, path, lats, lons, ages=None, **kwargs):
-        self.time = time
-        self.path = path
-        self.lats = list(lats)
-        self.lons = list(lons)
-        # optional data if it doesn't exist
-        self.ages = [] if ages is None else list(ages)
-        # path to other plots that display other features about the frame
-        self.paths_feat = kwargs
-
-    def __repr__(self):
-        return f"([{self.path}] at [{self.time}])"
-
-
 class ParticleResult:
     """
     Wraps the output of a particle file to make visualizing and analyzing the results easier.
@@ -47,7 +31,6 @@ class ParticleResult:
 
     # for the main plot that draws the particles per frame
     MAIN_PARTICLE_PLOT_NAME = "particles"
-    counter = 0
 
     def __init__(self, src, sim_result_dir=None, snapshot_interval=None):
         """
@@ -90,12 +73,11 @@ class ParticleResult:
 
         self.grid = None
         self.frames = None
-        self.plot_features = {
-            ParticleResult.MAIN_PARTICLE_PLOT_NAME: ParticlePlotFeature(
-                particle_size=20
-            )
-        }
+        self.plots = {}
+        self.plot_paths = {}
         self.coastline = None
+        # to avoid plot label conflicts
+        self.counter = 0
 
     def add_coastline(self, lats, lons):
         """Adds a single coastline for processing collisions"""
@@ -164,186 +146,77 @@ class ParticleResult:
             # raise ValueError("Time out of bounds")
             pass
 
-    def add_plot_feature(self, feature: PlotFeature, label=None):
-        if label is None:
-            self.plot_features[
-                f"{feature.__class__.__name__}_{ParticleResult.counter}"
-            ] = feature
-            ParticleResult.counter += 1
-        else:
-            self.plot_features[label] = feature
-
-    def plot_feature(
-        self,
-        feature: PlotFeature,
-        fig,
-        ax,
-        t: np.datetime64,
-        lats,
-        lons,
-        lifetimes,
-        lifetime_max,
-    ):
-        """Plots a feature at a given time."""
-        feature.add_to_plot(fig, ax, t, lats, lons)
-        fig_feat, ax_feat = feature.generate_external_plot(
-            t, lats, lons, lifetimes=lifetimes, lifetime_max=lifetime_max
-        )
-        return fig_feat, ax_feat
-
-    def plot_at_t(self, t, domain=None, land=True, lifetime_max=None):
-        """
-        Create figures of the simulation at a particular time.
-        TODO when drawing land, prioritize coastline instead of using cartopy
-
-        Args:
-            t (int or np.datetime64): the int will index the time list
-        """
-        if isinstance(t, int):
-            t = self.times[t]
-        mask = self.data_vars["time"] == t
-        curr_lats = self.data_vars["lat"][mask]
-        curr_lons = self.data_vars["lon"][mask]
-        lifetimes = (
-            self.data_vars["lifetime"][mask] / 86400
-            if "lifetime" in self.data_vars
-            else None
-        )
-        fig, ax = plotting.plot_vectorfield(
-            self.grid.dataset, show_time=t, domain=domain, land=land
-        )
-
-        figs = {}
-        axs = {}
-        # get feature plots
-        for name, feature in self.plot_features.items():
-            fig_feat, ax_feat = self.plot_feature(
-                feature, fig, ax, t, curr_lats, curr_lons, lifetimes, lifetime_max
-            )
-            figs[name] = fig_feat
-            axs[name] = ax_feat
-        return fig, ax, figs, axs
-
     # TODO finish
     def plot_trajectory(self, idxs, domain=None, land=True):
         if not isinstance(idxs, list):
             idxs = [idxs]
         plotting.draw_trajectories
 
-    def save_at_t(self, t, i, save_dir, figsize, domain, land):
-        """Generate and save plots at a timestamp, given a bunch of information."""
-        lifetime_max = (
-            np.nanmax(self.data_vars["lifetime"]) / 86400
-            if "lifetime" in self.data_vars
-            else None
-        )
-        fig, _, figs, _ = self.plot_at_t(
-            t, domain=domain, land=land, lifetime_max=lifetime_max
-        )
-        savefile = (
-            utils.get_dir(save_dir / ParticleResult.MAIN_PARTICLE_PLOT_NAME)
-            / f"simframe_{i}.png"
-        )
-        plotting.draw_plt(savefile=savefile, fig=fig, figsize=figsize)
-        savefile_feats = {}
-        # plot and save every desired feature
-        for name, fig_feat in figs.items():
-            if fig_feat is not None:
-                savefile_feat = (
-                    utils.get_dir(save_dir / name) / f"simframe_{name}_{i}.png"
-                )
-                savefile_feats[name] = savefile_feat
-                plotting.draw_plt(savefile=savefile_feat, fig=fig_feat, figsize=figsize)
-        lats, lons = self.get_positions_time(t, query="at")
-        mask = self.data_vars["time"] == t  # lol idk just do it again
-        ages = None
-        if "lifetime" in self.data_vars:
-            ages = self.data_vars["lifetime"][mask]
-        self.frames.append(
-            TimedFrame(t, savefile, lats, lons, ages=ages, **savefile_feats)
-        )
-        return savefile, savefile_feats
+    def add_plot(self, resultplot, label=None):
+        if label is None:
+            label = f"{resultplot.__class__.__name__}_{self.counter}"
+            self.counter += 1
+        self.plots[label] = resultplot
+        self.plot_paths[label] = []
 
-    def generate_all_plots(
-        self, figsize=None, domain=None, land=True, clear_folder=False
-    ):
-        """
-        Generates plots and then saves them.
-        """
-        if self.sim_result_dir is None:
-            raise ValueError(
-                "Please specify a path for sim_result_dir to save the plots"
-            )
-        save_dir = self.sim_result_dir / "plots"
-        utils.get_dir(save_dir)
-        if clear_folder:
-            utils.delete_all_pngs(save_dir)
-        self.frames = []
+    def generate_plots(self, clear_folder=False):
+        for label, resultplot in self.plots.items():
+            if self.sim_result_dir is None:
+                raise ValueError(
+                    "Please specify a path for sim_result_dir to save the plots"
+                )
+            save_dir = self.sim_result_dir / "plots"
+            utils.get_dir(save_dir)
+            if clear_folder:
+                utils.delete_all_pngs(save_dir)
+            allplots = resultplot.generate_plots(self)
+            if isinstance(allplots, Generator):
+                for i, (fig, ax) in enumerate(allplots):
+                    savefile = (
+                        utils.get_dir(save_dir / label)
+                        / f"simframe_{i}.png"
+                    )
+                    self.plot_paths[label].append(savefile)
+                    plotting.draw_plt(savefile=savefile, fig=fig)
+            else:
+                figs, axs = allplots
+                for i, fig in enumerate(figs):
+                    savefile = (
+                        utils.get_dir(save_dir / label)
+                        / f"simframe_{i}.png"
+                    )
+                    self.plot_paths[label].append(savefile)
+                    plotting.draw_plt(savefile=savefile, fig=fig)
+
+    def get_plot_timestamps(self):
+        plot_times = []
         if self.snapshot_interval is not None:
-            # The delta time between each snapshot is defined in the parcels config. This lets us avoid
-            # the in-between timestamps where a single particle gets deleted.
-            total_plots = (
-                int(
-                    (self.times[-1] - self.times[0])
-                    / np.timedelta64(1, "s")
-                    / self.snapshot_interval
-                )
-                + 1
-            )
-            t = self.times[0]
-            i = 0
-            while t <= self.times[-1]:
-                savefile, savefile_feats = self.save_at_t(
-                    t, i, save_dir, figsize, domain, land
-                )
-                i += 1
-                t += np.timedelta64(self.snapshot_interval, "s")
+            # The delta time between each snapshot is defined in the parcels config.
+            # This lets us avoid the in-between timestamps where a single particle
+            # gets deleted.
+            guessed_interval = self.snapshot_interval
         else:
-            # If the delta time between each snapshot is unknown, we'll just use the unique times
-            # from the particle files.
-            for i in range(len(self.times)):
-                savefile, savefile_feats = self.save_at_t(
-                    self.times[i], i, save_dir, figsize, domain, land
-                )
-        return self.frames
+            # Guess the time interval if it's not given.
+            diffs = np.diff(self.times)
+            diff_vals, diff_counts = np.unique(diffs, return_counts=True)
+            idx_max = np.argmax(diff_counts)
+            guessed_interval = diff_vals[idx_max]
+        t = self.times[0]
+        while t <= self.times[-1]:
+            plot_times.append(t)
+            t += np.timedelta64(guessed_interval, "s")
+        # sometimes the final timestamp is an incomplete interval
+        # add it directly if it happens
+        if self.times[-1] != plot_times[-1]:
+            plot_times.append(self.times[-1])
+        return np.array(plot_times)
 
-    def generate_all_positions(self):
-        self.frames = []
-        if self.snapshot_interval is not None:
-            t = self.times[0]
-            i = 0
-            while t <= self.times[-1]:
-                lats, lons = self.get_positions_time(t, query="at")
-                mask = self.data_vars["time"] == t  # lol idk just do it again
-                ages = None
-                if "lifetime" in self.data_vars:
-                    ages = self.data_vars["lifetime"][mask]
-                self.frames.append(TimedFrame(t, None, lats, lons, ages=ages))
-                i += 1
-                t += np.timedelta64(self.snapshot_interval, "s")
-        else:
-            # If the delta time between each snapshot is unknown, we'll just use the unique times
-            # from the particle files.
-            for i in range(len(self.times)):
-                lats, lons = self.get_positions_time(self.times[i], query="at")
-                mask = self.data_vars["time"] == t  # lol idk just do it again
-                ages = None
-                if "lifetime" in self.data_vars:
-                    ages = self.data_vars["lifetime"][mask]
-                self.frames.append(
-                    TimedFrame(self.times[i], None, lats, lons, ages=ages)
-                )
-        return self.frames
-
-    def generate_gif(self, gif_delay=25):
+    def generate_gifs(self, gif_delay=25):
         """Uses imagemagick to generate a gif of the main simulation plot."""
-        gif_path = self.sim_result_dir / f"{ParticleResult.MAIN_PARTICLE_PLOT_NAME}.gif"
-        input_paths = [str(frame.path) for frame in self.frames]
-        utils.generate_gif(input_paths, gif_path, gif_delay=gif_delay)
-        for feat in self.frames[0].paths_feat.keys():
-            feat_gif_path = self.sim_result_dir / f"{feat}.gif"
-            feat_input_paths = [str(frame.paths_feat[feat]) for frame in self.frames]
-            utils.generate_gif(feat_input_paths, feat_gif_path, gif_delay=gif_delay)
+        for label, resultplot_paths in self.plot_paths.items():
+            gif_path = self.sim_result_dir / f"{label}.gif"
+            input_paths = [str(path) for path in resultplot_paths]
+            utils.generate_gif(input_paths, gif_path, gif_delay=gif_delay)
 
     def write_feature_dists(self, feat_names):
         for feat_name in feat_names:
@@ -381,6 +254,8 @@ class ParticleResult:
         new_ds.to_netcdf(path=self.path if path is None else path)
 
     def get_filtered_data_time(self, t: np.datetime64, query="at"):
+        if isinstance(t, int):
+            t = self.times[t]
         valid_queries = ("at", "before", "after")
         if query not in valid_queries:
             raise ValueError(
@@ -393,8 +268,8 @@ class ParticleResult:
         elif query == "after":
             mask = self.data_vars["time"] >= t
         filtered = {}
-        for dvar in self.data_vars.keys():
-            filtered[dvar] = self.data_vars[dvar][mask]
+        for dvar, dval in self.data_vars.items():
+            filtered[dvar] = dval[mask]
         return filtered
 
     def get_positions_time(self, t: np.datetime64, query="at"):

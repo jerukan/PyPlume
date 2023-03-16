@@ -15,17 +15,17 @@ ocean_data:
       data: data/winds1.mat
       ratio: 0.15
       incoming: False
-  - name: hfr hycom filled
-    data: data/field_netcdfs/hfr_2023_03_new.nc
-    allow_time_extrapolation: false
-    time_range: [2023-03-03T03, 2023-03-04T06]
-    gapfill_steps:
-      - path: pyplume.gapfilling.LowResOversample
-        args:
-          references: [data/field_netcdfs/FMRC_GLBy0.08_930_FMRC_best (2).nc4]
-    wind:
-      path: data/mets1.mat
-      ratio: 0.03
+  # - name: hfr hycom filled
+  #   data: data/field_netcdfs/hfr_2023_03_new.nc
+  #   allow_time_extrapolation: false
+  #   time_range: [2023-03-03T03, 2023-03-04T06]
+  #   gapfill_steps:
+  #     - path: pyplume.gapfilling.LowResOversample
+  #       args:
+  #         references: [data/field_netcdfs/FMRC_GLBy0.08_930_FMRC_best (2).nc4]
+  #   wind:
+  #     data: data/mets1.mat
+  #     ratio: 0.03
 parcels_config:
   save_dir: results
   particle_type: pyplume.kernels.ThreddsParticle
@@ -49,15 +49,13 @@ parcels_config:
 postprocess_config: {}
 save_snapshots: true
 plotting_config:
-  # draw_coasts: true
-  plot_features:
-    - path: pyplume.plot_features.NanSeparatedFeature
-      label: coastline
-      args:
-        data: data/palaucoastline1.mat
-        color: k
-    - path: pyplume.plot_features.ScatterPlotFeature
-      label: rescue_pos
-      args:
-        data: [6.713889, 133.6439]
-        color: r
+  plots:
+    - type: pyplume.resultplots.ParticlePlot
+      label: particleplots
+      coastline: data/palaucoastline1.mat
+      draw_currents: true
+      addons:
+        - type: pyplume.resultplots.AddScatter
+          data: [6.713889, 133.6439]
+          color: r
+          size: 20

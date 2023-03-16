@@ -194,13 +194,13 @@ def load_wind_dataset(data, **kwargs):
     key_mappings = guess_wind_keys(ds.data_vars)
     inv_map = {v: k for k, v in key_mappings.items()}
     ds = ds.rename_vars(name_dict=inv_map)
-    if ("dir" in key_mappings or "mag" in key_mappings) and (
-        "U" in key_mappings or "V" in key_mappings
+    if ("dir" in ds.data_vars or "mag" in ds.data_vars) and (
+        "U" in ds.data_vars or "V" in ds.data_vars
     ):
         raise ValueError(
             "It is ambiguous if both polar and cartesian velocity information are provided in the wind dataset."
         )
-    if "dir" in key_mappings:
+    if "dir" in ds.data_vars:
         if degrees:
             dirs = np.deg2rad(ds["dir"])
         else:

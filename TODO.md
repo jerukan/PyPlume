@@ -7,4 +7,4 @@
 4. allow extrapolation and fix related issues
 5. fix anomalies with oversampling gapfiller
 6. tear apart plot_features... it's too abstract
-7. question the usefulness of the DataSource
+7. question the usefulness of the DataSource (DONE)

@@ -175,18 +175,20 @@ def process_results(sim, cfg):
         handle_postprocessing(sim.parcels_result, postprocess_cfg)
     sim.parcels_result.write_data(override=True)
     if cfg["save_snapshots"]:
-        plotting_cfg = cfg["plotting_config"]
-        feature_cfgs = plotting_cfg.get("plot_features", None)
-        if feature_cfgs not in EMPTY:
-            features, labels = construct_features_from_configs(*feature_cfgs)
-            for feature, label in zip(features, labels):
-                sim.parcels_result.add_plot_feature(feature, label=label)
-        sim.parcels_result.generate_all_plots(
-            domain=plotting_cfg.get("shown_domain", None),
-            land=plotting_cfg.get("draw_coasts", False),
-            figsize=(13, 8),
-        )
+        plotting_cfg = copy.deepcopy(cfg["plotting_config"])
+        resultplots = plotting_cfg.get("plots", [])
+        for resultplot_cfg in resultplots:
+            resultplot_class = utils.import_attr(resultplot_cfg.pop("type"))
+            resultplot_label = resultplot_cfg.pop("label", None)
+            resultplot_addons = resultplot_cfg.pop("addons", [])
+            resultplot = resultplot_class(**resultplot_cfg)
+            for addon_cfg in resultplot_addons:
+                addon_class = utils.import_attr(addon_cfg.pop("type"))
+                addon = addon_class(**addon_cfg)
+                resultplot.add_addon(addon)
+            sim.parcels_result.add_plot(resultplot, label=resultplot_label)
+        sim.parcels_result.generate_plots()
         try:
-            logger.info(sim.parcels_result.generate_gif())
+            logger.info(sim.parcels_result.generate_gifs())
         except FileNotFoundError:
             logger.info("magick is not installed, gif will not be generated")

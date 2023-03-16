@@ -234,6 +234,7 @@ def plot_vectorfield(
     fig=None,
     pos=None,
     cbar=True,
+    allow_time_extrapolation=False,
 ):
     if domain is None:
         domain = generate_domain_datasets([dataset])
@@ -246,17 +247,38 @@ def plot_vectorfield(
     interp = False
     if isinstance(show_time, int):
         idx = show_time
+        # provided index is outside of the time array
+        if idx < 0 or idx >= len(dataset["time"]):
+            if allow_time_extrapolation:
+                idx = min(max(0, idx), len(dataset["time"]) - 1)
+            else:
+                raise ValueError("Tried plotting vector field oustide of time range. Set allow_time_extrapolation=True")
         show_time = dataset["time"][idx].values
     else:
         if isinstance(show_time, str):
             show_time = np.datetime64(show_time)
-        found_idxs = np.where(dataset["time"] == show_time)
-        if len(found_idxs[0]) == 0:
-            idx = np.where(dataset["time"] <= show_time)[0][-1]
-            interp = True
+        found_idxs = np.where(dataset["time"] == show_time)[0]
+        if len(found_idxs) == 0:
+            before_idxs = np.where(dataset["time"] <= show_time)[0]
+            # provided time is below time range
+            if len(before_idxs) == 0:
+                if allow_time_extrapolation:
+                    idx = 0
+                else:
+                    raise ValueError("Tried plotting vector field oustide of time range. Set allow_time_extrapolation=True")
+            else:
+                idx = before_idxs[-1]
+                interp = True
         else:
-            idx = found_idxs[0][0] if show_time is not None else 0
+            idx = found_idxs[0] if show_time is not None else 0
     if interp:
+        # provided time is above time range
+        if (idx + 1) >= len(dataset["time"]):
+            if allow_time_extrapolation:
+                U = dataset["U"][idx]
+                V = dataset["V"][idx]
+            else:
+                raise ValueError("Tried plotting vector field oustide of time range. Set allow_time_extrapolation=True")
         lower_time = dataset["time"][idx].values
         upper_time = dataset["time"][idx + 1].values
         dist = (show_time - lower_time) / np.timedelta64(1, "s")
@@ -269,14 +291,16 @@ def plot_vectorfield(
         V = dataset["V"][idx]
     lats = dataset["lat"]
     lons = dataset["lon"]
-    spd = U**2 + V**2
-    speed = np.where(spd > 0, np.sqrt(spd), 0)
-    vmin = speed.min() if vmin is None else vmin
-    vmax = speed.max() if vmax is None else vmax
+    allspd = dataset["U"]**2 + dataset["V"]**2
+    allspeed = np.where(allspd > 0, np.sqrt(allspd), 0)
+    vmin = allspeed.min() if vmin is None else vmin
+    vmax = allspeed.max() if vmax is None else vmax
     ncar_cmap = copy.copy(plt.cm.gist_ncar)
     ncar_cmap.set_over("k")
     ncar_cmap.set_under("w")
     x, y = np.meshgrid(lons, lats)
+    spd = U**2 + V**2
+    speed = np.where(spd > 0, np.sqrt(spd), 0)
     u = np.where(speed > 0.0, U / speed, 0)
     v = np.where(speed > 0.0, V / speed, 0)
     cs = ax.quiver(
@@ -293,19 +317,8 @@ def plot_vectorfield(
     cs.set_clim(vmin, vmax)
 
     if cbar:
-        cbar_ax = fig.add_axes([0, 0, 0, 0])
-        # fig.subplots_adjust(hspace=0, wspace=0, top=0.925, left=0.1)
-        plt.colorbar(cs, cax=cbar_ax, label="Current vector velocity (m/s)")
-
-        def resize_colorbar(event):
-            plt.draw()
-            posn = ax.get_position()
-            cbar_ax.set_position(
-                [posn.x0 + posn.width + 0.01, posn.y0, 0.04, posn.height]
-            )
-
-        fig.canvas.mpl_connect("resize_event", resize_colorbar)
-        resize_colorbar(None)
+        vel_cbar = plt.colorbar(cs)
+        vel_cbar.set_label("Current vector velocity (m/s)")
 
     if titlestr is None:
         titlestr = ""

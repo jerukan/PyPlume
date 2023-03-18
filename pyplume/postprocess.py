@@ -13,9 +13,7 @@ from shapely.geometry import LineString
 import xarray as xr
 
 from pyplume import get_logger, plotting, utils
-from pyplume.constants import *
 from pyplume.dataloaders import SurfaceGrid
-from pyplume.plot_features import *
 
 
 logger = get_logger(__name__)
@@ -160,33 +158,29 @@ class ParticleResult:
         self.plot_paths[label] = []
 
     def generate_plots(self, clear_folder=False):
+        if self.sim_result_dir is None:
+            raise ValueError(
+                "Please specify a path for sim_result_dir to save the plots"
+            )
         for label, resultplot in self.plots.items():
-            if self.sim_result_dir is None:
-                raise ValueError(
-                    "Please specify a path for sim_result_dir to save the plots"
-                )
             save_dir = self.sim_result_dir / "plots"
             utils.get_dir(save_dir)
             if clear_folder:
                 utils.delete_all_pngs(save_dir)
-            allplots = resultplot.generate_plots(self)
+            allplots = resultplot(self)
             if isinstance(allplots, Generator):
                 for i, (fig, ax) in enumerate(allplots):
-                    savefile = (
-                        utils.get_dir(save_dir / label)
-                        / f"simframe_{i}.png"
-                    )
+                    savefile = utils.get_dir(save_dir / label) / f"simframe_{i}.png"
                     self.plot_paths[label].append(savefile)
                     plotting.draw_plt(savefile=savefile, fig=fig)
             else:
                 figs, axs = allplots
                 for i, fig in enumerate(figs):
-                    savefile = (
-                        utils.get_dir(save_dir / label)
-                        / f"simframe_{i}.png"
-                    )
+                    savefile = utils.get_dir(save_dir / label) / f"simframe_{i}.png"
                     self.plot_paths[label].append(savefile)
                     plotting.draw_plt(savefile=savefile, fig=fig)
+            print(f"Completed generating plots for {label} inside {save_dir}")
+            logger.info(f"Completed generating plots for {label} inside {save_dir}")
 
     def get_plot_timestamps(self):
         plot_times = []
@@ -217,20 +211,6 @@ class ParticleResult:
             gif_path = self.sim_result_dir / f"{label}.gif"
             input_paths = [str(path) for path in resultplot_paths]
             utils.generate_gif(input_paths, gif_path, gif_delay=gif_delay)
-
-    def write_feature_dists(self, feat_names):
-        for feat_name in feat_names:
-            feat = self.plot_features[feat_name]
-            if not isinstance(feat, ScatterPlotFeature):
-                continue
-            dists = np.zeros(self.shape, dtype=float)
-            for time in self.times:
-                mask = self.data_vars["time"] == time
-                dists_t = feat.get_closest_dists(
-                    self.data_vars["lat"][mask], self.data_vars["lon"][mask], time=time
-                )
-                dists[mask] = dists_t
-            self.data_vars[f"{feat_name}_distances"] = dists
 
     def write_data(self, path=None, override=False):
         """

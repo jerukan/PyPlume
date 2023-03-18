@@ -8,9 +8,12 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import warnings
 
 import numpy as np
 import scipy.io
+from shapely.geometry import LineString, Point
+from shapely.ops import nearest_points
 import xarray as xr
 
 
@@ -27,7 +30,7 @@ def import_attr(path):
     return getattr(module, var_str)
 
 
-def get_points(points, dim=2, transposed=None):
+def get_points(points, dim=2, transpose=None):
     """
     Given N points of dimension d, the data can either be passed in as an (N,d) or (d,N)
     dimensional array.
@@ -44,17 +47,23 @@ def get_points(points, dim=2, transposed=None):
         points = np.array([points])
     if len(points.shape) > 2:
         raise ValueError(f"Incorrect points dimension {points.shape}")
-    if transposed is None:
-        if points.shape[1] == dim:
+    if transpose is None:
+        # guess
+        if points.shape[0] == points.shape[1] and points.shape[0] == dim:
             # if the points happen to be (d,d), just guess data was passed in as collection of pairs
-            logger.info(
-                f"Shape of points is ambiguous: ({dim}, {dim}). Will transpose by default."
+            warnings.warn(
+                f"Shape of points is ambiguous: {points}. Will transpose by default."
             )
-            return points.T[0], points.T[1]
-        return points[0], points[1]
-    if transposed:
-        return points.T[0], points.T[1]
-    return points[0], points[1]
+            return (points.T[d] for d in range(dim))
+        if points.shape[1] == dim:
+            # assume (n, d)
+            return (points.T[d] for d in range(dim))
+        if points.shape[0] == dim:
+            # assume (d, n)
+            return (points[d] for d in range(dim))
+    if transpose:
+        return (points.T[d] for d in range(dim))
+    return (points[d] for d in range(dim))
 
 
 def haversine(lat1, lat2, lon1, lon2):
@@ -268,3 +277,74 @@ def convert360to180(val):
 
 def convert180to360(val):
     return val % 360
+
+
+class GeoPointCollection:
+    def __init__(self, lats, lons, connected=False):
+        self.lats = np.array(lats)
+        self.lons = np.array(lons)
+        self.points = np.array([lats, lons]).T
+        # TODO: scipy is causing kernel crashes in jupyter
+        self.kdtree = scipy.spatial.KDTree(self.points)
+        if connected:
+            self.segments = LineString(np.array([self.lons, self.lats]).T)
+        else:
+            self.segments = None
+
+    def count_near(self, lats, lons, track_dist):
+        """
+        Counts the number of particles close to each point in this feature.
+
+        Args:
+            lats: particle lats
+            lons: particle lons
+
+        Returns:
+            np.ndarray: array with length equal to the number of points in this feature.
+                Each index represents the number of particles within tracking distance
+                of that point.
+        """
+        lats = np.array(lats)
+        lons = np.array(lons)
+        counts = np.zeros(len(self.lats))
+        for i, point in enumerate(self.points):
+            close = haversine(lats, point[0], lons, point[1]) <= track_dist
+            counts[i] += close.sum()
+        return counts
+
+    def get_closest_dists(self, lats, lons):
+        """
+        Given a lats, lons point, return the on this feature closest to the point.
+        If segments is true, it will consider all the line segments too.
+        """
+        lats = np.array(lats)
+        lons = np.array(lons)
+        if self.segments is not None:
+            dists = np.full(len(lats), np.nan)
+            for i, (lat, lon) in enumerate(zip(lats, lons)):
+                point = Point(lon, lat)
+                # check distances to line segments
+                if self.segments is not None:
+                    seg_closest, _ = nearest_points(self.segments, point)
+                    dists[i] = haversine(point.y, seg_closest.y, point.x, seg_closest.x)
+            return dists
+        # check distance to closest point
+        closest_idxs = self.kdtree.query(np.array([lats, lons]).T)[1]
+        pnts = self.points[(closest_idxs)]
+        return haversine(lats, pnts.T[0], lons, pnts.T[1])
+
+    def get_all_dists(self, lats, lons):
+        """
+        Returns a 2-d array where each row is each input particle's distance is to
+        a point in this feature.
+
+        Args:
+            lats: particle lats
+            lons: particle lons
+        """
+        # an inefficient python loop implementation
+        dists = np.zeros((len(self.lats), len(lats)), dtype=np.float64)
+        for i in range(dists.shape[0]):
+            for j in range(dists.shape[1]):
+                dists[i][j] = haversine(self.lats[i], lats[j], self.lons[i], lons[j])
+        return dists

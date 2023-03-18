@@ -172,12 +172,18 @@ WIND_MAPPINGS = {
 }
 
 
-def guess_wind_keys(keys):
+def guess_wind_keys(keys, exclude=None):
+    if exclude is None:
+        exclude = []
     mappings = {}
     checked = set()
     for key in keys:
         for target, possible in WIND_MAPPINGS.items():
-            if key.lower() in possible and target not in checked:
+            if (
+                target not in exclude
+                and key.lower() in possible
+                and target not in checked
+            ):
                 mappings[target] = key
                 checked.add(target)
     return _remove_redundant_maps(mappings)
@@ -233,16 +239,20 @@ COORD_MAPPINGS = {
 CHUNK_SIZE_DEFAULT = "100MB"
 
 
-def guess_ocean_datavars(keys):
+def guess_ocean_datavars(keys, exclude=None):
+    if exclude is None:
+        exclude = []
     mappings = {}
     # look for keys in the format of "u total", "v total"
     # or just find keys that are "u" or "v"
     # total currents
     for key in keys:
-        if ("u" in key.lower() and "tot" in key.lower()) or ("u" == key.lower()):
-            mappings["U"] = key
-        if ("v" in key.lower() and "tot" in key.lower()) or ("v" == key.lower()):
-            mappings["V"] = key
+        if "U" not in exclude:
+            if ("u" in key.lower() and "tot" in key.lower()) or ("u" == key.lower()):
+                mappings["U"] = key
+        if "V" not in exclude:
+            if ("v" in key.lower() and "tot" in key.lower()) or ("v" == key.lower()):
+                mappings["V"] = key
     # attempt to look for uv keys, assume they look like "usomething" or "vsomething"
     def find_containing(target):
         found = []
@@ -252,26 +262,32 @@ def guess_ocean_datavars(keys):
         return found
 
     for found in ("U", "V"):
-        if found not in mappings.keys():
+        if found not in exclude and found not in mappings.keys():
             possible = find_containing(found.lower())
             if len(possible) < 1:
                 raise ValueError(
-                    f"No column for '{found}' data found in {keys}. Specify the U and V data keys with 'u_key' and 'v_key'!"
+                    f"No column for '{found}' data found in {keys}.\nSpecify the U and V data keys with 'u_key' and 'v_key'!"
                 )
             if len(possible) > 1:
                 raise ValueError(
-                    f"Column for '{found}' data ambiguous in {keys}. Specify the U and V data keys with 'u_key' and 'v_key'!"
+                    f"Column for '{found}' data ambiguous in {keys}.\nSpecify the U and V data keys with 'u_key' and 'v_key'!"
                 )
             mappings[found] = possible[0]
     return _remove_redundant_maps(mappings)
 
 
-def guess_ocean_coords(keys):
+def guess_ocean_coords(keys, exclude=None):
+    if exclude is None:
+        exclude = []
     mappings = {}
     checked = set()
     for key in keys:
         for target, possible in COORD_MAPPINGS.items():
-            if key.lower() in possible and target not in checked:
+            if (
+                target not in exclude
+                and key.lower() in possible
+                and target not in checked
+            ):
                 mappings[target] = key
                 checked.add(target)
     return _remove_redundant_maps(mappings)
@@ -298,14 +314,27 @@ class SimpleLoad:
 
 class DefaultLoad:
     def __init__(
-        self, uv_map=None, coord_map=None, drop_vars=None, time_chunk_size=None
+        self,
+        u_key=None,
+        v_key=None,
+        time_key=None,
+        lat_key=None,
+        lon_key=None,
+        depth_key=None,
+        drop_vars=None,
+        time_chunk_size=None,
     ):
-        self.drop_vars = drop_vars if drop_vars is not None else set()
+        self.drop_vars = drop_vars
         if time_chunk_size is None:
             time_chunk_size = CHUNK_SIZE_DEFAULT
         self.time_chunks = parse_time_chunk_size(time_chunk_size)
-        self.uv_map = uv_map
-        self.coord_map = coord_map
+        self.uv_map = {"U": u_key, "V": v_key}
+        self.coord_map = {
+            "time": time_key,
+            "lat": lat_key,
+            "lon": lon_key,
+            "depth": depth_key,
+        }
 
     def __call__(self, src):
         if isinstance(src, xr.Dataset):
@@ -319,23 +348,35 @@ class DefaultLoad:
                 errmsg = str(e)
                 if "decode time units" in errmsg.lower():
                     raise ValueError(
-                        "There may be an issue with decoding times in one of the variables. Drop any unnecessary time variables with 'drop_vars'!"
+                        "There was an issue with decoding times in one of the variables. Drop any unnecessary time variables with 'drop_vars'!"
                     ) from e
                 if "did not find a match" in errmsg.lower():
                     raise ValueError(
                         f"Could not open {src}. Are you opening a NetCDF file and is the path/url correct?"
                     ) from e
                 raise e
-        if self.uv_map is None:
-            datavar_map = guess_ocean_datavars(ds.data_vars)
-        else:
-            datavar_map = _remove_redundant_maps(self.uv_map)
+        datavar_map = {}
+        for key, val in self.uv_map.items():
+            if val is not None:
+                datavar_map[key] = val
+        guessed_datavars = guess_ocean_datavars(
+            ds.data_vars, exclude=datavar_map.keys()
+        )
+        for key, val in guessed_datavars.items():
+            datavar_map[key] = val
+        datavar_map = _remove_redundant_maps(datavar_map)
         inv_datavar_map = {v: k for k, v in datavar_map.items()}
-        if self.coord_map is None:
-            coord_map = guess_ocean_coords(ds.coords)
-        else:
-            coord_map = _remove_redundant_maps(self.coord_map)
+
+        coord_map = {}
+        for key, val in self.coord_map.items():
+            if val is not None:
+                coord_map[key] = val
+        guessed_coords = guess_ocean_coords(ds.coords, exclude=coord_map.keys())
+        for key, val in guessed_coords.items():
+            coord_map[key] = val
+        coord_map = _remove_redundant_maps(coord_map)
         inv_coord_map = {v: k for k, v in coord_map.items()}
+
         ds = ds.rename(inv_datavar_map)
         ds = ds.rename(inv_coord_map)
         return ds
@@ -502,7 +543,7 @@ class DataLoader:
         lat_range=None,
         lon_range=None,
         inclusive=True,
-        **_,
+        **kwargs,
     ):
         """
         Args:
@@ -516,7 +557,9 @@ class DataLoader:
             self.lat_range = lat_range
             self.lon_range = lon_range
         self.inclusive = inclusive
-        self.load_method = load_method if load_method is not None else DefaultLoad()
+        self.load_method = (
+            load_method if load_method is not None else DefaultLoad(**kwargs)
+        )
         if isinstance(dataset, xr.Dataset):
             self.full_dataset = dataset
         elif isinstance(dataset, (str, Path)):
@@ -585,16 +628,14 @@ class DataLoader:
         return mask
 
     def save(self, path):
-        logger.info(
-            f"Megabytes to save for {self}: {self.dataset.nbytes / 1024 / 1024}"
-        )
+        logger.info(f"{self.dataset.nbytes / 1024 / 1024} megabytes to save for {self}")
         result = self.dataset.to_netcdf(path)
         logger.info(f"Finished save for {self}")
         return result
 
     def save_mask(self, path, num_samples=None):
         mask = self.get_mask(num_samples=num_samples)
-        logger.info(f"Megabytes to save for mask {self}: {mask.nbytes / 1024 / 1024}")
+        logger.info(f"{mask.nbytes / 1024 / 1024} megabytes to save for mask {self}")
         with open(path, "wb") as f:
             result = np.save(f, mask)
             logger.info(f"Finished save for {self}")

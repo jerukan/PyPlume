@@ -324,7 +324,7 @@ class ParcelsSimulation:
             self.kernel,
             runtime=timedelta(seconds=runtime),
             dt=timedelta(seconds=self.simulation_dt),
-            recovery={ErrorCode.ErrorOutOfBounds: DeleteParticleVerbose},
+            recovery={ErrorCode.ErrorOutOfBounds: DeleteParticle},
             output_file=self.pfile,
         )
 

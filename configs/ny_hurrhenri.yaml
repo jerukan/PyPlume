@@ -70,9 +70,20 @@ parcels_config:
 postprocess_config: {}
 save_snapshots: true
 plotting_config:
-  shown_domain:
-    S: 38.162201
-    N: 41.520008
-    W: -75.709632
-    E: -69.723751
-  draw_coasts: true
+  plots:
+    - type: pyplume.resultplots.ParticlePlot
+      label: particleplots
+      coastline: true
+      draw_currents: true
+      domain:
+        S: 38.162201
+        N: 41.520008
+        W: -75.709632
+        E: -69.723751
+    - type: pyplume.resultplots.CumulativeParticleDensityPlot
+      domain:
+        S: 38.162201
+        N: 41.520008
+        W: -75.709632
+        E: -69.723751
+      coastline: true

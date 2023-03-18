@@ -25,7 +25,6 @@ from pyplume.dataloaders import (
 )
 import pyplume.utils as utils
 from pyplume.simulation import ParcelsSimulation
-from pyplume.plot_features import BuoyPathFeature, construct_features_from_configs
 from pyplume.gapfilling import Gapfiller
 
 
@@ -54,38 +53,16 @@ def load_ocean_cfg(cfg):
     ds_path = cfg["data"]
     del cfg["data"]
     boundary_condition = cfg.pop("boundary_condition", None)
-    dsource = cfg.pop("datasource", None)
-    if dsource is None:
-        u_key = cfg.pop("u_key", None)
-        v_key = cfg.pop("v_key", None)
-        if u_key is None and v_key is None:
-            uv_map = None
-        elif u_key is not None and v_key is not None:
-            uv_map = {"U": u_key, "V": v_key}
-        else:
-            raise ValueError(
-                "You cannot only specify either a U or V key, you must define both."
-            )
-        time_key = cfg.pop("time_key", None)
-        lat_key = cfg.pop("lat_key", None)
-        lon_key = cfg.pop("lon_key", None)
-        if time_key is None and lat_key is None and lon_key is None:
-            coord_map = None
-        elif time_key is not None and lat_key is not None and lon_key is not None:
-            coord_map = {"time": time_key, "lat": lat_key, "lon": lon_key}
-        else:
-            raise ValueError(
-                "You cannot only specify either a time, lat, or lon key, you must define them all."
-            )
-        drop_vars = cfg.pop("drop_vars", None)
-        load_method = DefaultLoad(uv_map=uv_map, coord_map=coord_map, drop_vars=drop_vars)
-    ds = DataLoader(ds_path, load_method=load_method, **cfg).dataset
+    alongshore = cfg.pop("alongshore", None)
+    allow_time_extrapolation = cfg.pop("allow_time_extrapolation", False)
+    wind_cfg = cfg.pop("wind", None)
+    ds = DataLoader(ds_path, **cfg).dataset
     gapfiller = Gapfiller.load_from_config(*cfg.get("gapfill_steps", []))
     ds = gapfiller.execute(ds)
     fields = []
     # load alongshore current data if it exists
-    if cfg.get("alongshore", None) not in EMPTY:
-        alongshore_cfg = utils.get_path_cfg(cfg["alongshore"])
+    if alongshore not in EMPTY:
+        alongshore_cfg = utils.get_path_cfg(alongshore)
         alongshore_cfg["dataset"] = alongshore_cfg["path"]
         del alongshore_cfg["path"]
         coast_ds = DataLoader(**alongshore_cfg).dataset
@@ -105,14 +82,12 @@ def load_ocean_cfg(cfg):
         fv.units = Geographic()
         fuv = VectorField("CUV", fu, fv)
         fields = [fuv]
-    # set boundary condition of fields
-    allow_time_extrapolation = cfg.get("allow_time_extrapolation", False)
     fs_kwargs = {"allow_time_extrapolation": allow_time_extrapolation}
+    # set boundary condition of fields
     grid = SurfaceGrid(
         ds, other_fields=fields, boundary_condition=boundary_condition, **fs_kwargs
     )
     # load wind data if it exists
-    wind_cfg = cfg.get("wind", None)
     if wind_cfg not in EMPTY:
         # TODO fix this hardcoding help oh god
         wind_path = wind_cfg["data"]
@@ -129,6 +104,7 @@ def prep_sim_from_cfg(cfg):
         Path(parcels_cfg["save_dir"])
         / f"{simset_name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}"
     )
+    parcels_cfg["save_dir"].mkdir(parents=True)
     sims = []
     # ocean is required, no check
     ocean_cfgs = cfg["ocean_data"]
@@ -138,12 +114,16 @@ def prep_sim_from_cfg(cfg):
         ocean_cfgs = [utils.wrap_in_kwarg(ocean_cfgs, key="data")]
     for ocean_cfg in ocean_cfgs:
         ocean_cfg = utils.wrap_in_kwarg(ocean_cfg, key="data")
-        name = ocean_cfg.get("name", None)
+        name = ocean_cfg.pop("name", None)
         if name is None:
             raise ValueError("ocean_data config needs a name")
         grid = load_ocean_cfg(ocean_cfg)
         sim = ParcelsSimulation(name, grid, **parcels_cfg)
-        logger.info(f"Preparing simulation {name}")
+        logger.info(f"Prepared simulation {name}")
+        ds_path = sim.sim_result_dir / "ocean_dataset_modified.nc"
+        grid.dataset.to_netcdf(ds_path)
+        print(f"Modified ocean dataset netcdf saved to {ds_path}.")
+        logger.info(f"Modified ocean dataset netcdf saved to {ds_path}.")
         sims.append(sim)
     return sims
 
@@ -154,17 +134,17 @@ def handle_postprocessing(result, postprocess_cfg):
         result.add_coastline(lats, lons)
         result.process_coastline_collisions()
         logger.info("processed collisions")
-    if postprocess_cfg.get("buoy", None) not in EMPTY:
-        result.add_plot_feature(
-            BuoyPathFeature.load_from_external(
-                postprocess_cfg["buoy"],
-                backstep_delta=np.timedelta64(1, "h"),
-                backstep_count=12,
-            ),
-            label="buoy",
-        )
-        result.write_feature_dists(["buoy"])
-        logger.info("processed buoy distances")
+    # if postprocess_cfg.get("buoy", None) not in EMPTY:
+    #     result.add_plot_feature(
+    #         BuoyPathFeature.load_from_external(
+    #             postprocess_cfg["buoy"],
+    #             backstep_delta=np.timedelta64(1, "h"),
+    #             backstep_count=12,
+    #         ),
+    #         label="buoy",
+    #     )
+    #     result.write_feature_dists(["buoy"])
+    #     logger.info("processed buoy distances")
 
 
 def process_results(sim, cfg):

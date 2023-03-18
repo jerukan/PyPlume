@@ -6,13 +6,13 @@ import sys
 from typing import Tuple
 
 import numpy as np
+from parcels.tools.statuscodes import FieldOutOfBoundError, TimeExtrapolationError
 import xarray as xr
 
 from pyplume import get_logger
 from pyplume.dataloaders import slice_dataset, SurfaceGrid, DataLoader
 from pyplume.gapfill_algs import dctpls, eof_functions
 import pyplume.utils as utils
-import pyplume.thredds_data as thredds_data
 
 
 logger = get_logger(__name__)
@@ -73,11 +73,11 @@ class LowResOversample(GapfillStep):
             time_inbounds = (ref_times[0] <= targ_times[0]) and (
                 ref_times[-1] >= targ_times[-1]
             )
-            if not (lat_inbounds and lon_inbounds and time_inbounds):
-                raise ValueError(
-                    "Incorrect reference dimensions (reference dimension ranges \
-                    should be larger than the target's)"
-                )
+            # if not (lat_inbounds and lon_inbounds and time_inbounds):
+            #     raise ValueError(
+            #         "Incorrect reference dimensions (reference dimension ranges \
+            #         should be larger than the target's)"
+            #     )
 
     def process(
         self, u: np.ndarray, v: np.ndarray, target: xr.Dataset, **kwargs
@@ -92,7 +92,7 @@ class LowResOversample(GapfillStep):
             logger.info(f"Loading interp reference {ref}")
             if isinstance(ref, SurfaceGrid):
                 loaded_references.append(ref)
-            elif isinstance(ref, xr.Dataset):
+            elif isinstance(ref, (xr.Dataset, str)):
                 loaded_references.append(
                     SurfaceGrid(
                         # slice the data before loading into SurfaceGrid since it's huge
@@ -105,23 +105,13 @@ class LowResOversample(GapfillStep):
                         ).dataset
                     )
                 )
-            elif isinstance(ref, str):
-                # TODO generalize this
-                # slice the data before loading into SurfaceGrid since it's huge
-                ref = DataLoader(
-                    ref,
-                    datasource=thredds_data.SRC_THREDDS_HFRNET_UCSD,
-                    time_range=time_range,
-                    lat_range=lat_range,
-                    lon_range=lon_range,
-                    inclusive=True,
-                ).dataset
-                loaded_references.append(SurfaceGrid(ref))
             else:
                 raise TypeError(f"Unrecognized type for {ref}")
 
         self.do_validation(target, loaded_references)
-        invalid = utils.generate_mask_invalid(u)
+        # TODO: setting for invalid or everywhere
+        # invalid = utils.generate_mask_invalid(u)
+        invalid = np.isnan(u)
         num_invalid = invalid.sum()
         logger.info(f"total invalid values on target data: {num_invalid}")
 
@@ -132,11 +122,14 @@ class LowResOversample(GapfillStep):
         for ref in loaded_references:
             invalid_pos_new = np.where(invalid_interped)
             num_invalid_new = int(invalid_interped.sum())
-            arr_u = np.zeros(num_invalid_new)
-            arr_v = np.zeros(num_invalid_new)
+            arr_u = np.full(num_invalid_new, np.nan)
+            arr_v = np.full(num_invalid_new, np.nan)
             logger.info(f"Attempting to interpolate {num_invalid_new} points...")
             for i in range(num_invalid_new):
-                c_u, c_v = get_interped(i, target, ref, invalid_pos_new)
+                try:
+                    c_u, c_v = get_interped(i, target, ref, invalid_pos_new)
+                except (FieldOutOfBoundError, TimeExtrapolationError):
+                    continue
                 arr_u[i] = c_u
                 arr_v[i] = c_v
             target_interped_u[invalid_pos_new] = arr_u
@@ -186,9 +179,7 @@ class DCTPLS(GapfillStep):
         self, u: np.ndarray, v: np.ndarray, target: xr.Dataset, **kwargs
     ) -> Tuple[np.ndarray, np.ndarray]:
         logger.info(f"Filling {len(u)} fields...")
-        u_smooth, v_smooth = dctpls.smoothn(
-            u, v, **self.smoothn_kwargs
-        )
+        u_smooth, v_smooth = dctpls.smoothn(u, v, **self.smoothn_kwargs)
         target_smoothed_u = u_smooth
         target_smoothed_v = v_smooth
 
@@ -223,8 +214,12 @@ class DINEOF(GapfillStep):
         umask = np.ma.array(umask, mask=np.isnan(umask))
         vmask = v.reshape((t, latsz * lonsz))
         vmask = np.ma.array(vmask, mask=np.isnan(vmask))
-        ufilled, _ = eof_functions.fill_gappy_EOF(umask, self.modemax, self.maxits, self.thresh)
-        vfilled, _ = eof_functions.fill_gappy_EOF(vmask, self.modemax, self.maxits, self.thresh)
+        ufilled, _ = eof_functions.fill_gappy_EOF(
+            umask, self.modemax, self.maxits, self.thresh
+        )
+        vfilled, _ = eof_functions.fill_gappy_EOF(
+            vmask, self.modemax, self.maxits, self.thresh
+        )
         ufilled = ufilled.reshape((t, latsz, lonsz))
         vfilled = vfilled.reshape((t, latsz, lonsz))
         if self.exclude_oob:

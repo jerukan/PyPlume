@@ -1,0 +1,85 @@
+ocean_data:
+  - name: hfrnet uwls
+    data: data/field_netcdfs/tj_plume_1km_2022-09.nc
+    # Hurricane Kay timespan
+    time_range: [2022-09-08T06:00, 2022-09-12T00:00]
+    # gapfill_steps:
+    #   - path: pyplume.gapfilling.LowResOversample
+    #     args:
+    #       references:
+    #         - http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/2km/hourly/RTV/HFRADAR_US_West_Coast_2km_Resolution_Hourly_RTV_best.ncd
+    #         - http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd
+      # DCT-PLS gapfilling. It's very aggressive on smoothing.
+      # - path: pyplume.gapfilling.SmoothnStep
+      #   args:
+      #     mask: data/field_netcdfs/tj_plume_1km_2022-09_mask.npy
+    alongshore: data/field_netcdfs/tj_plume_alongshore_2022-09.nc
+  - name: hfrnet oi
+    data: data/field_netcdfs/oi_fields/Tot_SDLJ_202209.nc
+    time_range:
+      # Hurricane Kay timespan
+      - 2022-09-08T06:00
+      - 2022-09-12T00:00
+    alongshore: data/field_netcdfs/oi_fields/Tot_SDLJ_202209_alongshore.nc
+parcels_config:
+  save_dir: results
+  particle_type: pyplume.kernels.ThreddsParticle
+  kernels:
+    - pyplume.kernels.AdvectionRK4BorderCheck
+    - pyplume.kernels.AgeParticle
+    - pyplume.kernels.RandomWalk5cm
+    - pyplume.kernels.DeleteAfter3Days
+  # Hurricane Kay timespan
+  time_range: [2022-09-08T06:00, 2022-09-12T00:00]
+  repeat_dt: 3600
+  repetitions: -1
+  instances_per_spawn: 1
+  spawn_points: data/spawn_points_mats/glist90zj_pts_position_spawn.mat
+  simulation_dt: 600
+  snapshot_interval: 1800
+postprocess_config: {}
+save_snapshots: true
+plotting_config:
+  plots:
+    - type: pyplume.resultplots.ParticleWithTrackedPointsPlot
+      label: particleplots
+      coastline: data/coastOR2Mex_tijuana.mat
+      draw_currents: true
+      domain:
+        S: 32.525
+        N: 32.7
+        W: -117.27
+        E: -117.09
+      tracked_points: data/wq_stposition.mat
+      track_dist: 1000
+    - type: pyplume.resultplots.NearcoastDensityHistogram
+      origin: [32.556772435531, -117.13016494831]
+      tracked_points: data/wq_stposition.mat
+      coastline: data/coastline.mat
+      xlim: [-16, 4]
+      ymax: 1
+      track_dist: 1000
+      plot_size: [6.1, 2.5]
+    - type: pyplume.resultplots.StationTable
+      station_points: data/wq_stposition.mat
+      station_labels:
+        - Coronado (North Island)
+        - Silver Strand
+        - Silver Strand Beach
+        - Carnation Ave.
+        - Imperial Beach Pier
+        - Cortez Ave.
+        - End of Seacoast Dr.
+        - 3/4 mi. N. of TJ River Mouth
+        - Tijuana River Mouth
+        - Monument Rd.
+        - Board Fence
+        - Mexico
+      track_dist: 1000
+    - type: pyplume.resultplots.CumulativeParticleDensityPlot
+      domain: 
+        S: 32.525
+        N: 32.7
+        W: -117.27
+        E: -117.09
+      coastline: data/coastOR2Mex_tijuana.mat

@@ -1,0 +1,61 @@
+ocean_data:
+  - name: copernicus
+    data: data/field_netcdfs/cmems_mod_glo_phy_anfc_merged-uv_PT1H-i_1677893029445.nc
+    allow_time_extrapolation: false
+    time_range: [2023-03-03T03, 2023-03-04T06]
+    wind:
+      data: data/winds1.mat
+      ratio: 0.15
+      incoming: False
+  - name: hycom
+    data: data/field_netcdfs/FMRC_GLBy0.08_930_FMRC_best (2).nc4
+    allow_time_extrapolation: false
+    time_range: [2023-03-03T03, 2023-03-04T06]
+    wind:
+      data: data/winds1.mat
+      ratio: 0.15
+      incoming: False
+  # - name: hfr hycom filled
+  #   data: data/field_netcdfs/hfr_2023_03_new.nc
+  #   allow_time_extrapolation: false
+  #   time_range: [2023-03-03T03, 2023-03-04T06]
+  #   gapfill_steps:
+  #     - path: pyplume.gapfilling.LowResOversample
+  #       args:
+  #         references: [data/field_netcdfs/FMRC_GLBy0.08_930_FMRC_best (2).nc4]
+  #   wind:
+  #     data: data/mets1.mat
+  #     ratio: 0.03
+parcels_config:
+  save_dir: results
+  particle_type: pyplume.kernels.ThreddsParticle
+  kernels:
+    - parcels.AdvectionRK4
+    - pyplume.kernels.RandomWalk5cm
+  time_range: [2023-03-03T03, 2023-03-04T06]
+  repeat_dt: 3600
+  repetitions: 3
+  instances_per_spawn: 1
+  spawn_points:
+    - label: release
+      point: [6.95, 134.15]
+      pattern:
+        type: grid
+        args:
+          size: 15
+          gapsize: 0.005
+  simulation_dt: 600
+  snapshot_interval: 1800
+postprocess_config: {}
+save_snapshots: true
+plotting_config:
+  plots:
+    - type: pyplume.resultplots.ParticlePlot
+      label: particleplots
+      coastline: data/palaucoastline1.mat
+      draw_currents: true
+      addons:
+        - type: pyplume.resultplots.AddScatter
+          data: [6.713889, 133.6439]
+          color: r
+          size: 20

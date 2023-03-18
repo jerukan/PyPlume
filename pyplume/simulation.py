@@ -19,6 +19,7 @@ from parcels import (
 )
 
 from pyplume import get_logger, utils
+from pyplume.dataloaders import load_geo_points
 from pyplume.postprocess import ParticleResult
 from pyplume.kernels import DeleteParticle, DeleteParticleVerbose
 
@@ -144,7 +145,7 @@ class ParcelsSimulation:
 
         # load spawn points
         if isinstance(spawn_points, (str, dict)):
-            lats, lons = utils.load_geo_points(
+            lats, lons = load_geo_points(
                 **utils.wrap_in_kwarg(spawn_points, key="data")
             )
             spawn_points = np.array([lats, lons]).T
@@ -307,11 +308,13 @@ class ParcelsSimulation:
             or t_start > self.times[-1]
             or t_end > self.times[-1]
         ):
-            raise ValueError(
-                "Start and end times of simulation are out of bounds\n"
-                + f"ParcelsSimulation range: ({t_start}, {t_end})\n"
-                + f"Allowed domain: ({self.times[0]}, {self.times[-1]})"
-            )
+            # TODO time extrapolation
+            # raise ValueError(
+            #     "Start and end times of simulation are out of bounds\n"
+            #     + f"ParcelsSimulation range: ({t_start}, {t_end})\n"
+            #     + f"Allowed domain: ({self.times[0]}, {self.times[-1]})"
+            # )
+            pass
         t_start = (t_start - self.times[0]) / np.timedelta64(1, "s")
         t_end = (t_end - self.times[0]) / np.timedelta64(1, "s")
         return t_start, t_end
@@ -321,7 +324,7 @@ class ParcelsSimulation:
             self.kernel,
             runtime=timedelta(seconds=runtime),
             dt=timedelta(seconds=self.simulation_dt),
-            recovery={ErrorCode.ErrorOutOfBounds: DeleteParticleVerbose},
+            recovery={ErrorCode.ErrorOutOfBounds: DeleteParticle},
             output_file=self.pfile,
         )
 
@@ -362,7 +365,9 @@ class ParcelsSimulation:
         self.pfile.close()
         self.completed = True
         self.parcels_result = ParticleResult(
-            self.pfile_path, sim_result_dir=self.sim_result_dir, snapshot_interval=self.snapshot_interval
+            self.pfile_path,
+            sim_result_dir=self.sim_result_dir,
+            snapshot_interval=self.snapshot_interval,
         )
         self.parcels_result.add_grid(self.grid)
         return self.parcels_result

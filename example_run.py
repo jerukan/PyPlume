@@ -1,22 +1,20 @@
 from parcels import AdvectionRK4
 
 from pyplume.dataloaders import DataLoader, SurfaceGrid
-from pyplume.gapfilling import Gapfiller, LowResOversample, SmoothnStep
-from pyplume.kernels import AgeParticle, RandomWalk, ThreddsParticle
-from pyplume.plot_features import (
-    NanSeparatedFeature,
-    NearcoastDensityFeature,
-    StationFeature,
+from pyplume.gapfilling import Gapfiller, LowResOversample, DCTPLS
+from pyplume.kernels import AgeParticle, RandomWalk5cm, ThreddsParticle
+from pyplume.resultplots import (
+    ParticleWithTrackedPointsPlot,
+    NearcoastDensityHistogram,
+    StationTable,
 )
 from pyplume.simulation import ParcelsSimulation
-from pyplume.thredds_data import SRC_THREDDS_HFRNET_UCSD
 
 
 ocean_data_source = "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/hourly/RTV/HFRADAR_US_West_Coast_1km_Resolution_Hourly_RTV_best.ncd"
 
 loader = DataLoader(
     ocean_data_source,
-    datasource=SRC_THREDDS_HFRNET_UCSD,
     time_range=["2020-02-09T01:00", "2020-02-14T01:00"],
     lat_range=[32.525, 32.7],
     lon_range=[-117.27, -117.09],
@@ -25,12 +23,12 @@ loader = DataLoader(
 ocean_data_source_2km = "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/2km/hourly/RTV/HFRADAR_US_West_Coast_2km_Resolution_Hourly_RTV_best.ncd"
 ocean_data_source_6km = "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/hourly/RTV/HFRADAR_US_West_Coast_1km_Resolution_Hourly_RTV_best.ncd"
 
-loader_2km = DataLoader(ocean_data_source_2km, datasource=SRC_THREDDS_HFRNET_UCSD)
-loader_6km = DataLoader(ocean_data_source_6km, datasource=SRC_THREDDS_HFRNET_UCSD)
+loader_2km = DataLoader(ocean_data_source_2km)
+loader_6km = DataLoader(ocean_data_source_6km)
 
 gapfiller = Gapfiller(
     LowResOversample([loader_2km.dataset, loader_6km.dataset]),
-    SmoothnStep(mask=loader.get_mask(num_samples=50)),
+    DCTPLS(mask=loader.get_mask(num_samples=50)),
 )
 
 filled_ds = gapfiller.execute(target=loader.dataset)
@@ -44,7 +42,7 @@ sim = ParcelsSimulation(
     save_dir="results",
     particle_type=ThreddsParticle,
     snapshot_interval=3600,
-    kernels=[AdvectionRK4, AgeParticle, RandomWalk],
+    kernels=[AdvectionRK4, AgeParticle, RandomWalk5cm],
     time_range=["2020-02-09T01:00", "2020-02-14T01:00"],
     repetitions=-1,
     repeat_dt=3600,
@@ -56,16 +54,16 @@ sim.execute()
 
 sim.parcels_result.write_data(override=True)
 
-sim.parcels_result.add_plot_feature(
-    NanSeparatedFeature.load_from_external(
-        path="data/coastOR2Mex_tijuana.mat", color="k"
+sim.parcels_result.add_plot(
+    ParticleWithTrackedPointsPlot(
+        coastline="data/coastOR2Mex_tijuana.mat", draw_currents=True, figsize=(13, 8)
     ),
-    label="coastline",
+    label="particleplot",
 )
-sim.parcels_result.add_plot_feature(
-    StationFeature.load_from_external(
-        path="data/wq_stposition.mat",
-        labels=[
+sim.parcels_result.add_plot(
+    StationTable(
+        station_points="data/wq_stposition.mat",
+        station_labels=[
             "Coronado (North Island)",
             "Silver Strand",
             "Silver Strand Beach",
@@ -83,10 +81,10 @@ sim.parcels_result.add_plot_feature(
     ),
     label="station",
 )
-sim.parcels_result.add_plot_feature(
-    NearcoastDensityFeature.load_from_external(
+sim.parcels_result.add_plot(
+    NearcoastDensityHistogram(
         origin=[32.5567724355310, -117.130164948310],
-        stations="data/wq_stposition.mat",
+        tracked_points="data/wq_stposition.mat",
         coastline="data/coastline.mat",
         xlim=[-16, 4],
         ymax=1,
@@ -97,7 +95,7 @@ sim.parcels_result.add_plot_feature(
 
 PLOT_DOMAIN = {"S": 32.525, "N": 32.7, "W": -117.27, "E": -117.09}
 
-sim.parcels_result.generate_all_plots(domain=PLOT_DOMAIN, land=True, figsize=(13, 8))
+sim.parcels_result.generate_plots()
 
-sim.parcels_result.generate_gif()
+sim.parcels_result.generate_gifs()
 print("Finished simulation")

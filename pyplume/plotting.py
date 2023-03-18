@@ -149,7 +149,7 @@ def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None):
         plt.show()
     if savefile is not None:
         plt.savefig(savefile, bbox_inches="tight" if fit else None)
-        logger.info(f"Plot saved to {savefile}")
+        # logger.info(f"Plot saved to {savefile}")
         if fig is None:
             plt.close()
         else:
@@ -227,13 +227,14 @@ def plot_vectorfield(
     show_time=None,
     domain=None,
     projection=None,
-    land=True,
+    land=False,
     vmin=None,
     vmax=None,
     titlestr=None,
     fig=None,
     pos=None,
-    cbar=True
+    cbar=True,
+    allow_time_extrapolation=False,
 ):
     if domain is None:
         domain = generate_domain_datasets([dataset])
@@ -246,19 +247,44 @@ def plot_vectorfield(
     interp = False
     if isinstance(show_time, int):
         idx = show_time
+        # provided index is outside of the time array
+        if idx < 0 or idx >= len(dataset["time"]):
+            if allow_time_extrapolation:
+                idx = min(max(0, idx), len(dataset["time"]) - 1)
+            else:
+                raise ValueError(
+                    "Tried plotting vector field oustide of time range. Set allow_time_extrapolation=True"
+                )
         show_time = dataset["time"][idx].values
     else:
         if isinstance(show_time, str):
             show_time = np.datetime64(show_time)
-        found_idxs = np.where(dataset["time"] == show_time)
-        if len(found_idxs[0]) == 0:
-            idx = np.where(dataset["time"] <= show_time)[0][-1]
-            interp = True
+        found_idxs = np.where(dataset["time"] == show_time)[0]
+        if len(found_idxs) == 0:
+            before_idxs = np.where(dataset["time"] <= show_time)[0]
+            # provided time is below time range
+            if len(before_idxs) == 0:
+                if allow_time_extrapolation:
+                    idx = 0
+                else:
+                    raise ValueError(
+                        "Tried plotting vector field oustide of time range. Set allow_time_extrapolation=True"
+                    )
+            else:
+                idx = before_idxs[-1]
+                interp = True
         else:
-            idx = (
-                found_idxs[0][0] if show_time is not None else 0
-            )
+            idx = found_idxs[0] if show_time is not None else 0
     if interp:
+        # provided time is above time range
+        if (idx + 1) >= len(dataset["time"]):
+            if allow_time_extrapolation:
+                U = dataset["U"][idx]
+                V = dataset["V"][idx]
+            else:
+                raise ValueError(
+                    "Tried plotting vector field oustide of time range. Set allow_time_extrapolation=True"
+                )
         lower_time = dataset["time"][idx].values
         upper_time = dataset["time"][idx + 1].values
         dist = (show_time - lower_time) / np.timedelta64(1, "s")
@@ -271,14 +297,16 @@ def plot_vectorfield(
         V = dataset["V"][idx]
     lats = dataset["lat"]
     lons = dataset["lon"]
-    spd = U**2 + V**2
-    speed = np.where(spd > 0, np.sqrt(spd), 0)
-    vmin = speed.min() if vmin is None else vmin
-    vmax = speed.max() if vmax is None else vmax
+    allspd = dataset["U"] ** 2 + dataset["V"] ** 2
+    allspeed = np.where(allspd > 0, np.sqrt(allspd), 0)
+    vmin = allspeed.min() if vmin is None else vmin
+    vmax = allspeed.max() if vmax is None else vmax
     ncar_cmap = copy.copy(plt.cm.gist_ncar)
     ncar_cmap.set_over("k")
     ncar_cmap.set_under("w")
     x, y = np.meshgrid(lons, lats)
+    spd = U**2 + V**2
+    speed = np.where(spd > 0, np.sqrt(spd), 0)
     u = np.where(speed > 0.0, U / speed, 0)
     v = np.where(speed > 0.0, V / speed, 0)
     cs = ax.quiver(
@@ -295,17 +323,8 @@ def plot_vectorfield(
     cs.set_clim(vmin, vmax)
 
     if cbar:
-        cbar_ax = fig.add_axes([0, 0, 0, 0])
-        # fig.subplots_adjust(hspace=0, wspace=0, top=0.925, left=0.1)
-        plt.colorbar(cs, cax=cbar_ax, label="Current vector velocity (m/s)")
-
-        def resize_colorbar(event):
-            plt.draw()
-            posn = ax.get_position()
-            cbar_ax.set_position([posn.x0 + posn.width + 0.01, posn.y0, 0.04, posn.height])
-
-        fig.canvas.mpl_connect("resize_event", resize_colorbar)
-        resize_colorbar(None)
+        vel_cbar = plt.colorbar(cs)
+        vel_cbar.set_label("Current vector velocity (m/s)")
 
     if titlestr is None:
         titlestr = ""
@@ -319,14 +338,17 @@ def plot_vectorfield(
 def plot_particles(
     lats,
     lons,
-    lifetimes=None,
-    time=None,
-    grid=None,
+    color=None,
+    edgecolor=None,
     domain=None,
-    land=True,
-    vmax=0.6,
-    lifetime_max=None,
-    s=20,
+    land=False,
+    vmin=None,
+    vmax=None,
+    size=None,
+    ax=None,
+    projection=None,
+    cbar=False,
+    cbar_label=None,
 ):
     """
     Plot a collection of particles.
@@ -342,49 +364,23 @@ def plot_particles(
     Returns:
         fig, ax
     """
-    if grid is None and domain is None:
-        domain = {
-            "W": np.nanmin(lons),
-            "E": np.nanmax(lons),
-            "S": np.nanmin(lats),
-            "N": np.nanmax(lats),
-        }
-        domain = pad_domain(domain, 0.0005)
-    elif grid is not None and domain is None:
-        domain = grid.get_domain()
-    if grid is None:
-        fig, ax = get_carree_axis(domain, land=land)
+    if ax is None:
+        fig, ax = get_carree_axis(domain=domain, projection=projection, land=land)
         get_carree_gl(ax)
     else:
-        show_time = (
-            None
-            if time is None
-            else int((time - grid.times[0]) / np.timedelta64(1, "s"))
-        )
-        if show_time is not None and show_time < 0:
-            raise ValueError("Particle simulation time domain goes out of bounds")
-        _, fig, ax, _ = plotting.plotfield(
-            field=grid.fieldset.UV,
-            show_time=show_time,
-            domain=domain,
-            land=land,
-            vmin=0,
-            vmax=vmax,
-            titlestr="Particles and ",
-        )
+        fig = ax.get_figure()
     sc = ax.scatter(
-        lons, lats, c=lifetimes, edgecolor="k", vmin=0, vmax=lifetime_max, s=s
+        lons,
+        lats,
+        c=color,
+        edgecolor=edgecolor,
+        vmin=vmin,
+        vmax=vmax,
+        s=size,
     )
-
-    if lifetimes is not None:
-        cbar_ax = fig.add_axes([0.1, 0, 0.1, 0.1])
-        plt.colorbar(sc, cax=cbar_ax)
-        posn = ax.get_position()
-        cbar_ax.set_position([posn.x0 + posn.width + 0.14, posn.y0, 0.04, posn.height])
-        cbar_ax.get_yaxis().labelpad = 13
-        # super jank label the other colorbar since it's in plotting.plotfield
-        cbar_ax.set_ylabel("Age (days)\n\n\n\n\n\nVelocity (m/s)", rotation=270)
-
+    if cbar:
+        cb = plt.colorbar(sc)
+        cb.set_label(cbar_label)
     return fig, ax
 
 
@@ -413,7 +409,9 @@ def plot_particle_density(
     return fig, ax
 
 
-def plot_coastline(lats, lons, separate_nan=True, domain=None, c=None, linewidth=None, ax=None):
+def plot_coastline(
+    lats, lons, separate_nan=True, domain=None, c=None, linewidth=None, ax=None
+):
     if ax is None:
         fig, ax = carree_subplots((1, 1), domain=domain)
     else:
@@ -445,3 +443,10 @@ def plot_bounding_box(domain, ax, edgecolor="m", linewidth=1, **kwargs):
     )
     # Add the patch to the Axes
     ax.add_patch(rect)
+
+
+def abs_label_map(item):
+    if len(item.get_text()) == 0:
+        return item
+    # matplotlib uses a funny hyphen that doesn't work
+    return abs(float(item.get_text().replace("−", "-")))

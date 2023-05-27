@@ -41,13 +41,11 @@ parcels_config:
       point: [6.95, 134.15]
       pattern:
         type: grid
-        args:
-          size: 15
-          gapsize: 0.005
+        size: 15
+        gapsize: 0.005
   simulation_dt: 600
   snapshot_interval: 1800
 postprocess_config: {}
-save_snapshots: true
 plotting_config:
   plots:
     - type: pyplume.resultplots.ParticlePlot

@@ -53,22 +53,17 @@ parcels_config:
       release: 2021-08-21T12:00
       pattern: {
         "type": "grid",
-        "args": {
-          "size": 3,
-          "gapsize": 0.05
-        }
+        "size": 3,
+        "gapsize": 0.05
       }
       # pattern: {
       #   "type": "ball",
-      #   "args": {
-      #     "radius": 0.05,
-      #     "numpoints": 30
-      #   }
+    #     "radius": 0.05,
+    #     "numpoints": 30
       # }
   simulation_dt: 600
   snapshot_interval: 1800
 postprocess_config: {}
-save_snapshots: true
 plotting_config:
   plots:
     - type: pyplume.resultplots.ParticlePlot

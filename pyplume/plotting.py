@@ -148,7 +148,9 @@ def draw_plt(savefile=None, show=False, fit=True, fig=None, figsize=None):
     if show:
         plt.show()
     if savefile is not None:
-        plt.savefig(savefile, bbox_inches="tight" if fit else None)
+        if fit:
+            fig.tight_layout()
+        plt.savefig(savefile)
         # logger.info(f"Plot saved to {savefile}")
         if fig is None:
             plt.close()
@@ -385,14 +387,14 @@ def plot_particles(
 
 
 def plot_particle_density(
-    lats, lons, bins=None, domain=None, ax=None, title="", **kwargs
+    lats, lons, bins=None, domain=None, ax=None, land=True, title="", **kwargs
 ):
     """
     Args:
         kwargs: other arguments to pass into sns.histplot
     """
     if ax is None:
-        fig, ax = carree_subplots((1, 1), domain=domain)
+        fig, ax = carree_subplots((1, 1), land=land, domain=domain)
     else:
         fig = ax.get_figure()
     bins = bins if bins is not None else 100

@@ -12,9 +12,7 @@ snapshots/
 out-*/
 # ignore input data
 data/*
-!data/field_netcdfs
-data/field_netcdfs/*
-!data/field_netcdfs/README.md
+!data/README.md
 # ignore output data folder
 results/**
 # MATLAB autosave stuff

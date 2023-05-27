@@ -1,6 +1,7 @@
 """
 Classes and methods directly related to setting up Parcels simulations and running them.
 """
+import copy
 from datetime import timedelta, datetime
 import importlib
 import logging
@@ -72,8 +73,10 @@ def create_with_pattern(point, pattern):
     """Takes single point, returns list of points"""
     if "type" not in pattern:
         return [point]
-    if pattern["type"] == "grid":
-        kwargs = pattern["args"]
+    pattern = copy.deepcopy(pattern)
+    pattern_type = pattern.pop("type")
+    kwargs = pattern
+    if pattern_type == "grid":
         if kwargs["size"] % 2 != 1 and kwargs["size"] >= 1:
             raise ValueError("Grid size must be a positive odd integer")
         points = []
@@ -84,8 +87,7 @@ def create_with_pattern(point, pattern):
                     [point[0] + i * kwargs["gapsize"], point[1] + j * kwargs["gapsize"]]
                 )
         return points
-    if pattern["type"] in ("ball", "circle"):
-        kwargs = pattern["args"]
+    if pattern_type in ("ball", "circle"):
         radius = kwargs["radius"]
         npoints = kwargs["numpoints"]
         angs = np.linspace(0, 2 * math.pi, num=npoints)
@@ -185,7 +187,7 @@ class ParcelsSimulation:
             Path(save_dir)
             / f"simulation_{name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}"
         )
-        self.pfile_path = self.sim_result_dir / f"particlefile.nc"
+        self.pfile_path = self.sim_result_dir / f"particlefile.zarr"
         self.pfile = self.pset.ParticleFile(self.pfile_path)
         logger.info(
             f"Particle trajectories for {name} will be saved to {self.pfile_path}"

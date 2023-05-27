@@ -550,6 +550,8 @@ class DataLoader:
             load_method (str -> xr.Dataset)
         """
         self.time_range = time_range
+        if domain is not None and (lat_range is not None or lon_range is not None):
+            raise ValueError("Cannot define both domain and lat/lon ranges at the same time. Use one or the other!")
         if domain is not None:
             self.lat_range = [domain["S"], domain["N"]]
             self.lon_range = [domain["W"], domain["E"]]

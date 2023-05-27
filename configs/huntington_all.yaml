@@ -9,7 +9,6 @@ ocean_data:
     wind:
       data: data/field_netcdfs/ndbc_46025_wind.nc
       ratio: 0.03
-      add_to_field_directly: true
     alongshore: data/field_netcdfs/socal_alongshore.nc
 parcels_config:
   save_dir: results
@@ -32,9 +31,8 @@ parcels_config:
       release: 2021-10-06T13:42
       pattern:
         type: grid
-        args:
-          size: 3
-          gapsize: 0.01
+        size: 3
+        gapsize: 0.01
     - label: ICEYE
       point:
         - 33.36458
@@ -42,9 +40,8 @@ parcels_config:
       release: 2021-10-05T17:37
       pattern:
         type: grid
-        args:
-          size: 3
-          gapsize: 0.01
+        size: 3
+        gapsize: 0.01
     - label: SENTINEL1B
       point:
         - 33.59522
@@ -52,9 +49,8 @@ parcels_config:
       release: 2021-10-03T01:49
       pattern:
         type: grid
-        args:
-          size: 3
-          gapsize: 0.01
+        size: 3
+        gapsize: 0.01
     - label: SENTINEL1A
       point:
         - 33.63992
@@ -62,13 +58,11 @@ parcels_config:
       release: 2021-10-02T01:58
       pattern:
         type: grid
-        args:
-          size: 3
-          gapsize: 0.01
+        size: 3
+        gapsize: 0.01
   simulation_dt: 300
   snapshot_interval: 3600
 postprocess_config: {}
-save_snapshots: true
 plotting_config:
   plots:
     - type: pyplume.resultplots.ParticlePlot

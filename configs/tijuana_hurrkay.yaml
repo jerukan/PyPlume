@@ -10,7 +10,7 @@ ocean_data:
     #         - http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/2km/hourly/RTV/HFRADAR_US_West_Coast_2km_Resolution_Hourly_RTV_best.ncd
     #         - http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd
       # DCT-PLS gapfilling. It's very aggressive on smoothing.
-      # - path: pyplume.gapfilling.SmoothnStep
+      # - path: pyplume.gapfilling.DCTPLS
       #   args:
       #     mask: data/field_netcdfs/tj_plume_1km_2022-09_mask.npy
     alongshore: data/field_netcdfs/tj_plume_alongshore_2022-09.nc
@@ -38,7 +38,6 @@ parcels_config:
   simulation_dt: 600
   snapshot_interval: 1800
 postprocess_config: {}
-save_snapshots: true
 plotting_config:
   plots:
     - type: pyplume.resultplots.ParticleWithTrackedPointsPlot

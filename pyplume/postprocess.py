@@ -56,7 +56,7 @@ class ParticleResult:
         self.data_vars = {}
         # data variables with different dimensions than the dataset's
         self.non_vars = {}
-        self.shape = self.ds["trajectory"].shape  # use trajectory var as reference
+        self.shape = (self.ds.dims["trajectory"], self.ds.dims["obs"])
         for var, arr in self.ds.variables.items():
             arr = arr.values
             if self.shape == arr.shape:
@@ -205,33 +205,25 @@ class ParticleResult:
             plot_times.append(self.times[-1])
         return np.array(plot_times)
 
-    def generate_gifs(self, gif_delay=25):
+    def generate_gifs(self, frame_duration=0.5):
         """Uses imagemagick to generate a gif of the main simulation plot."""
         for label, resultplot_paths in self.plot_paths.items():
             gif_path = self.sim_result_dir / f"{label}.gif"
             input_paths = [str(path) for path in resultplot_paths]
-            utils.generate_gif(input_paths, gif_path, gif_delay=gif_delay)
+            utils.generate_gif(input_paths, gif_path, frame_duration=frame_duration)
 
-    def write_data(self, path=None, override=False):
+    def to_netcdf(self, path=None):
         """
         Write postprocessed data to a new netcdf file.
         If path is unspecified, it will override the original path the ParticleFile was
         saved to (if a path was passed in).
         """
-        if self.path is not None and path is None and not override:
-            if os.path.isfile(path):
-                raise FileExistsError(f"{path} already exists. Set override=True.")
-            raise FileExistsError(
-                f"Unspecified path will override {path}. Set override=True."
-            )
+        if path is None:
+            path = Path(self.path)
+            path = path.parent / f"{path.stem}.nc"
         if self.path is None and path is None:
             raise ValueError("No path specified and no previous path was passed in.")
-        new_ds = xr.Dataset(
-            data_vars={var: (self.ds.dims, arr) for var, arr in self.data_vars.items()},
-            coords=self.ds.coords,
-            attrs=self.ds.attrs,
-        )
-        new_ds.to_netcdf(path=self.path if path is None else path)
+        self.ds.to_netcdf(path=path)
 
     def get_filtered_data_time(self, t: np.datetime64, query="at"):
         if isinstance(t, int):

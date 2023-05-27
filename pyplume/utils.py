@@ -10,12 +10,12 @@ import re
 import subprocess
 import warnings
 
+import imageio
 import numpy as np
 import scipy.io
 from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
 import xarray as xr
-
 
 from pyplume import get_logger
 
@@ -185,20 +185,6 @@ def generate_mask_no_data(data, tile=False):
     # return nan_data.sum(axis=0) == 0
 
 
-def create_gif(delay, images_path, out_path):
-    """
-    Use regex with images_path
-    """
-    magick_sp = subprocess.Popen(
-        ["magick", "-delay", str(delay), images_path, out_path],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        universal_newlines=True,
-    )
-    stdout, stderr = magick_sp.communicate()
-    logger.info((stdout, stderr))
-
-
 def include_coord_range(coord_rng, ref_coords):
     """
     Takes a range of two values and changes the desired range to include the two original
@@ -258,16 +244,18 @@ def get_path_cfg(path, **kwargs):
     raise TypeError(f"{path} is not a proper path or config")
 
 
-def generate_gif(img_paths, gif_path, gif_delay=25):
-    """Uses imagemagick to generate a gif of the main simulation plot."""
-    input_paths = [str(path) for path in img_paths]
-    sp_in = ["magick", "-delay", str(gif_delay)] + input_paths
-    sp_in.append(str(gif_path))
-    magick_sp = subprocess.Popen(
-        sp_in, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True
-    )
-    stdout, stderr = magick_sp.communicate()
-    logger.info(f"GIF generation magick ouptput: {(stdout, stderr)}")
+def generate_gif(img_paths, gif_path, frame_duration=None):
+    """
+    Args:
+        img_paths: List of input image paths to combine into a
+            gif. Order is preserved.
+        frame_duration: In seconds
+    """
+    if frame_duration is None:
+        frame_duration = 0.5
+    # input_paths = [str(path) for path in img_paths]
+    imgs = [imageio.imread(inpath) for inpath in img_paths]
+    imageio.mimsave(gif_path, imgs, duration=frame_duration)
     return gif_path
 
 

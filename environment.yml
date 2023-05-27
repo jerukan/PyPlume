@@ -3,13 +3,14 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - cartopy=0.18.0
-  - hdf4=4.2.13
-  - hdf5=1.10.6
+  - cartopy=0.21.1
+  - hdf4=4.2.15
+  - hdf5=1.14.0
+  - imageio=2.28.1
   - jupyter=1.0.0
-  - parcels=2.3.0
-  - scipy=1.7.1
-  - seaborn=0.12.0
-  - shapely=1.7.1
-  - xarray=0.19.0
+  - parcels=2.4.1
+  - scipy=1.10.1
+  - seaborn=0.12.2
+  - shapely=2.0.1
+  - xarray=2023.5.0
 prefix: /opt/miniconda3/envs/py3-parcels

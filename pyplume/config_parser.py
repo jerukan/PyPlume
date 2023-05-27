@@ -56,8 +56,8 @@ def load_ocean_cfg(cfg):
     alongshore = cfg.pop("alongshore", None)
     allow_time_extrapolation = cfg.pop("allow_time_extrapolation", False)
     wind_cfg = cfg.pop("wind", None)
+    gapfiller = Gapfiller.load_from_config(*cfg.pop("gapfill_steps", []))
     ds = DataLoader(ds_path, **cfg).dataset
-    gapfiller = Gapfiller.load_from_config(*cfg.get("gapfill_steps", []))
     ds = gapfiller.execute(ds)
     fields = []
     # load alongshore current data if it exists
@@ -153,8 +153,8 @@ def process_results(sim, cfg):
     postprocess_cfg = cfg.get("postprocess_config", None)
     if postprocess_cfg not in EMPTY:
         handle_postprocessing(sim.parcels_result, postprocess_cfg)
-    sim.parcels_result.write_data(override=True)
-    if cfg["save_snapshots"]:
+    sim.parcels_result.to_netcdf()
+    if cfg.get("plotting_config", None) not in EMPTY:
         plotting_cfg = copy.deepcopy(cfg["plotting_config"])
         resultplots = plotting_cfg.get("plots", [])
         for resultplot_cfg in resultplots:
@@ -168,7 +168,4 @@ def process_results(sim, cfg):
                 resultplot.add_addon(addon)
             sim.parcels_result.add_plot(resultplot, label=resultplot_label)
         sim.parcels_result.generate_plots()
-        try:
-            logger.info(sim.parcels_result.generate_gifs())
-        except FileNotFoundError:
-            logger.info("magick is not installed, gif will not be generated")
+        logger.info(sim.parcels_result.generate_gifs())

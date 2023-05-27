@@ -309,7 +309,11 @@ class CumulativeParticleDensityPlot(ResultPlot):
     def __init__(self, domain=None, coastline=None, bins=None, pmax=None, **kwargs):
         super().__init__(**kwargs)
         self.domain = domain
-        self.coast_lats, self.coast_lons = dataloaders.load_geo_points(coastline)
+        self.cartopy_coastline = False
+        if isinstance(coastline, bool):
+            self.cartopy_coastline = coastline
+        else:
+            self.coast_lats, self.coast_lons = dataloaders.load_geo_points(coastline)
         self.pmax = pmax
         self.bins = bins
 
@@ -320,9 +324,12 @@ class CumulativeParticleDensityPlot(ResultPlot):
             fig, ax = plotting.plot_particle_density(
                 lats,
                 lons,
+                domain=self.domain,
                 bins=self.bins,
                 pmax=self.pmax,
+                land=self.cartopy_coastline,
                 title=f"Cumilative particle density at {t}",
             )
-            plotting.plot_coastline(self.coast_lats, self.coast_lons, ax=ax)
+            if not self.cartopy_coastline:
+                plotting.plot_coastline(self.coast_lats, self.coast_lons, ax=ax)
             yield fig, ax

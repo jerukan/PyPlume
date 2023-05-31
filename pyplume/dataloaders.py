@@ -85,9 +85,13 @@ def load_geo_points(data, **kwargs):
     Loads a collection of (lat, lon) points from a given data configuration. Each different file
     type will have different ways of loading and different required parameters.
 
-    .mat file requirements:
+    .mat file arguments:
         lat_key: variable in the mat file representing the array of latitude values
         lon_key: variable in the mat file representing the array of longitude values
+
+    .npy file arguments:
+        lat_key
+        lon_key
 
     Args:
         data: actual data or path to data

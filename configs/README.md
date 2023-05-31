@@ -124,7 +124,7 @@ postprocess_config:
     lon_var: lonz0
   # loads a buoy path to calculate deviation from the path for each particle
   # the variable will be called "buoy_distances" in the netcdf file
-  buoy
+  buoy:
     path: buoy_data/wavebuoy_704-02.csv
 # if the plotting config is empty, no plots are generated
 plotting_config:

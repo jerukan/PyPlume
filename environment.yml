@@ -12,5 +12,6 @@ dependencies:
   - scipy=1.10.1
   - seaborn=0.12.2
   - shapely=2.0.1
+  - tqdm=4.65.0
   - xarray=2023.5.0
 prefix: /opt/miniconda3/envs/py3-parcels

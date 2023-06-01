@@ -8,6 +8,7 @@ import logging
 import math
 from pathlib import Path
 import sys
+import warnings
 
 import numpy as np
 from parcels import (
@@ -22,7 +23,7 @@ from parcels import (
 from pyplume import get_logger, utils
 from pyplume.dataloaders import load_geo_points
 from pyplume.postprocess import ParticleResult
-from pyplume.kernels import DeleteParticle, DeleteParticleVerbose
+from pyplume.kernels import DeleteParticle, DeleteParticleVerbose, AdvectionRK4BorderCheck
 
 
 logger = get_logger(__name__)
@@ -30,6 +31,12 @@ logger = get_logger(__name__)
 
 def parse_time_range(time_range, time_list):
     """
+    Parses a tuple of times, but also considers special ranges such as those
+    containing 'START' or 'END', or define the range using a delta time.
+
+    'START' and 'END' keywords are substituted based on the available timestamps
+    provided by time_list.
+
     Args:
         time_range (array-like): some array with 2 items
          'START' and 'END' are parsed as the start and end of time_list respectively
@@ -188,13 +195,14 @@ class ParcelsSimulation:
             / f"simulation_{name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}"
         )
         self.pfile_path = self.sim_result_dir / f"particlefile.zarr"
-        self.pfile = self.pset.ParticleFile(self.pfile_path)
+        self.pfile = self.pset.ParticleFile(self.pfile_path, outputdt=timedelta(seconds=self.snapshot_interval))
         logger.info(
             f"Particle trajectories for {name} will be saved to {self.pfile_path}"
             + f"\n\ttotal particles in simulation: {len(time_arr)}"
         )
 
         t_start, t_end = self.get_time_bounds(spawn_points)
+        self.total_seconds = (t_end - t_start)
         self.snap_num = math.floor((t_end - t_start) / snapshot_interval)
         self.last_int = t_end - (self.snap_num * snapshot_interval + t_start)
         if self.last_int == 0:
@@ -209,15 +217,11 @@ class ParcelsSimulation:
         self.completed = False
         self.parcels_result = None
         self.kernels = []
-        for kernel in kernels:
-            if isinstance(kernel, str):
-                self.kernels.append(import_kernel_or_particle(kernel))
-            else:
-                self.kernels.append(kernel)
-        if len(self.kernels) == 0:
-            self.kernels = [AdvectionRK4]
         self.kernel = None
-        self.update_kernel()
+        for kernel in kernels:
+            self.add_kernel(kernel)
+        if len(self.kernels) == 0:
+            self.add_kernel(AdvectionRK4)
 
     def generate_single_particle_spawns(self, **kwargs):
         """Generates spawn information for a single specified location"""
@@ -268,6 +272,20 @@ class ParcelsSimulation:
         return time_arr, p_lats, p_lons
 
     def add_kernel(self, kernel):
+        if isinstance(kernel, str):
+            kernel = import_kernel_or_particle(kernel)
+        if kernel == AdvectionRK4:
+            if hasattr(self.grid.fieldset, "CUV"):
+                warnmsg = "Automatically changed advection kernel to AdvectionRK4BorderCheck due to existence of alongshore data."
+                warnings.warn(warnmsg)
+                logger.warning(warnmsg)
+                kernel = AdvectionRK4BorderCheck
+        elif kernel == AdvectionRK4BorderCheck:
+            if not hasattr(self.grid.fieldset, "CUV"):
+                warnmsg = "Automatically changed advection kernel to AdvectionRK4 due to lack of alongshore data."
+                warnings.warn(warnmsg)
+                logger.warning(warnmsg)
+                kernel = AdvectionRK4
         if kernel in self.kernels:
             raise ValueError(f"{kernel} is already in the list of kernels.")
         self.kernels.append(kernel)
@@ -300,6 +318,13 @@ class ParcelsSimulation:
         return earliest_spawn if earliest_spawn is not None else self.time_range[0]
 
     def get_time_bounds(self, spawns):
+        """
+        Obtains the start/end time offsets from the beginning of the dataset times to
+        the end of the times in seconds.
+
+        Returns:
+            (int, int)
+        """
         if self.time_range[0] == "START":
             earliest_spawn = self.get_earliest_spawn(spawns)
             self.time_range[0] = earliest_spawn
@@ -320,47 +345,18 @@ class ParcelsSimulation:
         t_start = (t_start - self.times[0]) / np.timedelta64(1, "s")
         t_end = (t_end - self.times[0]) / np.timedelta64(1, "s")
         return t_start, t_end
-
-    def exec_pset(self, runtime):
+    
+    def execute(self):
+        if self.completed:
+            raise RuntimeError("ParcelsSimulation has already completed.")
+        logger.info(f"Running simulation for {self.total_seconds} seconds")
         self.pset.execute(
             self.kernel,
-            runtime=timedelta(seconds=runtime),
+            runtime=timedelta(seconds=self.total_seconds),
             dt=timedelta(seconds=self.simulation_dt),
             recovery={ErrorCode.ErrorOutOfBounds: DeleteParticle},
             output_file=self.pfile,
         )
-
-    def pre_loop(self, iteration, interval):
-        """Can override this hook"""
-        pass
-
-    def post_loop(self, iteration, interval):
-        """Can override this hook"""
-        pass
-
-    def simulation_loop(self, iteration, interval):
-        # yes 2 checks are needed to prevent it from breaking
-        if len(self.pset) == 0:
-            logger.info("Particle set is empty, simulation loop not run.")
-            return False
-        self.pre_loop(iteration, interval)
-        self.exec_pset(interval)
-        if len(self.pset) == 0:
-            logger.info("Particle set empty after execution, no post-loop run.")
-            return False
-        self.post_loop(iteration, interval)
-        return True
-
-    def execute(self):
-        if self.completed:
-            raise RuntimeError("ParcelsSimulation has already completed.")
-        for i in range(self.snap_num):
-            if not self.simulation_loop(i, self.snapshot_interval):
-                break
-
-        # run the last interval (the remainder) if needed
-        if self.last_int != 0:
-            self.simulation_loop(self.snap_num, self.last_int)
 
         # self.pfile.export()
         # ParticleFile exports when it closes

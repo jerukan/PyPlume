@@ -249,10 +249,10 @@ def generate_gif(img_paths, gif_path, frame_duration=None):
     Args:
         img_paths: List of input image paths to combine into a
             gif. Order is preserved.
-        frame_duration: In seconds
+        frame_duration: In milliseconds
     """
     if frame_duration is None:
-        frame_duration = 0.5
+        frame_duration = 500
     # input_paths = [str(path) for path in img_paths]
     imgs = [imageio.imread(inpath) for inpath in img_paths]
     imageio.mimsave(gif_path, imgs, duration=frame_duration)

@@ -206,7 +206,7 @@ class ParticleResult:
             plot_times.append(self.times[-1])
         return np.array(plot_times)
 
-    def generate_gifs(self, frame_duration=0.5):
+    def generate_gifs(self, frame_duration=500):
         """Uses imagemagick to generate a gif of the main simulation plot."""
         for label, resultplot_paths in self.plot_paths.items():
             gif_path = self.sim_result_dir / f"{label}.gif"

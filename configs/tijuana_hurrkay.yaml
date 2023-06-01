@@ -12,7 +12,7 @@ ocean_data:
       # DCT-PLS gapfilling. It's very aggressive on smoothing.
       # - path: pyplume.gapfilling.DCTPLS
       #   args:
-      #     mask: data/field_netcdfs/tj_plume_1km_2022-09_mask.npy
+      #     exclude_oob: True
     alongshore: data/field_netcdfs/tj_plume_alongshore_2022-09.nc
   - name: hfrnet oi
     data: data/field_netcdfs/oi_fields/Tot_SDLJ_202209.nc

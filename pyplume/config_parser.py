@@ -101,7 +101,7 @@ def prep_sim_from_cfg(cfg):
     simset_name = cfg["name"]
     parcels_cfg = cfg["parcels_config"]
     parcels_cfg["save_dir"] = (
-        Path(parcels_cfg["save_dir"])
+        Path(parcels_cfg.get("save_dir", "results"))
         / f"{simset_name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}"
     )
     parcels_cfg["save_dir"].mkdir(parents=True)

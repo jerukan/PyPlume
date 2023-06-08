@@ -2,11 +2,7 @@
 A collection of methods related to plotting.
 """
 import copy
-import datetime
-import logging
 import math
-from pathlib import Path
-import sys
 
 import cartopy
 import cartopy.crs as ccrs
@@ -14,9 +10,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
-from parcels import plotting
 import seaborn as sns
-import xarray as xr
 
 from pyplume import get_logger
 

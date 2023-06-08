@@ -1,8 +1,4 @@
 from abc import ABC, abstractmethod
-import importlib
-import logging
-import os
-import sys
 from typing import Tuple
 
 import numpy as np
@@ -10,7 +6,7 @@ from parcels.tools.statuscodes import FieldOutOfBoundError, TimeExtrapolationErr
 import xarray as xr
 
 from pyplume import get_logger
-from pyplume.dataloaders import slice_dataset, SurfaceGrid, DataLoader
+from pyplume.dataloaders import SurfaceGrid, DataLoader
 from pyplume.gapfill_algs import dctpls, eof_functions
 import pyplume.utils as utils
 

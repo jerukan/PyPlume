@@ -1,7 +1,5 @@
 import click
 
-from pyplume.constants import CONFIGS_DIR
-from pyplume import utils
 from pyplume.config_parser import load_config, prep_sim_from_cfg, process_results
 
 

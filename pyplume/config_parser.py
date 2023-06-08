@@ -1,24 +1,19 @@
 """
-Methods in here related to preparing, running, and processing simulations.
+Methods in here related to preparing, running, and processing simulations
+through the use of the YAML configs.
 """
 import copy
 from datetime import datetime
-import json
-import logging
-import os
 from pathlib import Path
 
-import numpy as np
 from parcels import Field, VectorField
 from parcels.tools.converters import GeographicPolar, Geographic
-import xarray as xr
 import yaml
 
 from pyplume import get_logger
 from pyplume.constants import EMPTY
 from pyplume.dataloaders import (
     DataLoader,
-    DefaultLoad,
     SurfaceGrid,
     load_wind_dataset,
     load_geo_points,

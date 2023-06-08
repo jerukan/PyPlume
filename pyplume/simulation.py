@@ -3,11 +3,8 @@ Classes and methods directly related to setting up Parcels simulations and runni
 """
 import copy
 from datetime import timedelta, datetime
-import importlib
-import logging
 import math
 from pathlib import Path
-import sys
 import warnings
 
 import numpy as np
@@ -23,7 +20,7 @@ from parcels import (
 from pyplume import get_logger, utils
 from pyplume.dataloaders import load_geo_points
 from pyplume.postprocess import ParticleResult
-from pyplume.kernels import DeleteParticle, DeleteParticleVerbose, AdvectionRK4BorderCheck
+from pyplume.kernels import DeleteParticle, AdvectionRK4BorderCheck
 
 
 logger = get_logger(__name__)

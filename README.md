@@ -29,15 +29,12 @@ More information about how to format the data can be found in [`data/README.md`]
 ### Running simulations
 
 1. Set up config files in [`configs/`](configs).
-	- **(More information on creating config files can be
-	found in the [config README](configs/README.md))**
-2. Choose config files in the [`simulation_runner.ipynb`](simulation_runner.ipynb) notebook for the OceanParcels simulation. This
-notebook outputs a new netcdf file with particle simulation data and creates a sequence of snapshots of particle movement stitch together into a gif.
+	- **(More information on creating config files can be found in the [config README](configs/README.md))**
+2. Choose config files in the [`simulation_runner.ipynb`](simulation_runner.ipynb) notebook for the OceanParcels simulation. This notebook outputs a new netcdf file with particle simulation data and creates a sequence of snapshots of particle movement stitch together into a gif.
 
 ### Saving netcdf files from Thredds
 
-Use the [`download_data.ipynb`](download_data.ipynb) notebook to save a specified region from the Thredds server. Note
-that this will be required if you want to gapfill the Thredds data.
+Use the [`download_data.ipynb`](download_data.ipynb) notebook to save a specified region from some online source.
 
 ### Gapfilling
 

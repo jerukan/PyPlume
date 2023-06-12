@@ -29,6 +29,8 @@ ocean_data:
           mask: path to mask
     # null, partialslip, or freeslip
     boundary_condition: freeslip
+    # allow simulations to go outside the data's available time range
+    allow_time_extrapolation: True
     # specify wind data to modify the behavior of particle advection
     # currently only supports a single timeseries of wind to apply
     # uniformly across the surface currents

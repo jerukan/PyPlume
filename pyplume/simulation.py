@@ -69,7 +69,8 @@ def parse_time_range(time_range, time_list):
         t_start = t_end - np.timedelta64(t_start)
     if isinstance(t_end, int):
         t_end = t_start + np.timedelta64(t_end)
-
+    if t_start > t_end:
+        raise ValueError("The time range could not be parsed correctly. Double check the time dimension of your data!")
     return t_start, t_end
 
 

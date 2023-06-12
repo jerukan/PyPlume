@@ -549,6 +549,8 @@ class DataLoader:
         """
         Args:
             load_method (str -> xr.Dataset)
+            inclusive (bool): If True, will attempt to slice the dataset in away to
+                keep the endpoints of the ranges included.
         """
         self.time_range = time_range
         if domain is not None and (lat_range is not None or lon_range is not None):
@@ -588,13 +590,13 @@ class DataLoader:
             lon_range=self.lon_range,
             inclusive=self.inclusive,
         )
-        self.dataset.load()
-        self.dataset = replace_inf_with_nan(drop_depth(self.dataset))
         if self.dataset.nbytes > 1e9:
             gigs = self.dataset.nbytes / 1e9
             warnings.warn(
                 f"The dataset is over a gigabyte ({gigs} gigabytes). Make sure you are working with the right subset of data!"
             )
+        self.dataset.load()
+        self.dataset = replace_inf_with_nan(drop_depth(self.dataset))
 
     def __repr__(self):
         return repr(self.dataset)
@@ -748,12 +750,14 @@ def dataset_to_fieldset(
 
     Args:
         ds (xr.Dataset)
-        copy (bool)
-        raw (bool): if True, all the data is immediately loaded
-        complete (bool)
-        mesh (str): spherical or flat
-        boundary_condition
-        kwargs: keyword arguments to pass into FieldSet creation
+        copy (bool): If True, pass a copy of the dataset into the fieldset instead since
+            the fieldset modifies dataset values directly.
+        raw (bool): If True, all the data is immediately loaded
+        complete (bool): If True, Parcels will do a check for fieldset completeness
+        mesh (str): 'spherical' or 'flat'
+        boundary_condition (str): If needed, specify freeslip or partialslip. Otherwise,
+            linear by default.
+        **kwargs: keyword arguments to pass into FieldSet creation
     """
 
     if isinstance(boundary_condition, str):
@@ -769,8 +773,6 @@ def dataset_to_fieldset(
         interp_method = kwargs.pop("interp_method", "linear")
     if copy:
         ds = ds.copy(deep=True)
-    else:
-        ds = ds
     if raw:
         fieldset = FieldSet.from_data(
             {"U": ds["U"].values, "V": ds["V"].values},
@@ -795,19 +797,19 @@ def dataset_to_fieldset(
     return fieldset
 
 
-def dataset_to_vectorfield(ds, u_name, v_name, uv_name) -> VectorField:
+def dataset_to_vectorfield(ds, u_name, v_name, uv_name, interp_method="nearest") -> VectorField:
     fu = Field.from_xarray(
         ds["U"],
         u_name,
         dict(lat="lat", lon="lon", time="time"),
-        interp_method="nearest",
+        interp_method=interp_method,
     )
     fu.units = GeographicPolar()
     fv = Field.from_xarray(
         ds["V"],
         v_name,
         dict(lat="lat", lon="lon", time="time"),
-        interp_method="nearest",
+        interp_method=interp_method,
     )
     fv.units = Geographic()
     return VectorField(uv_name, fu, fv)

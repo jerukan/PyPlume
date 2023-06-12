@@ -167,13 +167,17 @@ class ParticleResult:
                 utils.delete_all_pngs(save_dir)
             allplots = resultplot(self)
             if isinstance(allplots, Generator):
-                for i, (fig, ax) in tqdm(enumerate(allplots), desc=f"Generating plots for {label}"):
+                for i, (fig, ax) in tqdm(
+                    enumerate(allplots), desc=f"Generating plots for {label}"
+                ):
                     savefile = utils.get_dir(save_dir / label) / f"simframe_{i}.png"
                     self.plot_paths[label].append(savefile)
                     plotting.draw_plt(savefile=savefile, fig=fig)
             else:
                 figs, axs = allplots
-                for i, fig in tqdm(enumerate(figs), desc=f"Generating plots for {label}"):
+                for i, fig in tqdm(
+                    enumerate(figs), desc=f"Generating plots for {label}"
+                ):
                     savefile = utils.get_dir(save_dir / label) / f"simframe_{i}.png"
                     self.plot_paths[label].append(savefile)
                     plotting.draw_plt(savefile=savefile, fig=fig)

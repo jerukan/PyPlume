@@ -18,13 +18,20 @@ logger = get_logger(__name__)
 
 def load_pos_from_dict(data, lat_key=None, lon_key=None, infer_keys=True):
     """
-    Guess keys for latitude and longitude, this is not robust at all.
+    Gets positional data (longitude and latitude) arrays from a dictionary.
+
+    Keys for either of the position can be defined or guessed naively.
 
     Args:
+        data (dict)
+        lat_key (str): Explicitly defines which key represents latitude values.
+        lon_key (str): Explicitly defines which key represents longitude values.
+        infer_keys (bool): If True, will attempt to naively guess which key in the
+            data represents latitude or longitude.
 
     Returns:
-        lat data
-        lon data
+        latitudes
+        longitudes
     """
     possible_lat_keys = {"y", "lat", "lats", "latitude", "latitudes"}
     possible_lon_keys = {"x", "lon", "lons", "longitude", "longitudes"}
@@ -254,6 +261,7 @@ def guess_ocean_datavars(keys, exclude=None):
         if "V" not in exclude:
             if ("v" in key.lower() and "tot" in key.lower()) or ("v" == key.lower()):
                 mappings["V"] = key
+
     # attempt to look for uv keys, assume they look like "usomething" or "vsomething"
     def find_containing(target):
         found = []
@@ -535,6 +543,10 @@ def slice_dataset(
 
 
 class DataLoader:
+    """
+    Utility class that handles the loading of datasets from files or data servers.
+    """
+
     def __init__(
         self,
         dataset,
@@ -547,14 +559,20 @@ class DataLoader:
         **kwargs,
     ):
         """
+        Loads a dataset locally given some queries or constraints. If the original dataset
+        is too large, the constraints may be neccessary.
+
         Args:
-            load_method (str -> xr.Dataset)
+            load_method (str -> xr.Dataset): If the dataset is in a drastically different
+                format can cannot be loaded normally, a custom method can be defined.
             inclusive (bool): If True, will attempt to slice the dataset in away to
                 keep the endpoints of the ranges included.
         """
         self.time_range = time_range
         if domain is not None and (lat_range is not None or lon_range is not None):
-            raise ValueError("Cannot define both domain and lat/lon ranges at the same time. Use one or the other!")
+            raise ValueError(
+                "Cannot define both domain and lat/lon ranges at the same time. Use one or the other!"
+            )
         if domain is not None:
             self.lat_range = [domain["S"], domain["N"]]
             self.lon_range = [domain["W"], domain["E"]]
@@ -797,7 +815,9 @@ def dataset_to_fieldset(
     return fieldset
 
 
-def dataset_to_vectorfield(ds, u_name, v_name, uv_name, interp_method="nearest") -> VectorField:
+def dataset_to_vectorfield(
+    ds, u_name, v_name, uv_name, interp_method="nearest"
+) -> VectorField:
     fu = Field.from_xarray(
         ds["U"],
         u_name,

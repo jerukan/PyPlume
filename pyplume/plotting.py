@@ -2,11 +2,7 @@
 A collection of methods related to plotting.
 """
 import copy
-import datetime
-import logging
 import math
-from pathlib import Path
-import sys
 
 import cartopy
 import cartopy.crs as ccrs
@@ -14,9 +10,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
-from parcels import plotting
 import seaborn as sns
-import xarray as xr
 
 from pyplume import get_logger
 
@@ -287,13 +281,14 @@ def plot_vectorfield(
                 raise ValueError(
                     "Tried plotting vector field oustide of time range. Set allow_time_extrapolation=True"
                 )
-        lower_time = dataset["time"][idx].values
-        upper_time = dataset["time"][idx + 1].values
-        dist = (show_time - lower_time) / np.timedelta64(1, "s")
-        width = (upper_time - lower_time) / np.timedelta64(1, "s")
-        ratio = dist / width
-        U = (1 - ratio) * dataset["U"][idx] + ratio * dataset["U"][idx + 1]
-        V = (1 - ratio) * dataset["V"][idx] + ratio * dataset["V"][idx + 1]
+        else:
+            lower_time = dataset["time"][idx].values
+            upper_time = dataset["time"][idx + 1].values
+            dist = (show_time - lower_time) / np.timedelta64(1, "s")
+            width = (upper_time - lower_time) / np.timedelta64(1, "s")
+            ratio = dist / width
+            U = (1 - ratio) * dataset["U"][idx] + ratio * dataset["U"][idx + 1]
+            V = (1 - ratio) * dataset["V"][idx] + ratio * dataset["V"][idx + 1]
     else:
         U = dataset["U"][idx]
         V = dataset["V"][idx]

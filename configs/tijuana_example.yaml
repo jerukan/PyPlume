@@ -14,6 +14,7 @@ ocean_data:
         args:
           exclude_oob: True
     boundary_condition: freeslip
+    allow_time_extrapolation: True
 parcels_config:
   particle_type: pyplume.kernels.ThreddsParticle
   kernels:
@@ -21,9 +22,7 @@ parcels_config:
     - pyplume.kernels.AgeParticle
     - pyplume.kernels.RandomWalk5cm
     - pyplume.kernels.DeleteAfter3Days
-  time_range:
-    - START
-    - END
+  time_range: [START, END]
   repeat_dt: 7200
   repetitions: -1
   instances_per_spawn: 1

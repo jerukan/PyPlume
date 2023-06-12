@@ -1,29 +1,22 @@
 """
-Methods in here related to preparing, running, and processing simulations.
+Methods in here related to preparing, running, and processing simulations
+through the use of the YAML configs.
 """
 import copy
 from datetime import datetime
-import json
-import logging
-import os
 from pathlib import Path
 
-import numpy as np
-from parcels import Field, VectorField
-from parcels.tools.converters import GeographicPolar, Geographic
-import xarray as xr
 import yaml
 
-from pyplume import get_logger
+from pyplume import get_logger, utils
 from pyplume.constants import EMPTY
 from pyplume.dataloaders import (
     DataLoader,
-    DefaultLoad,
     SurfaceGrid,
     load_wind_dataset,
     load_geo_points,
+    dataset_to_vectorfield,
 )
-import pyplume.utils as utils
 from pyplume.simulation import ParcelsSimulation
 from pyplume.gapfilling import Gapfiller
 
@@ -66,21 +59,7 @@ def load_ocean_cfg(cfg):
         alongshore_cfg["dataset"] = alongshore_cfg["path"]
         del alongshore_cfg["path"]
         coast_ds = DataLoader(**alongshore_cfg).dataset
-        fu = Field.from_xarray(
-            coast_ds["U"],
-            "CU",
-            dict(lat="lat", lon="lon", time="time"),
-            interp_method="nearest",
-        )
-        fu.units = GeographicPolar()
-        fv = Field.from_xarray(
-            coast_ds["V"],
-            "CV",
-            dict(lat="lat", lon="lon", time="time"),
-            interp_method="nearest",
-        )
-        fv.units = Geographic()
-        fuv = VectorField("CUV", fu, fv)
+        fuv = dataset_to_vectorfield(coast_ds, "CU", "CV", "CUV")
         fields = [fuv]
     fs_kwargs = {"allow_time_extrapolation": allow_time_extrapolation}
     # set boundary condition of fields

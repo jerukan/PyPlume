@@ -1,17 +1,16 @@
 import logging
 from pathlib import Path
 import sys
-import warnings
 
-import dask
-import numpy as np
 
 # large chunk issues
+# import dask
 # dask.config.set(**{'array.slicing.split_large_chunks': True})
 # ignore common deprecation warnings that pop up constantly
 # warnings.simplefilter("ignore", UserWarning)
 # ignore divide by nan error that happens constantly with parcels
-np.seterr(divide="ignore", invalid="ignore")
+# import numpy as np
+# np.seterr(divide="ignore", invalid="ignore")
 
 
 log_dir = Path("logs/")
@@ -34,13 +33,6 @@ def get_logger(name):
     return logger
 
 
-# logging.basicConfig(
-#     filename="logs/output.log",
-#     filemode="a",
-#     format="%(asctime)s,%(msecs)d %(name)s | %(levelname)s | %(message)s",
-#     datefmt="%H:%M:%S",
-#     level=logging.DEBUG
-# )
 logger = get_logger(__name__)
 
 
@@ -55,4 +47,6 @@ def handle_unhandled_exception(exc_type, exc_value, exc_traceback):
     )
 
 
+# override sys excepthook to do the usual exception callback but also
+# log the exception.
 sys.excepthook = handle_unhandled_exception

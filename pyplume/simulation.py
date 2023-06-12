@@ -3,11 +3,8 @@ Classes and methods directly related to setting up Parcels simulations and runni
 """
 import copy
 from datetime import timedelta, datetime
-import importlib
-import logging
 import math
 from pathlib import Path
-import sys
 import warnings
 
 import numpy as np
@@ -23,7 +20,7 @@ from parcels import (
 from pyplume import get_logger, utils
 from pyplume.dataloaders import load_geo_points
 from pyplume.postprocess import ParticleResult
-from pyplume.kernels import DeleteParticle, DeleteParticleVerbose, AdvectionRK4BorderCheck
+from pyplume.kernels import DeleteParticle, AdvectionRK4BorderCheck
 
 
 logger = get_logger(__name__)
@@ -72,7 +69,10 @@ def parse_time_range(time_range, time_list):
         t_start = t_end - np.timedelta64(t_start)
     if isinstance(t_end, int):
         t_end = t_start + np.timedelta64(t_end)
-
+    if t_start > t_end:
+        raise ValueError(
+            "The time range could not be parsed correctly. Double check the time dimension of your data!"
+        )
     return t_start, t_end
 
 
@@ -195,14 +195,16 @@ class ParcelsSimulation:
             / f"simulation_{name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}"
         )
         self.pfile_path = self.sim_result_dir / f"particlefile.zarr"
-        self.pfile = self.pset.ParticleFile(self.pfile_path, outputdt=timedelta(seconds=self.snapshot_interval))
+        self.pfile = self.pset.ParticleFile(
+            self.pfile_path, outputdt=timedelta(seconds=self.snapshot_interval)
+        )
         logger.info(
             f"Particle trajectories for {name} will be saved to {self.pfile_path}"
             + f"\n\ttotal particles in simulation: {len(time_arr)}"
         )
 
         t_start, t_end = self.get_time_bounds(spawn_points)
-        self.total_seconds = (t_end - t_start)
+        self.total_seconds = t_end - t_start
         self.snap_num = math.floor((t_end - t_start) / snapshot_interval)
         self.last_int = t_end - (self.snap_num * snapshot_interval + t_start)
         if self.last_int == 0:
@@ -345,7 +347,7 @@ class ParcelsSimulation:
         t_start = (t_start - self.times[0]) / np.timedelta64(1, "s")
         t_end = (t_end - self.times[0]) / np.timedelta64(1, "s")
         return t_start, t_end
-    
+
     def execute(self):
         if self.completed:
             raise RuntimeError("ParcelsSimulation has already completed.")

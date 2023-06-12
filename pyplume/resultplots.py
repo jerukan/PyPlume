@@ -2,7 +2,6 @@ from typing import Generator
 
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
 

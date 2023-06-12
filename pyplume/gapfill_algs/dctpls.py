@@ -3,11 +3,9 @@ import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
-import numpy.ma as ma
 from numpy.linalg import norm
 from numpy.random import random, rand, randn
-import scipy
-from scipy.fft import dct, idct, dctn, idctn
+from scipy.fft import dctn, idctn
 from scipy.optimize import fminbound
 
 
@@ -476,22 +474,6 @@ def InitialGuess(y, I):
 
 
 # NB: filter is 2*I - (np.roll(I,-1) + np.roll(I,1))
-
-
-def dctND(data, f=dct):
-    """Multidimensional DCT (unneeded due to the existence of dctn and idctn in scipy)"""
-    nd = len(data.shape)
-    if nd == 1:
-        return f(data, norm="ortho", type=2)
-    elif nd == 2:
-        return f(f(data, norm="ortho", type=2).T, norm="ortho", type=2).T
-    elif nd == 3:
-        return f(
-            f(f(data, norm="ortho", type=2, axis=0), norm="ortho", type=2, axis=1),
-            norm="ortho",
-            type=2,
-            axis=2,
-        )
 
 
 def peaks(n):

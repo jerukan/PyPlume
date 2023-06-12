@@ -1,13 +1,9 @@
 """Just some useful methods."""
 import glob
 import importlib
-import json
-import logging
 import math
 import os
 from pathlib import Path
-import re
-import subprocess
 import warnings
 
 import imageio
@@ -108,11 +104,9 @@ def get_dir(path_str, iterate=False):
 
 
 def delete_all_pngs(dir_path):
-    """Deletes every simulation generated image"""
+    """Deletes every png in a folder (non-recursive)."""
     pngs = glob.glob(os.path.join(dir_path, "*.png"))
     for png in pngs:
-        if re.search(r"snap_\D*\d+\.png$", png) is None:
-            raise Exception(f"Non-plot images founud in folder {dir_path}")
         os.remove(png)
 
 
@@ -151,10 +145,6 @@ def generate_mask_invalid(data):
     """
     dataisnan = np.isnan(data)
     return dataisnan & np.any(~dataisnan, axis=0)
-    # mask_none = np.tile(generate_mask_no_data(data), (data.shape[0], 1, 1))
-    # mask = np.isnan(data)
-    # mask[mask_none] = False
-    # return mask
 
 
 def generate_mask_no_data(data, tile=False):
@@ -175,14 +165,6 @@ def generate_mask_no_data(data, tile=False):
     if tile:
         return np.tile(mask, (data.shape[0], 1, 1))
     return mask
-    # if isinstance(data, xr.Dataset):
-    #     data = data.to_array()[0]
-    # if len(data.shape) != 3:
-    #     raise ValueError(
-    #         f"Incorrect data dimension: expected 3, actual {len(data.shape)}"
-    #     )
-    # nan_data = ~np.isnan(data)
-    # return nan_data.sum(axis=0) == 0
 
 
 def include_coord_range(coord_rng, ref_coords):
@@ -195,8 +177,8 @@ def include_coord_range(coord_rng, ref_coords):
         ref_coords: must be sorted ascending
 
     Returns:
-        (float1, float2): where float1 <= coord_rng[0] and
-            float2 >= coord_rng[-1]
+        (value1, value2): where value1 <= coord_rng[0] and
+            value2 >= coord_rng[-1]
     """
     if ref_coords[0] > coord_rng[0]:
         start = coord_rng[0]
@@ -240,7 +222,7 @@ def get_path_cfg(path, **kwargs):
     if isinstance(path, dict):
         if "path" in path:
             return {**path, **kwargs}
-        raise KeyError(f"key 'path' not in path config")
+        raise KeyError("key 'path' not in path config")
     raise TypeError(f"{path} is not a proper path or config")
 
 
@@ -253,7 +235,6 @@ def generate_gif(img_paths, gif_path, frame_duration=None):
     """
     if frame_duration is None:
         frame_duration = 500
-    # input_paths = [str(path) for path in img_paths]
     imgs = [imageio.imread(inpath) for inpath in img_paths]
     imageio.mimsave(gif_path, imgs, duration=frame_duration)
     return gif_path

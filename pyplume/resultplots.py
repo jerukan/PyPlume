@@ -69,7 +69,8 @@ class ParticlePlot(ResultPlot):
         domain=None,
         coastline=None,
         draw_currents=False,
-        show_ages=False,
+        color_currents=False,
+        particle_color=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -85,7 +86,8 @@ class ParticlePlot(ResultPlot):
             self.coastline = dataloaders.load_geo_points(coastline)
             self.carree_land = False
         self.draw_currents = draw_currents
-        self.show_ages = show_ages
+        self.color_currents = color_currents
+        self.particle_color = particle_color
 
     def plot_at_time(self, time, result: ParticleResult):
         if self.draw_currents:
@@ -99,6 +101,8 @@ class ParticlePlot(ResultPlot):
                 domain=self.domain,
                 land=self.carree_land,
                 allow_time_extrapolation=True,
+                color_speed=self.color_currents,
+                cbar=True,
             )
         else:
             fig, ax = plotting.get_carree_axis(
@@ -107,23 +111,31 @@ class ParticlePlot(ResultPlot):
         data_t = result.get_filtered_data_time(time)
         lats = data_t["lat"]
         lons = data_t["lon"]
-        lifetimes = None
-        lifetime_max = None
-        lifetime_min = None
-        if self.show_ages:
-            lifetimes = data_t["lifetime"]
-            lifetime_max = np.nanmax(result.data_vars["lifetime"]) / 86400
-            lifetime_min = 0
+        color_data = None
+        color_max = None
+        color_min = None
+        cbar_label = None
+        if self.particle_color is not None:
+            color_data = data_t[self.particle_color]
+            color_min = np.nanmin(result.data_vars[self.particle_color])
+            color_max = np.nanmax(result.data_vars[self.particle_color])
+            if self.particle_color == "lifetime":
+                color_data /= 86400
+                color_min /= 86400
+                color_max /= 86400
+                cbar_label = "Age (days)"
+            else:
+                cbar_label = self.particle_color
         fig, ax = plotting.plot_particles(
             lats,
             lons,
-            color=lifetimes,
+            color=color_data,
             edgecolor="k",
-            vmin=lifetime_min,
-            vmax=lifetime_max,
+            vmin=color_min,
+            vmax=color_max,
             size=self.particle_size,
-            cbar=self.show_ages,
-            cbar_label="Age (days)",
+            cbar=color_data is not None,
+            cbar_label=cbar_label,
             ax=ax,
         )
         if self.coastline is not None:
@@ -156,6 +168,7 @@ class ParticleWithTrackedPointsPlot(ParticlePlot):
             ax.scatter(
                 self.lons[counts == 0],
                 self.lats[counts == 0],
+                marker="^",
                 c="b",
                 s=60,
                 edgecolor="k",
@@ -164,6 +177,7 @@ class ParticleWithTrackedPointsPlot(ParticlePlot):
             ax.scatter(
                 self.lons[counts > 0],
                 self.lats[counts > 0],
+                marker="^",
                 c="r",
                 s=60,
                 edgecolor="k",

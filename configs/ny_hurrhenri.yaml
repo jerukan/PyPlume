@@ -15,8 +15,12 @@ ocean_data:
       - 2021-08-23T18:00
     boundary_condition: freeslip
   - name: hycom
-    data: data/field_netcdfs/hycom_hurrhenri.nc
+    # data: data/field_netcdfs/hycom_hurrhenri.nc
+    data: data/field_netcdfs/hurrhenri_hycom.nc
     # data: https://tds.hycom.org/thredds/dodsC/GLBy0.08/expt_93.0/uv3z
+    # drop_vars: tau
+    # u_key: water_u
+    # v_key: water_v
     # domain:
     #   # rough estimate of available HFRNet data near New York
     #   # southwest: 38.162201, -75.709632

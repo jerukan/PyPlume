@@ -71,6 +71,7 @@ class ParticlePlot(ResultPlot):
         draw_currents=False,
         color_currents=False,
         particle_color=None,
+        particle_edge=False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -88,6 +89,7 @@ class ParticlePlot(ResultPlot):
         self.draw_currents = draw_currents
         self.color_currents = color_currents
         self.particle_color = particle_color
+        self.particle_edge = particle_edge
 
     def plot_at_time(self, time, result: ParticleResult):
         if self.draw_currents:
@@ -130,7 +132,7 @@ class ParticlePlot(ResultPlot):
             lats,
             lons,
             color=color_data,
-            edgecolor="k",
+            edgecolor="k" if self.particle_edge else None,
             vmin=color_min,
             vmax=color_max,
             size=self.particle_size,

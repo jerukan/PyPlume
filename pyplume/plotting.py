@@ -348,12 +348,15 @@ def plot_vectorfield(
 
     if titlestr is None:
         titlestr = ""
+    elif not titlestr:
+        titlestr = False
     else:
         titlestr = f"{titlestr} "
-    if show_time == "average":
-        ax.set_title(f"{titlestr}Velocity field average")
-    else:
-        ax.set_title(f"{titlestr}Velocity field at {show_time.astype('datetime64[s]')}")
+    if titlestr:
+        if show_time == "average":
+            ax.set_title(f"{titlestr}Velocity field average")
+        else:
+            ax.set_title(f"{titlestr}Velocity field at {show_time.astype('datetime64[s]')}")
 
     return fig, ax
 

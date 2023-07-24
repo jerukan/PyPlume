@@ -227,21 +227,32 @@ def plot_vectorfield(
     vmin=None,
     vmax=None,
     titlestr=None,
-    fig=None,
-    pos=None,
+    ax=None,
+    color_speed=True,
     cbar=True,
     allow_time_extrapolation=False,
 ):
+    """
+    Args:
+        show_time: possible values: datetime, int, 'average'
+    """
     if domain is None:
         domain = generate_domain_datasets([dataset])
-    if fig is None:
-        fig = plt.figure()
-    fig, ax = get_carree_axis(
-        domain, projection=projection, land=land, fig=fig, pos=pos
-    )
-    get_carree_gl(ax)
+    if ax is None:
+        fig, ax = get_carree_axis(domain=domain, projection=projection, land=land)
+        get_carree_gl(ax)
+    else:
+        fig = ax.get_figure()
     interp = False
-    if isinstance(show_time, int):
+    U = None
+    V = None
+    if show_time is None:
+        idx = 0
+        show_time = dataset["time"][0].values
+    elif isinstance(show_time, str) and show_time.lower() == "average":
+        U = np.mean(dataset["U"], axis=0)
+        V = np.mean(dataset["V"], axis=0)
+    elif isinstance(show_time, int):
         idx = show_time
         # provided index is outside of the time array
         if idx < 0 or idx >= len(dataset["time"]):
@@ -252,9 +263,8 @@ def plot_vectorfield(
                     "Tried plotting vector field oustide of time range. Set allow_time_extrapolation=True"
                 )
         show_time = dataset["time"][idx].values
-    else:
-        if isinstance(show_time, str):
-            show_time = np.datetime64(show_time)
+    elif isinstance(show_time, (str, np.datetime64)):
+        show_time = np.datetime64(show_time)
         found_idxs = np.where(dataset["time"] == show_time)[0]
         if len(found_idxs) == 0:
             before_idxs = np.where(dataset["time"] <= show_time)[0]
@@ -270,28 +280,31 @@ def plot_vectorfield(
                 idx = before_idxs[-1]
                 interp = True
         else:
-            idx = found_idxs[0] if show_time is not None else 0
-    if interp:
-        # provided time is above time range
-        if (idx + 1) >= len(dataset["time"]):
-            if allow_time_extrapolation:
-                U = dataset["U"][idx]
-                V = dataset["V"][idx]
-            else:
-                raise ValueError(
-                    "Tried plotting vector field oustide of time range. Set allow_time_extrapolation=True"
-                )
-        else:
-            lower_time = dataset["time"][idx].values
-            upper_time = dataset["time"][idx + 1].values
-            dist = (show_time - lower_time) / np.timedelta64(1, "s")
-            width = (upper_time - lower_time) / np.timedelta64(1, "s")
-            ratio = dist / width
-            U = (1 - ratio) * dataset["U"][idx] + ratio * dataset["U"][idx + 1]
-            V = (1 - ratio) * dataset["V"][idx] + ratio * dataset["V"][idx + 1]
+            idx = found_idxs[0]
     else:
-        U = dataset["U"][idx]
-        V = dataset["V"][idx]
+        raise TypeError(f"show_time of type {type(show_time)} is invalid!")
+    if U is None or V is None:
+        if interp:
+            # provided time is above time range
+            if (idx + 1) >= len(dataset["time"]):
+                if allow_time_extrapolation:
+                    U = dataset["U"][idx]
+                    V = dataset["V"][idx]
+                else:
+                    raise ValueError(
+                        "Tried plotting vector field oustide of time range. Set allow_time_extrapolation=True"
+                    )
+            else:
+                lower_time = dataset["time"][idx].values
+                upper_time = dataset["time"][idx + 1].values
+                dist = (show_time - lower_time) / np.timedelta64(1, "s")
+                width = (upper_time - lower_time) / np.timedelta64(1, "s")
+                ratio = dist / width
+                U = (1 - ratio) * dataset["U"][idx] + ratio * dataset["U"][idx + 1]
+                V = (1 - ratio) * dataset["V"][idx] + ratio * dataset["V"][idx + 1]
+        else:
+            U = dataset["U"][idx]
+            V = dataset["V"][idx]
     lats = dataset["lat"]
     lons = dataset["lon"]
     allspd = dataset["U"] ** 2 + dataset["V"] ** 2
@@ -306,28 +319,44 @@ def plot_vectorfield(
     speed = np.where(spd > 0, np.sqrt(spd), 0)
     u = np.where(speed > 0.0, U / speed, 0)
     v = np.where(speed > 0.0, V / speed, 0)
-    cs = ax.quiver(
-        np.asarray(x),
-        np.asarray(y),
-        np.asarray(u),
-        np.asarray(v),
-        speed,
-        cmap=ncar_cmap,
-        clim=[vmin, vmax],
-        scale=50,
-        transform=cartopy.crs.PlateCarree(),
-    )
-    cs.set_clim(vmin, vmax)
+    if color_speed:
+        cs = ax.quiver(
+            np.asarray(x),
+            np.asarray(y),
+            np.asarray(u),
+            np.asarray(v),
+            speed,
+            cmap=ncar_cmap,
+            clim=[vmin, vmax],
+            scale=50,
+            transform=cartopy.crs.PlateCarree(),
+        )
+        cs.set_clim(vmin, vmax)
 
-    if cbar:
-        vel_cbar = plt.colorbar(cs)
-        vel_cbar.set_label("Current vector velocity (m/s)")
+        if cbar:
+            vel_cbar = plt.colorbar(cs)
+            vel_cbar.set_label("Current vector velocity (m/s)")
+    else:
+        cs = ax.quiver(
+            np.asarray(x),
+            np.asarray(y),
+            np.asarray(u),
+            np.asarray(v),
+            scale=50,
+            transform=cartopy.crs.PlateCarree(),
+        )
 
     if titlestr is None:
         titlestr = ""
+    elif not titlestr:
+        titlestr = False
     else:
         titlestr = f"{titlestr} "
-    ax.set_title(f"{titlestr}Velocity field at {show_time.astype('datetime64[s]')}")
+    if titlestr:
+        if show_time == "average":
+            ax.set_title(f"{titlestr}Velocity field average")
+        else:
+            ax.set_title(f"{titlestr}Velocity field at {show_time.astype('datetime64[s]')}")
 
     return fig, ax
 

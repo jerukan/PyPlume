@@ -46,7 +46,10 @@ plotting_config:
     - type: pyplume.resultplots.ParticleWithTrackedPointsPlot
       label: particleplots
       coastline: data/coastOR2Mex_tijuana.mat
+      particle_size: 10
       draw_currents: true
+      color_currents: false
+      particle_color: lifetime
       domain:
         S: 32.525
         N: 32.7

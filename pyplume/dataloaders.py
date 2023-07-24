@@ -364,6 +364,8 @@ class DefaultLoad:
                         f"Could not open {src}. Are you opening a NetCDF file and is the path/url correct?"
                     ) from e
                 raise e
+            except ZeroDivisionError as e:
+                raise ValueError("Could not chunk dataset. There could be a missing coordinate in your data!") from e
         datavar_map = {}
         for key, val in self.uv_map.items():
             if val is not None:
@@ -498,16 +500,23 @@ def slice_dataset(
             lat_range = utils.include_coord_range(lat_range, ds["lat"].values)
         sel_args["lat"] = slice(lat_range[0], lat_range[1])
     if lon_range is not None:
+        # for latitude values, 0-360 and -180-180 are both commonly used, so we have to
+        # account for them
         lon_coords = ds["lon"].values
         range_360 = lon_range[0] > 180 or lon_range[1] > 180
         coords_360 = np.any(ds["lon"] > 180)
-        if range_360:
+        # we only convert the range since converting coordinate points often breaks the
+        # order of the points
+        if coords_360 and not range_360:
+            lon_range = (
+                utils.convert180to360(lon_range[0]),
+                utils.convert180to360(lon_range[1]),
+            )
+        if not coords_360 and range_360:
             lon_range = (
                 utils.convert360to180(lon_range[0]),
                 utils.convert360to180(lon_range[1]),
             )
-        if coords_360:
-            lon_coords = utils.convert360to180(lon_coords)
         lon_out_of_range = (
             lon_range[0] < ds["lon"].min() or lon_range[1] > ds["lon"].max()
         )
@@ -517,12 +526,6 @@ def slice_dataset(
             )
         if inclusive:
             lon_range = utils.include_coord_range(lon_range, lon_coords)
-        # revert conversion
-        if coords_360:
-            lon_range = (
-                utils.convert180to360(lon_range[0]),
-                utils.convert180to360(lon_range[1]),
-            )
         sel_args["lon"] = slice(lon_range[0], lon_range[1])
     if time_range is not None:
         if not isinstance(time_range, slice):

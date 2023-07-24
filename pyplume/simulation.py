@@ -18,7 +18,7 @@ from parcels import (
 )
 
 from pyplume import get_logger, utils
-from pyplume.dataloaders import load_geo_points
+from pyplume.dataloaders import load_geo_points, SurfaceGrid
 from pyplume.postprocess import ParticleResult
 from pyplume.kernels import DeleteParticle, AdvectionRK4BorderCheck
 
@@ -130,7 +130,7 @@ class ParcelsSimulation:
     def __init__(
         self,
         name,
-        grid,
+        grid: SurfaceGrid,
         spawn_points=None,
         particle_type=None,
         save_dir=None,
@@ -143,7 +143,7 @@ class ParcelsSimulation:
         simulation_dt=None,
     ):
         self.name = name
-        self.grid = grid
+        self.grid: SurfaceGrid = grid
         self.time_range = time_range
         self.repetitions = repetitions
         self.snapshot_interval = snapshot_interval
@@ -194,7 +194,7 @@ class ParcelsSimulation:
             Path(save_dir)
             / f"simulation_{name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}"
         )
-        self.pfile_path = self.sim_result_dir / f"particlefile.zarr"
+        self.pfile_path = self.sim_result_dir / "particlefile.zarr"
         self.pfile = self.pset.ParticleFile(
             self.pfile_path, outputdt=timedelta(seconds=self.snapshot_interval)
         )
@@ -206,15 +206,6 @@ class ParcelsSimulation:
         t_start, t_end = self.get_time_bounds(spawn_points)
         self.total_seconds = t_end - t_start
         self.snap_num = math.floor((t_end - t_start) / snapshot_interval)
-        self.last_int = t_end - (self.snap_num * snapshot_interval + t_start)
-        if self.last_int == 0:
-            # +1 snapshot is from an initial plot
-            logger.info(
-                "No last interval exists."
-                + f"\nNum snapshots to save for {name}: {self.snap_num + 1}"
-            )
-        else:
-            logger.info(f"Num snapshots to save for {name}: {self.snap_num + 2}")
 
         self.completed = False
         self.parcels_result = None
@@ -271,6 +262,10 @@ class ParcelsSimulation:
             time_arr[start:end] = release + repeat_dt * i
         p_lats = spawn_points.T[0, np.tile(np.arange(num_spawns), repetitions)]
         p_lons = spawn_points.T[1, np.tile(np.arange(num_spawns), repetitions)]
+        # somehow Parcels doesn't handle this behind the scenes, so we have to check
+        # ourselves :(
+        if self.grid.lon_360:
+            p_lons = utils.convert180to360(p_lons)
         return time_arr, p_lats, p_lons
 
     def add_kernel(self, kernel):
@@ -359,7 +354,6 @@ class ParcelsSimulation:
             recovery={ErrorCode.ErrorOutOfBounds: DeleteParticle},
             output_file=self.pfile,
         )
-
         # self.pfile.export()
         # ParticleFile exports when it closes
         self.pfile.close()

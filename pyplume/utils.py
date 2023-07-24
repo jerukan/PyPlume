@@ -180,6 +180,9 @@ def include_coord_range(coord_rng, ref_coords):
         (value1, value2): where value1 <= coord_rng[0] and
             value2 >= coord_rng[-1]
     """
+    coords_sorted = np.all(ref_coords[:-1] <= ref_coords[1:])
+    if not coords_sorted:
+        raise ValueError("Coordinates of dataset are unsorted, this will cause problems.")
     if ref_coords[0] > coord_rng[0]:
         start = coord_rng[0]
     else:

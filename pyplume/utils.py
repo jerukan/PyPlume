@@ -239,7 +239,7 @@ def generate_gif(img_paths, gif_path, frame_duration=None):
     if frame_duration is None:
         frame_duration = 500
     imgs = [imageio.imread(inpath) for inpath in img_paths]
-    imageio.mimsave(gif_path, imgs, duration=frame_duration)
+    imageio.mimsave(gif_path, imgs, duration=frame_duration, loop=0)
     return gif_path
 
 

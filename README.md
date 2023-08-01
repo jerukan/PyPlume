@@ -1,5 +1,7 @@
 # PyPlume
 
+[![Open in Code Ocean](https://codeocean.com/codeocean-assets/badge/open-in-code-ocean.svg)](https://codeocean.com/capsule/9735287/tree/v1)
+
 A collection of notebooks and methods made unifying the process of loading two-dimensional oceanic current vector fields from models and observations, simulating trajectory models, and analyzing and visualizing particle trajectories.
 
 The core library used in this project is [OceanParcels](https://oceanparcels.org/), which is used for particle advection math.

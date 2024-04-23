@@ -41,3 +41,13 @@ Use the [`download_data.ipynb`](download_data.ipynb) notebook to save a specifie
 ### Gapfilling
 
 Use [`gapfilling.ipynb`](gapfilling.ipynb) to gapfill a netcdf file. Instructions are in the notebook.
+
+## Possible issues and fixes
+
+### `FieldOutOfBoundError` or other Field errors during simulation
+
+If particles are intented to go out of bounds during the simulation, add `pyplume.kernels.DeleteStatusOutOfBounds` as a kernel to the list of kernels in the configuration. Other error codes like `ErrorTimeExtrapolation` can be ignored using `pyplume.kernels.DeleteStatusError`.
+
+### How to run simulations backward in time?
+
+The only thing that needs to change is a negative simulation delta time, which can be set in the `simulation_dt` field when configuring.

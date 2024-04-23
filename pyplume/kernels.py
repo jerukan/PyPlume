@@ -4,8 +4,7 @@ from operator import attrgetter
 import sys
 
 import numpy as np
-from parcels import JITParticle, Variable
-from parcels import ParcelsRandom
+from parcels import JITParticle, Variable, ParcelsRandom, StatusCode
 
 
 ParcelsRandom.seed(42)
@@ -21,6 +20,16 @@ class ThreddsParticle(JITParticle):
     spawntime = Variable("spawntime", initial=attrgetter("time"), dtype=np.float32)
     # out of bounds
     oob = Variable("oob", initial=0, dtype=np.int32)
+
+
+def DeleteStatusOutOfBounds(particle, fieldset, time):
+    if particle.state == StatusCode.ErrorOutOfBounds:
+        particle.delete()
+
+
+def DeleteStatusError(particle, fieldset, time):
+    if particle.state >= 50:  # This captures all Errors
+        particle.delete()
 
 
 def AgeParticle(particle, fieldset, time):

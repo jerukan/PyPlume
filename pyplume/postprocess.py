@@ -64,7 +64,9 @@ class ParticleResult:
         # some particles die in a timestamp between the time intervals, and leave a specific
         # time that probably isn't included in most of the other particles
         # we take the unique timestamps across all particles
-        times_unique = np.unique(self.data_vars["time"])
+        times_nat = self.data_vars["time"]
+        times_nat[np.isnan(self.data_vars["lat"])] = np.datetime64("NaT")
+        times_unique = np.unique(times_nat)
         self.times = np.sort(times_unique[~np.isnan(times_unique)])
 
         self.grid = None

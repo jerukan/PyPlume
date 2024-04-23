@@ -46,7 +46,7 @@ def load_pos_from_dict(data, lat_key=None, lon_key=None, infer_keys=True):
         if guessed is None:
             for possib in possibilities:
                 for key in keys:
-                    if key.lower()[: len(possib)] == possib:
+                    if possib in key.lower():
                         guessed = key
                         logger.info(f"Guessed key as {key}")
                         return guessed
@@ -390,6 +390,7 @@ class DefaultLoad:
 
         ds = ds.rename(inv_datavar_map)
         ds = ds.rename(inv_coord_map)
+        ds = ds.transpose("time", "lat", "lon", ...)
         return ds
 
 

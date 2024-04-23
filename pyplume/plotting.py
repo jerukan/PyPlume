@@ -243,31 +243,35 @@ def plot_vectorfield(
         get_carree_gl(ax)
     else:
         fig = ax.get_figure()
+    dsTime = dataset["time"].values
+    dsU = dataset["U"].values
+    dsV = dataset["V"].values
     interp = False
     U = None
     V = None
     if show_time is None:
         idx = 0
-        show_time = dataset["time"][0].values
+        show_time = dsTime[0]
     elif isinstance(show_time, str) and show_time.lower() == "average":
-        U = np.mean(dataset["U"], axis=0)
-        V = np.mean(dataset["V"], axis=0)
+        U = np.mean(dsU, axis=0)
+        V = np.mean(dsV, axis=0)
     elif isinstance(show_time, int):
         idx = show_time
         # provided index is outside of the time array
-        if idx < 0 or idx >= len(dataset["time"]):
+        # if negative, will treat as negative index though
+        if idx >= len(dsTime):
             if allow_time_extrapolation:
-                idx = min(max(0, idx), len(dataset["time"]) - 1)
+                idx = min(max(0, idx), len(dsTime) - 1)
             else:
                 raise ValueError(
                     "Tried plotting vector field oustide of time range. Set allow_time_extrapolation=True"
                 )
-        show_time = dataset["time"][idx].values
+        show_time = dsTime[idx]
     elif isinstance(show_time, (str, np.datetime64)):
         show_time = np.datetime64(show_time)
-        found_idxs = np.where(dataset["time"] == show_time)[0]
+        found_idxs = np.where(dsTime == show_time)[0]
         if len(found_idxs) == 0:
-            before_idxs = np.where(dataset["time"] <= show_time)[0]
+            before_idxs = np.where(dsTime <= show_time)[0]
             # provided time is below time range
             if len(before_idxs) == 0:
                 if allow_time_extrapolation:
@@ -288,44 +292,47 @@ def plot_vectorfield(
             # provided time is above time range
             if (idx + 1) >= len(dataset["time"]):
                 if allow_time_extrapolation:
-                    U = dataset["U"][idx]
-                    V = dataset["V"][idx]
+                    U = dsU[idx].values
+                    V = dsV[idx].values
                 else:
                     raise ValueError(
                         "Tried plotting vector field oustide of time range. Set allow_time_extrapolation=True"
                     )
             else:
-                lower_time = dataset["time"][idx].values
-                upper_time = dataset["time"][idx + 1].values
+                lower_time = dsTime[idx]
+                upper_time = dsTime[idx + 1]
                 dist = (show_time - lower_time) / np.timedelta64(1, "s")
                 width = (upper_time - lower_time) / np.timedelta64(1, "s")
                 ratio = dist / width
-                U = (1 - ratio) * dataset["U"][idx] + ratio * dataset["U"][idx + 1]
-                V = (1 - ratio) * dataset["V"][idx] + ratio * dataset["V"][idx + 1]
+                U = (1 - ratio) * dsU[idx] + ratio * dsU[idx + 1]
+                V = (1 - ratio) * dsV[idx] + ratio * dsV[idx + 1]
         else:
-            U = dataset["U"][idx]
-            V = dataset["V"][idx]
-    lats = dataset["lat"]
-    lons = dataset["lon"]
-    allspd = dataset["U"] ** 2 + dataset["V"] ** 2
+            U = dsU[idx]
+            V = dsV[idx]
+    U = np.array(U)
+    V = np.array(V)
+    lats = dataset["lat"].values
+    lons = dataset["lon"].values
+    allspd = U ** 2 + V ** 2
     allspeed = np.where(allspd > 0, np.sqrt(allspd), 0)
-    vmin = allspeed.min() if vmin is None else vmin
-    vmax = allspeed.max() if vmax is None else vmax
+    vmin = np.nanmin(allspeed) if vmin is None else vmin
+    vmax = np.nanmax(allspeed) if vmax is None else vmax
     ncar_cmap = copy.copy(plt.cm.gist_ncar)
     ncar_cmap.set_over("k")
     ncar_cmap.set_under("w")
     x, y = np.meshgrid(lons, lats)
-    spd = U**2 + V**2
-    speed = np.where(spd > 0, np.sqrt(spd), 0)
-    u = np.where(speed > 0.0, U / speed, 0)
-    v = np.where(speed > 0.0, V / speed, 0)
+    exists = allspeed > 0.0
+    u = np.zeros(U.shape)
+    v = np.zeros(V.shape)
+    u[exists] = U[exists] / allspeed[exists]
+    v[exists] = V[exists] / allspeed[exists]
     if color_speed:
         cs = ax.quiver(
             np.asarray(x),
             np.asarray(y),
             np.asarray(u),
             np.asarray(v),
-            speed,
+            allspeed,
             cmap=ncar_cmap,
             clim=[vmin, vmax],
             scale=50,

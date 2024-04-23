@@ -10,7 +10,7 @@ import warnings
 import numpy as np
 from parcels import (
     ParticleSet,
-    ErrorCode,
+    ParticleFile,
     AdvectionRK4,
     AdvectionRK45,
     ScipyParticle,
@@ -20,7 +20,7 @@ from parcels import (
 from pyplume import get_logger, utils
 from pyplume.dataloaders import load_geo_points, SurfaceGrid
 from pyplume.postprocess import ParticleResult
-from pyplume.kernels import DeleteParticle, AdvectionRK4BorderCheck
+from pyplume.kernels import AdvectionRK4BorderCheck
 
 
 logger = get_logger(__name__)
@@ -182,7 +182,7 @@ class ParcelsSimulation:
         else:
             self.particle_type = particle_type
         # set up ParticleSet and ParticleFile
-        self.pset = ParticleSet(
+        self.pset: ParticleSet = ParticleSet(
             fieldset=grid.fieldset,
             pclass=self.particle_type,
             time=time_arr,
@@ -195,7 +195,7 @@ class ParcelsSimulation:
             / f"simulation_{name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}"
         )
         self.pfile_path = self.sim_result_dir / "particlefile.zarr"
-        self.pfile = self.pset.ParticleFile(
+        self.pfile: ParticleFile = self.pset.ParticleFile(
             self.pfile_path, outputdt=timedelta(seconds=self.snapshot_interval)
         )
         logger.info(
@@ -351,12 +351,8 @@ class ParcelsSimulation:
             self.kernel,
             runtime=timedelta(seconds=self.total_seconds),
             dt=timedelta(seconds=self.simulation_dt),
-            recovery={ErrorCode.ErrorOutOfBounds: DeleteParticle},
             output_file=self.pfile,
         )
-        # self.pfile.export()
-        # ParticleFile exports when it closes
-        self.pfile.close()
         self.completed = True
         self.parcels_result = ParticleResult(
             self.pfile_path,

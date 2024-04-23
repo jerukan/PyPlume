@@ -1,0 +1,42 @@
+ocean_data:
+  - name: nycodar_hfr
+    data: data/codar_thing/NYCODAR_2021_2022_cruise1.nc
+    allow_time_extrapolation: false
+    time_range: [START, END]
+parcels_config:
+  save_dir: results
+  particle_type: pyplume.kernels.ThreddsParticle
+  kernels:
+    - parcels.AdvectionRK4
+    - pyplume.kernels.RandomWalk5cm
+    - pyplume.kernels.AgeParticle
+  time_range: [2021-04-15T15:00, 2021-04-18T15:00]
+  repeat_dt: 3600
+  repetitions: 10
+  instances_per_spawn: 1
+  spawn_points:
+    - label: release
+      point: [40, -72.8]
+      pattern:
+        type: grid
+        size: 15
+        gapsize: 0.005
+  simulation_dt: -1200
+  snapshot_interval: 7200
+postprocess_config: {}
+plotting_config:
+  plots:
+    - type: pyplume.resultplots.ParticlePlot
+      label: particleplots
+      coastline: true
+      draw_currents: false
+      domain:
+        S: 39
+        N: 41
+        W: -73.5
+        E: -72
+      # addons:
+      #   - type: pyplume.resultplots.AddScatter
+      #     data: data/codar_thing/StationPts.mat
+      #     color: r
+      #     size: 20

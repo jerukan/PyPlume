@@ -19,6 +19,7 @@ from pyplume.dataloaders import (
 )
 from pyplume.simulation import ParcelsSimulation
 from pyplume.gapfilling import Gapfiller
+from pyplume.postprocess import ParticleResult
 
 
 logger = get_logger(__name__)
@@ -107,7 +108,7 @@ def prep_sim_from_cfg(cfg):
     return sims
 
 
-def handle_postprocessing(result, postprocess_cfg):
+def handle_postprocessing(result: ParticleResult, postprocess_cfg):
     if postprocess_cfg.get("coastline", None) not in EMPTY:
         lats, lons = load_geo_points(**utils.get_path_cfg(postprocess_cfg["coastline"]))
         result.add_coastline(lats, lons)
@@ -126,7 +127,7 @@ def handle_postprocessing(result, postprocess_cfg):
     #     logger.info("processed buoy distances")
 
 
-def process_results(sim, cfg):
+def process_results(sim: ParcelsSimulation, cfg):
     if not sim.completed:
         raise RuntimeError("Simulation has not been completed yet.")
     postprocess_cfg = cfg.get("postprocess_config", None)

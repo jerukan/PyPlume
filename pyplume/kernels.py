@@ -4,8 +4,7 @@ from operator import attrgetter
 import sys
 
 import numpy as np
-from parcels import JITParticle, Variable
-from parcels import ParcelsRandom
+from parcels import JITParticle, Variable, ParcelsRandom, StatusCode
 
 
 ParcelsRandom.seed(42)
@@ -21,6 +20,16 @@ class ThreddsParticle(JITParticle):
     spawntime = Variable("spawntime", initial=attrgetter("time"), dtype=np.float32)
     # out of bounds
     oob = Variable("oob", initial=0, dtype=np.int32)
+
+
+def DeleteStatusOutOfBounds(particle, fieldset, time):
+    if particle.state == StatusCode.ErrorOutOfBounds:
+        particle.delete()
+
+
+def DeleteStatusError(particle, fieldset, time):
+    if particle.state >= 50:  # This captures all Errors
+        particle.delete()
 
 
 def AgeParticle(particle, fieldset, time):
@@ -46,8 +55,8 @@ def RandomWalk5cm(particle, fieldset, time):
     # undo conversion
     dx /= u_conv
     dy /= v_conv
-    particle.lon += dx
-    particle.lat += dy
+    particle_dlon += dx
+    particle_dlat += dy
 
 
 def TestOOB(particle, fieldset, time):
@@ -95,15 +104,14 @@ def DeleteParticleVerbose(particle, fieldset, time):
 
 def WindModify3Percent(particle, fieldset, time):
     """please dont use this yet idk what im doing"""
-    wu = fieldset.WU[time, particle.depth, particle.lat, particle.lon]
-    wv = fieldset.WV[time, particle.depth, particle.lat, particle.lon]
+    wu, wv = fieldset.WUV[time, particle.depth, particle.lat, particle.lon]
     # convert from degrees/s to m/s
     u_conv = 1852 * 60 * math.cos(particle.lat * math.pi / 180)
     v_conv = 1852 * 60
     wu_conv = wu * 0.03 / u_conv
     wv_conv = wv * 0.03 / v_conv
-    particle.lon += wu_conv * particle.dt
-    particle.lat += wv_conv * particle.dt
+    particle_dlon += wu_conv * particle.dt
+    particle_dlat += wv_conv * particle.dt
 
 
 def AdvectionRK4BorderCheck(particle, fieldset, time):
@@ -133,8 +141,8 @@ def AdvectionRK4BorderCheck(particle, fieldset, time):
         ]
         lon3, lat3 = (particle.lon + u3 * particle.dt, particle.lat + v3 * particle.dt)
         u4, v4 = fieldset.CUV[time + particle.dt, particle.depth, lat3, lon3, particle]
-        particle.lon += (u1 + 2 * u2 + 2 * u3 + u4) / 6.0 * particle.dt
-        particle.lat += (v1 + 2 * v2 + 2 * v3 + v4) / 6.0 * particle.dt
+        particle_dlon += (u1 + 2 * u2 + 2 * u3 + u4) / 6.0 * particle.dt
+        particle_dlat += (v1 + 2 * v2 + 2 * v3 + v4) / 6.0 * particle.dt
     else:
         (u1, v1) = fieldset.UV[particle]
         lon1, lat1 = (
@@ -153,5 +161,5 @@ def AdvectionRK4BorderCheck(particle, fieldset, time):
         ]
         lon3, lat3 = (particle.lon + u3 * particle.dt, particle.lat + v3 * particle.dt)
         (u4, v4) = fieldset.UV[time + particle.dt, particle.depth, lat3, lon3, particle]
-        particle.lon += (u1 + 2 * u2 + 2 * u3 + u4) / 6.0 * particle.dt
-        particle.lat += (v1 + 2 * v2 + 2 * v3 + v4) / 6.0 * particle.dt
+        particle_dlon += (u1 + 2 * u2 + 2 * u3 + u4) / 6.0 * particle.dt
+        particle_dlat += (v1 + 2 * v2 + 2 * v3 + v4) / 6.0 * particle.dt

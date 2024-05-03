@@ -114,6 +114,7 @@ parcels_config:
     lat_var: yf
     lon_var: xf
   # dt of the simulation in seconds
+  # if negative, the simulation will then run backwards from the end timestamp
   simulation_dt: 300
   # how often data is recorded to the particle file in seconds
   snapshot_interval: 10800

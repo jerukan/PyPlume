@@ -10,18 +10,18 @@ parcels_config:
     - pyplume.kernels.RandomWalk5cm
     - pyplume.kernels.AgeParticle
     - pyplume.kernels.DeleteStatusOutOfBounds
-  time_range: [2021-05-21T00:00, 2021-05-26T00:00]
+  time_range: [2021-05-16T00:00, 2021-05-21T00:00]
   repeat_dt: 3600
-  repetitions: 10
+  repetitions: -1
   instances_per_spawn: 1
-  spawn_points: data/codar_thing/StationPts.mat
-  # spawn_points:
-  #   - label: release
-  #     point: [40, -72.8]
-  #     pattern:
-  #       type: grid
-  #       size: 15
-  #       gapsize: 0.005
+  # spawn_points: data/codar_thing/StationPts.mat
+  spawn_points:
+    - label: release
+      point: [39.7127833300000, -73.5006833300000]
+      pattern:
+        type: grid
+        size: 5
+        gapsize: 0.005
   simulation_dt: -1200
   snapshot_interval: 7200
 postprocess_config: {}
@@ -31,13 +31,22 @@ plotting_config:
       label: particleplots
       coastline: true
       draw_currents: false
+      particle_color: lifetime
       domain:
-        S: 37.9
-        N: 41.3
-        W: -75
-        E: -71
+        S: 39.3
+        N: 40.4
+        W: -74
+        E: -73
       # addons:
       #   - type: pyplume.resultplots.AddScatter
       #     data: data/codar_thing/StationPts.mat
       #     color: r
       #     size: 20
+    - type: pyplume.resultplots.CumulativeParticleDensityPlot
+      domain:
+        S: 39.3
+        N: 40.4
+        W: -74
+        E: -73
+      coastline: true
+

@@ -435,7 +435,7 @@ def plot_particle_density(
         y=lats,
         bins=bins,
         cbar=True,
-        stat="probability",
+        # stat="probability",
         ax=ax,
         cbar_kws={"label": "Number of particles"},
         **kwargs,

@@ -110,6 +110,7 @@ class ParticlePlot(ResultPlot):
             fig, ax = plotting.get_carree_axis(
                 domain=self.domain, land=self.carree_land
             )
+            plotting.get_carree_gl(ax)
         data_t = result.get_filtered_data_time(time)
         lats = data_t["lat"]
         lons = data_t["lon"]

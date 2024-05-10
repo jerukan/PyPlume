@@ -17,7 +17,7 @@ parcels_config:
   # spawn_points: data/codar_thing/StationPts.mat
   spawn_points:
     - label: release
-      point: [39.7127833300000, -73.5006833300000]
+      point: [39.71278333, -73.50068333]
       pattern:
         type: grid
         size: 5

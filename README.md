@@ -6,7 +6,16 @@ A collection of notebooks and methods made unifying the process of loading two-d
 
 The core library used in this project is [OceanParcels](https://oceanparcels.org/), which is used for particle advection math.
 
+[Link to corresponding paper](https://doi.org/10.1016/j.envsoft.2023.105783)
+
 ## Environment setup
+
+Clone the project repository first
+
+```shell
+git clone https://github.com/jerukan/PyPlume.git
+cd PyPlume
+```
 
 It is highly recommended to use [Miniconda](https://docs.conda.io/en/latest/miniconda.html) to set up the Python environment.
 

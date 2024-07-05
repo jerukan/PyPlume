@@ -216,41 +216,53 @@ class ParcelsSimulation:
         if len(self.kernels) == 0:
             self.add_kernel(AdvectionRK4)
 
-    def generate_single_particle_spawns(self, **kwargs):
+    def generate_single_particle_spawns(
+        self, point=None, release=None, repetitions=None, repeat_dt=None, instances_per_spawn=None,
+        pattern=None, **kwargs
+    ):
         """Generates spawn information for a single specified location"""
         t_start, t_end = parse_time_range(self.time_range, self.times)
-        release = np.datetime64(kwargs.get("release", t_start))
+        if self.simulation_dt >= 0:
+            release = np.datetime64(t_start if release is None else release)
+        else:
+            release = np.datetime64(t_end if release is None else release)
         if release < t_start or release > t_end:
             raise ValueError(
                 f"Particle is released {release}, outside of simulation time range {t_start}, {t_end}"
             )
         # convert from datetime to delta seconds
         release = (release - self.times[0]) / np.timedelta64(1, "s")
+        t_start = 0
         t_end = (t_end - self.times[0]) / np.timedelta64(1, "s")
-        point = kwargs["point"]
+        if point is None:
+            raise ValueError("`point` argument required when defining spawn points")
         if len(point) != 2:
             raise ValueError(f"{point} has incorrect point dimensions")
-        repetitions = kwargs.get("repetitions", self.repetitions)
-        repeat_dt = kwargs.get("repeat_dt", self.repeat_dt)
-        instances_per_spawn = kwargs.get(
-            "instances_per_spawn", self.instances_per_spawn
-        )
+        repetitions = self.repetitions if repetitions is None else repetitions
+        repeat_dt = self.repeat_dt if repeat_dt is None else repeat_dt
+        instances_per_spawn = self.instances_per_spawn if instances_per_spawn is None else instances_per_spawn
         if repetitions is None:
             repetitions = -1
         if repeat_dt is None:
             repeat_dt = -1
         if instances_per_spawn is None:
             instances_per_spawn = 1
-        pattern = kwargs.get("pattern", {})
+        pattern = {} if pattern is None else pattern
         points = create_with_pattern(point, pattern)
         # calculate number of times particles will be spawned
         if repeat_dt <= 0:
             repetitions = 1
         elif repetitions <= 0:
-            repetitions = int((t_end - release) / repeat_dt)
+            # repeat until time bounds are reached
+            if self.simulation_dt >= 0:
+                repetitions = int((t_end - release) / repeat_dt)
+            else:
+                repetitions = int((release - t_start) / repeat_dt)
         else:
-            if repetitions * repeat_dt >= (t_end - release):
-                raise ValueError("Too many repetitions")
+            if self.simulation_dt >= 0 and repetitions * repeat_dt >= (t_end - release):
+                    raise ValueError("Too many repetitions")
+            elif self.simulation_dt < 0 and repetitions * repeat_dt >= (release - t_start):
+                    raise ValueError("Too many repetitions")
         spawn_points = np.tile(points, (instances_per_spawn, 1))
         num_spawns = len(spawn_points)
         # the total number of particles that will exist in the simulation
@@ -259,7 +271,10 @@ class ParcelsSimulation:
         for i in range(repetitions):
             start = num_spawns * i
             end = num_spawns * (i + 1)
-            time_arr[start:end] = release + repeat_dt * i
+            if self.simulation_dt >= 0:
+                time_arr[start:end] = release + repeat_dt * i
+            else:
+                time_arr[start:end] = release - repeat_dt * i
         p_lats = spawn_points.T[0, np.tile(np.arange(num_spawns), repetitions)]
         p_lons = spawn_points.T[1, np.tile(np.arange(num_spawns), repetitions)]
         # somehow Parcels doesn't handle this behind the scenes, so we have to check

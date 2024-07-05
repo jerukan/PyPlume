@@ -37,6 +37,8 @@ class ParticleResult:
             Path(sim_result_dir) if sim_result_dir is not None else None
         )
         self.snapshot_interval = snapshot_interval
+        self.path: Path = None
+        self.ds: xr.Dataset = None
         if isinstance(src, (Path, str)):
             self.path = Path(src)
             self.ds = xr.open_dataset(src)

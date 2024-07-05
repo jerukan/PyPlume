@@ -10,6 +10,13 @@ The core library used in this project is [OceanParcels](https://oceanparcels.org
 
 ## Environment setup
 
+Clone the project repository first
+
+```shell
+git clone https://github.com/jerukan/PyPlume.git
+cd PyPlume
+```
+
 It is highly recommended to use [Miniconda](https://docs.conda.io/en/latest/miniconda.html) to set up the Python environment.
 
 The easiest way to install the dependencies is with the `environment.yml` file.

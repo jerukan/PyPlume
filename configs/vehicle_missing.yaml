@@ -6,6 +6,11 @@ ocean_data:
     lon_range: [-117.832, -117.055]
     boundary_condition: freeslip
     allow_time_extrapolation: False
+    gapfill_steps:
+      - path: pyplume.gapfilling.LowResOversample
+        args:
+          references:
+            - https://tds.hycom.org/thredds/dodsC/GLBy0.08/expt_93.0/uv3z
 parcels_config:
   particle_type: pyplume.kernels.ThreddsParticle
   kernels:
@@ -35,7 +40,7 @@ plotting_config:
       draw_currents: true
       particle_color: lifetime
       domain:
-        S: 32.1763
+        S: 31.615
         N: 33.062
         W: -117.832
         E: -117.055

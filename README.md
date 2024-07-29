@@ -68,3 +68,7 @@ If particles are intented to go out of bounds during the simulation, add `pyplum
 ### How to run simulations backward in time?
 
 The only thing that needs to change is a negative simulation delta time, which can be set in the `simulation_dt` field when configuring.
+
+### Where are logs stored?
+
+They should be stored in `logs/plumelogs.log`.

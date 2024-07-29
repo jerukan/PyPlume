@@ -77,17 +77,20 @@ def load_ocean_cfg(cfg):
     return grid
 
 
-def prep_sim_from_cfg(cfg):
+def prep_sims_from_cfg(cfg):
     simset_name = cfg["name"]
     parcels_cfg = cfg["parcels_config"]
-    parcels_cfg["save_dir"] = (
+    save_dir = (
         Path(parcels_cfg.get("save_dir", "results"))
         / f"{simset_name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}"
     )
-    parcels_cfg["save_dir"].mkdir(parents=True)
+    save_dir.mkdir(parents=True)
+    parcels_cfg["save_dir"] = str(save_dir)
+    with open(save_dir / "config.yaml", "wt") as f:
+        yaml.safe_dump(cfg, f)
     sims = []
     # ocean is required, no check
-    ocean_cfgs = cfg["ocean_data"]
+    ocean_cfgs = copy.deepcopy(cfg["ocean_data"])
     if isinstance(ocean_cfgs, dict):
         ocean_cfgs = [ocean_cfgs]
     elif isinstance(ocean_cfgs, str):

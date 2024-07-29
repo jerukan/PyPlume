@@ -1,0 +1,41 @@
+ocean_data:
+  - name: hfrnet
+    data: http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/6km/hourly/RTV/HFRADAR_US_West_Coast_6km_Resolution_Hourly_RTV_best.ncd
+    time_range: [2024-07-17T19, 2024-07-24T19]
+    lat_range: [31.615, 33.062]
+    lon_range: [-117.832, -117.055]
+    boundary_condition: freeslip
+    allow_time_extrapolation: False
+parcels_config:
+  particle_type: pyplume.kernels.ThreddsParticle
+  kernels:
+    - AdvectionRK4
+    - pyplume.kernels.AgeParticle
+    - pyplume.kernels.RandomWalk5cm
+    - pyplume.kernels.DeleteStatusOutOfBounds
+  time_range: [START, END]
+  repeat_dt: 7200
+  repetitions: -1
+  instances_per_spawn: 1
+  spawn_points:
+    - label: release
+      point: [32.811024, -117.565842]
+      pattern:
+        type: grid
+        size: 5
+        gapsize: 0.005
+  simulation_dt: 1200
+  snapshot_interval: 7200
+postprocess_config: {}
+plotting_config:
+  plots:
+    - type: pyplume.resultplots.ParticlePlot
+      label: particleplots
+      coastline: true
+      draw_currents: true
+      particle_color: lifetime
+      domain:
+        S: 32.1763
+        N: 33.062
+        W: -117.832
+        E: -117.055

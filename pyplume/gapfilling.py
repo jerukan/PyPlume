@@ -89,6 +89,11 @@ class LowResOversample(GapfillStep):
             if isinstance(ref, SurfaceGrid):
                 loaded_references.append(ref)
             elif isinstance(ref, (xr.Dataset, str)):
+                drop_vars = None
+                if isinstance(ref, str):
+                    # hardcoded for HYCOM, TODO needs a more permanent solution
+                    if "tds.hycom.org" in ref:
+                        drop_vars = ["tau", "water_u_bottom", "water_v_bottom"]
                 loaded_references.append(
                     SurfaceGrid(
                         # slice the data before loading into SurfaceGrid since it's huge
@@ -98,6 +103,7 @@ class LowResOversample(GapfillStep):
                             lat_range=lat_range,
                             lon_range=lon_range,
                             inclusive=True,
+                            drop_vars=drop_vars,
                         ).dataset
                     )
                 )

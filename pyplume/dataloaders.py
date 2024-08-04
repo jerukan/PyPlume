@@ -593,6 +593,7 @@ class DataLoader:
             self.full_dataset = self.load_method(dataset)
         else:
             raise TypeError("data is not a valid type")
+        logger.info(f"Dataset found: {self.full_dataset}")
         required_coords = ("time", "lat", "lon")
         required_datavars = ("U", "V")
         for req in required_coords:
@@ -612,13 +613,16 @@ class DataLoader:
             lon_range=self.lon_range,
             inclusive=self.inclusive,
         )
+        logger.info(f"Dataset sliced with constraints: time_range={self.time_range}, lat_range={self.lat_range}, lon_range={self.lon_range}, inclusive={self.inclusive}\nNew dataset: {self.dataset}")
         if self.dataset.nbytes > 1e9:
             gigs = self.dataset.nbytes / 1e9
             warnings.warn(
                 f"The dataset is over a gigabyte ({gigs} gigabytes). Make sure you are working with the right subset of data!"
             )
+        self.dataset = drop_depth(self.dataset)
         self.dataset.load()
-        self.dataset = replace_inf_with_nan(drop_depth(self.dataset))
+        logger.info(f"Dataset finally loaded into memory")
+        self.dataset = replace_inf_with_nan(self.dataset)
 
     def __repr__(self):
         return repr(self.dataset)

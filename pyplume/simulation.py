@@ -192,7 +192,8 @@ class ParcelsSimulation:
         # TODO generalize path lol
         self.sim_result_dir = utils.get_dir(
             Path(save_dir)
-            / f"simulation_{name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}"
+            / f"simulation_{name}"
+            # / f"simulation_{name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}"
         )
         self.pfile_path = self.sim_result_dir / "particlefile.zarr"
         self.pfile: ParticleFile = self.pset.ParticleFile(

@@ -590,6 +590,7 @@ class DataLoader:
         if isinstance(dataset, xr.Dataset):
             self.full_dataset = dataset
         elif isinstance(dataset, (str, Path)):
+            logger.info(f"Loading dataset from {dataset}. If this is a URL and taking an exceedingly long time, check the status of the server.")
             self.full_dataset = self.load_method(dataset)
         else:
             raise TypeError("data is not a valid type")

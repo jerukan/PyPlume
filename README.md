@@ -59,7 +59,7 @@ Which outputs a new netcdf file with particle simulation data and creates a sequ
 
 Alternatively, you can choose config files in the [`simulation_runner.ipynb`](simulation_runner.ipynb) notebook for the OceanParcels simulation.
 
-## Possible issues and fixes
+## FAQ
 
 ### `FieldOutOfBoundError` or other Field errors during simulation
 

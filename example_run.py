@@ -54,6 +54,8 @@ sim = ParcelsSimulation(
     simulation_dt=300,
     add_dir_timestamp=True,
 )
+ds_path = sim.sim_result_dir / "ocean_dataset_modified.nc"
+sim.grid.dataset.to_netcdf(ds_path)
 
 sim.execute()
 

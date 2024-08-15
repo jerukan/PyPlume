@@ -51,6 +51,10 @@ class LowResOversample(GapfillStep):
     """
 
     def __init__(self, references):
+        """
+        Args:
+            references (list[str or Datasets]): List of references to use for interpolation.
+        """
         self.references = references if references is not None else []
 
     def do_validation(self, target, loaded_references):
@@ -78,7 +82,7 @@ class LowResOversample(GapfillStep):
     def process(
         self, u: np.ndarray, v: np.ndarray, target: xr.Dataset, **kwargs
     ) -> Tuple[np.ndarray, np.ndarray]:
-        target = SurfaceGrid(target, init_fs=False)
+        target: SurfaceGrid = SurfaceGrid(target, init_fs=False)
         times, lats, lons = target.get_coords()
         time_range = (times[0], times[-1])
         lat_range = (lats[0], lats[-1])

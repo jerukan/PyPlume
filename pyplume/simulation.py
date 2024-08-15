@@ -141,7 +141,15 @@ class ParcelsSimulation:
         repeat_dt=None,
         instances_per_spawn=None,
         simulation_dt=None,
+        add_dir_timestamp=True,
     ):
+        """
+        Find documentation in config README.
+
+        Args:
+            add_dir_timestamp (bool): whether to append a timestamp (current time run) to the
+                save directory
+        """
         self.name = name
         self.grid: SurfaceGrid = grid
         self.time_range = time_range
@@ -190,10 +198,13 @@ class ParcelsSimulation:
             lat=p_lats,
         )
         # TODO generalize path lol
+        if add_dir_timestamp:
+            simfolder_name = f"simulation_{name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}"
+        else:
+            simfolder_name = f"simulation_{name}"
         self.sim_result_dir = utils.get_dir(
             Path(save_dir)
-            / f"simulation_{name}"
-            # / f"simulation_{name}_{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}"
+            / simfolder_name
         )
         self.pfile_path = self.sim_result_dir / "particlefile.zarr"
         self.pfile: ParticleFile = self.pset.ParticleFile(
@@ -209,7 +220,7 @@ class ParcelsSimulation:
         self.snap_num = math.floor((t_end - t_start) / snapshot_interval)
 
         self.completed = False
-        self.parcels_result = None
+        self.parcels_result: ParticleResult = None
         self.kernels = []
         self.kernel = None
         for kernel in kernels:

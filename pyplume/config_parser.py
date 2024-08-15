@@ -101,7 +101,7 @@ def prep_sims_from_cfg(cfg):
         if name is None:
             raise ValueError("ocean_data config needs a name")
         grid = load_ocean_cfg(ocean_cfg)
-        sim = ParcelsSimulation(name, grid, **parcels_cfg)
+        sim = ParcelsSimulation(name, grid, add_dir_timestamp=False, **parcels_cfg)
         logger.info(f"Prepared simulation {name}")
         ds_path = sim.sim_result_dir / "ocean_dataset_modified.nc"
         grid.dataset.to_netcdf(ds_path)

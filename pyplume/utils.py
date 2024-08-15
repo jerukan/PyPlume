@@ -26,7 +26,7 @@ def import_attr(path):
     return getattr(module, var_str)
 
 
-def get_points(points, dim=2, transpose=None):
+def get_points(points, ndims=2, transpose=None):
     """
     Given N points of dimension d, the data can either be passed in as an (N,d) or (d,N)
     dimensional array.
@@ -35,7 +35,7 @@ def get_points(points, dim=2, transpose=None):
 
     Args:
         points
-        dim
+        ndims
         transposed: None to infer data format, False to not transpose data, True to transpose data.
     """
     points = np.array(points)
@@ -45,21 +45,21 @@ def get_points(points, dim=2, transpose=None):
         raise ValueError(f"Incorrect points dimension {points.shape}")
     if transpose is None:
         # guess
-        if points.shape[0] == points.shape[1] and points.shape[0] == dim:
+        if points.shape[0] == points.shape[1] and points.shape[0] == ndims:
             # if the points happen to be (d,d), just guess data was passed in as collection of pairs
             warnings.warn(
                 f"Shape of points is ambiguous: {points}. Will transpose by default."
             )
-            return (points.T[d] for d in range(dim))
-        if points.shape[1] == dim:
+            return (points.T[d] for d in range(ndims))
+        if points.shape[1] == ndims:
             # assume (n, d)
-            return (points.T[d] for d in range(dim))
-        if points.shape[0] == dim:
+            return (points.T[d] for d in range(ndims))
+        if points.shape[0] == ndims:
             # assume (d, n)
-            return (points[d] for d in range(dim))
+            return (points[d] for d in range(ndims))
     if transpose:
-        return (points.T[d] for d in range(dim))
-    return (points[d] for d in range(dim))
+        return (points.T[d] for d in range(ndims))
+    return (points[d] for d in range(ndims))
 
 
 def haversine(lat1, lat2, lon1, lon2):

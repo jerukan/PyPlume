@@ -105,7 +105,7 @@ def load_geo_points(data, **kwargs):
         lons (array): flattened
     """
     if isinstance(data, (np.ndarray, list)):
-        return utils.get_points(np.array(data), dim=2)
+        return utils.get_points(np.array(data), ndims=2)
     if isinstance(data, (str, Path)):
         path = data
         ext = os.path.splitext(path)[1]
@@ -117,7 +117,7 @@ def load_geo_points(data, **kwargs):
             if isinstance(npdata, dict):
                 lats, lons = load_pos_from_dict(data, **kwargs)
                 return np.ravel(lats), np.ravel(lons)
-            return utils.get_points(npdata, dim=2)
+            return utils.get_points(npdata, ndims=2)
         raise ValueError(f"Invalid extension {ext}")
     raise TypeError(f"Invalid data type {type(data)}")
 
@@ -560,6 +560,7 @@ class DataLoader:
         lat_range=None,
         lon_range=None,
         inclusive=True,
+        load_into_memory=True,
         **kwargs,
     ):
         """
@@ -621,7 +622,8 @@ class DataLoader:
                 f"The dataset is over a gigabyte ({gigs} gigabytes). Make sure you are working with the right subset of data!"
             )
         self.dataset = drop_depth(self.dataset)
-        self.dataset.load()
+        if load_into_memory:
+            self.dataset.load()
         logger.info(f"Dataset finally loaded into memory")
         self.dataset = replace_inf_with_nan(self.dataset)
 

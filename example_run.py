@@ -2,14 +2,18 @@ from parcels import AdvectionRK4
 
 from pyplume.dataloaders import DataLoader, SurfaceGrid
 from pyplume.gapfilling import Gapfiller, LowResOversample, DCTPLS
-from pyplume.kernels import AgeParticle, RandomWalk5cm, ThreddsParticle
+from pyplume.kernels import AgeParticle, RandomWalk5cm, ThreddsParticle, DeleteStatusOutOfBounds
 from pyplume.resultplots import (
+    ParticlePlot,
     ParticleWithTrackedPointsPlot,
     NearcoastDensityHistogram,
     StationTable,
+    CumulativeParticleDensityPlot
 )
 from pyplume.simulation import ParcelsSimulation
 
+
+### Data loading ###
 
 ocean_data_source = "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/hourly/RTV/HFRADAR_US_West_Coast_1km_Resolution_Hourly_RTV_best.ncd"
 
@@ -20,20 +24,20 @@ loader = DataLoader(
     lon_range=[-117.27, -117.09],
 )
 
+# gapfilling patchy data
 ocean_data_source_2km = "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/2km/hourly/RTV/HFRADAR_US_West_Coast_2km_Resolution_Hourly_RTV_best.ncd"
 ocean_data_source_6km = "http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USWC/1km/hourly/RTV/HFRADAR_US_West_Coast_1km_Resolution_Hourly_RTV_best.ncd"
 
-loader_2km = DataLoader(ocean_data_source_2km)
-loader_6km = DataLoader(ocean_data_source_6km)
-
 gapfiller = Gapfiller(
-    LowResOversample([loader_2km.dataset, loader_6km.dataset]),
-    DCTPLS(mask=loader.get_mask(num_samples=50)),
+    LowResOversample([ocean_data_source_2km, ocean_data_source_6km]),
+    DCTPLS(exclude_oob=True),
 )
 
 filled_ds = gapfiller.execute(target=loader.dataset)
 
 ocean_grid = SurfaceGrid(filled_ds)
+
+### Simulation loading and execution ###
 
 sim = ParcelsSimulation(
     "basic_example",
@@ -42,27 +46,54 @@ sim = ParcelsSimulation(
     save_dir="results",
     particle_type=ThreddsParticle,
     snapshot_interval=3600,
-    kernels=[AdvectionRK4, AgeParticle, RandomWalk5cm],
+    kernels=[AdvectionRK4, AgeParticle, RandomWalk5cm, DeleteStatusOutOfBounds],
     time_range=["2020-02-09T01:00", "2020-02-14T01:00"],
     repetitions=-1,
     repeat_dt=3600,
     instances_per_spawn=1,
     simulation_dt=300,
+    add_dir_timestamp=True,
 )
+ds_path = sim.sim_result_dir / "ocean_dataset_modified.nc"
+sim.grid.dataset.to_netcdf(ds_path)
 
 sim.execute()
 
-sim.parcels_result.write_data(override=True)
+sim.parcels_result.to_netcdf()
+
+### PLOTTING ###
+
+PLOT_DOMAIN = {"S": 32.525, "N": 32.7, "W": -117.27, "E": -117.09}
 
 sim.parcels_result.add_plot(
-    ParticleWithTrackedPointsPlot(
-        coastline="data/coastOR2Mex_tijuana.mat", draw_currents=True, figsize=(13, 8)
+    ParticlePlot(
+        draw_currents=True,
+        coastline=True,
+        particle_color="lifetime",
+        domain=PLOT_DOMAIN,
+        plot_size=(13, 8)
     ),
     label="particleplot",
 )
+
+station_points = [
+    [  32.67780998, -117.17731484],
+    [  32.63663446, -117.14441879],
+    [  32.62609752, -117.1395647 ],
+    [  32.58574746, -117.13296898],
+    [  32.57901778, -117.13296898],
+    [  32.57247503, -117.13259511],
+    [  32.56555841, -117.13334285],
+    [  32.56125889, -117.13166043],
+    [  32.55677244, -117.13016495],
+    [  32.54312613, -117.12493075],
+    [  32.53527484, -117.12418301],
+    [  32.50186009, -117.12441668]
+]
+
 sim.parcels_result.add_plot(
     StationTable(
-        station_points="data/wq_stposition.mat",
+        station_points=station_points,
         station_labels=[
             "Coronado (North Island)",
             "Silver Strand",
@@ -82,18 +113,12 @@ sim.parcels_result.add_plot(
     label="station",
 )
 sim.parcels_result.add_plot(
-    NearcoastDensityHistogram(
-        origin=[32.5567724355310, -117.130164948310],
-        tracked_points="data/wq_stposition.mat",
-        coastline="data/coastline.mat",
-        xlim=[-16, 4],
-        ymax=1,
-        track_dist=900,
+    CumulativeParticleDensityPlot(
+        domain=PLOT_DOMAIN,
+        coastline=True
     ),
-    label="nearcoast_density",
+    label="cumulative_density",
 )
-
-PLOT_DOMAIN = {"S": 32.525, "N": 32.7, "W": -117.27, "E": -117.09}
 
 sim.parcels_result.generate_plots()
 

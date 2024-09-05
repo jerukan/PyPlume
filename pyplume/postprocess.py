@@ -41,7 +41,13 @@ class ParticleResult:
         self.ds: xr.Dataset = None
         if isinstance(src, (Path, str)):
             self.path = Path(src)
-            self.ds = xr.open_dataset(src)
+            if self.path.suffix == ".nc":
+                self.ds = xr.open_dataset(src, engine="netcdf4")
+            elif self.path.suffix == ".zarr":
+                # bug in xarray engine guessing makes it fail when opening zarr files
+                self.ds = xr.open_zarr(src)
+            else:
+                self.ds = xr.open_dataset(src)
             self.ds.close()
         elif isinstance(src, xr.Dataset):
             self.path = None

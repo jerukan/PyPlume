@@ -21,6 +21,7 @@ results/**
 logs/
 # scratch notebook
 scratch.ipynb
+nohup.out
 
 ### JupyterNotebooks ###
 .ipynb_checkpoints

@@ -27,13 +27,13 @@ logger = get_logger(__name__)
 
 def load_config(path):
     """
-    Returns a json file as a dict.
+    Returns a yaml file as a dict.
 
     Args:
         path (str)
 
     Returns:
-        dict: data pulled from the json specified.
+        dict: data pulled from the yaml specified.
     """
     with open(path) as f:
         config = yaml.safe_load(f)

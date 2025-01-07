@@ -31,13 +31,30 @@ conda activate py3-parcels
 python -m ipykernel install --user --name py3-parcels --display-name "py3-parcels"
 ```
 
+## Downloading NetCDF data
+
+It is easiest to download NetCDF datasets from THREDDS data servers, which have access URLs from
+protocols like OPeNDAP.
+
+Set up the data to download in YAML config files, which you can find an example in
+[`configs/download/east_data_test.yaml`](configs/download/east_data_test.yaml). Then download by
+running
+
+```shell
+python -m pyplume downloadnc -c path/to/config.yaml
+```
+
+If the dataset is particularly large and takes a while to download, use `nohup` with the command to allow the download to happen in the background. Monitor the progress by looking at the generated `nohup.out` file.
+
+```shell
+nohup python -m pyplume downloadnc -c path/to/config.yaml &
+```
+
+Alternatively, use the [`download_data.ipynb`](download_data.ipynb) notebook if preferred.
+
 ## Data processing
 
 More information about how to format the data can be found in [`data/README.md`](data/README.md).
-
-### Saving netcdf files from Thredds
-
-Use the [`download_data.ipynb`](download_data.ipynb) notebook to save a specified region from some online source.
 
 ### Gapfilling
 

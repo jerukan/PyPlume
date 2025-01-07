@@ -616,6 +616,8 @@ class DataLoader:
             inclusive=self.inclusive,
         )
         logger.info(f"Dataset sliced with constraints: time_range={self.time_range}, lat_range={self.lat_range}, lon_range={self.lon_range}, inclusive={self.inclusive}\nNew dataset: {self.dataset}")
+        megs = self.dataset.nbytes / 1e6
+        logger.info(f"Dataset size: {megs} megabytes")
         if self.dataset.nbytes > 1e9:
             gigs = self.dataset.nbytes / 1e9
             warnings.warn(
@@ -624,7 +626,7 @@ class DataLoader:
         self.dataset = drop_depth(self.dataset)
         if load_into_memory:
             self.dataset.load()
-        logger.info(f"Dataset finally loaded into memory")
+            logger.info(f"Dataset finally loaded into memory")
         self.dataset = replace_inf_with_nan(self.dataset)
 
     def __repr__(self):

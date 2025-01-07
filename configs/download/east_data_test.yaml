@@ -1,0 +1,21 @@
+east_6km_test:
+  url: http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/6km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_6km_Resolution_Hourly_RTV_best.ncd
+  time_range: [2020-01-01T00:00, 2020-01-02T00:00]
+  lat_range: [37.0, 42.0]
+  lon_range: [-76.5, -69.0]
+  inclusive: true
+  folder: data/stuff/
+east_2km_test:
+  url: http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/2km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_2km_Resolution_Hourly_RTV_best.ncd
+  time_range: [2020-01-01T00:00, 2020-01-02T00:00]
+  lat_range: [37.0, 42.0]
+  lon_range: [-76.5, -69.0]
+  inclusive: true
+  folder: data/stuff/
+east_1km_test:
+  url: http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/1km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_1km_Resolution_Hourly_RTV_best.ncd
+  time_range: [2020-01-01T00:00, 2020-01-02T00:00]
+  lat_range: [37.0, 42.0]
+  lon_range: [-76.5, -69.0]
+  inclusive: true
+  folder: data/stuff/

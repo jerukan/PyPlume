@@ -359,13 +359,12 @@ class ParcelsSimulation:
             or t_start > self.times[-1]
             or t_end > self.times[-1]
         ):
-            # TODO time extrapolation
-            # raise ValueError(
-            #     "Start and end times of simulation are out of bounds\n"
-            #     + f"ParcelsSimulation range: ({t_start}, {t_end})\n"
-            #     + f"Allowed domain: ({self.times[0]}, {self.times[-1]})"
-            # )
-            pass
+            oob_time_msg = ("Start and end times of simulation are out of bounds\n"
+                + f"ParcelsSimulation range: ({t_start}, {t_end})\n"
+                + f"Allowed domain: ({self.times[0]}, {self.times[-1]})\n"
+                + "This is probably unintended. Double check your time ranges or set `allow_time_extrapolation=True` when intializing the SurfaceGrid/ocean_data.")
+            warnings.warn(oob_time_msg)
+            logger.warning(oob_time_msg)
         t_start = (t_start - self.times[0]) / np.timedelta64(1, "s")
         t_end = (t_end - self.times[0]) / np.timedelta64(1, "s")
         return t_start, t_end

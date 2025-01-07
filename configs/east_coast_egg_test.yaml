@@ -1,0 +1,44 @@
+ocean_data:
+  - name: hfrnet
+    # data: http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/1km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_1km_Resolution_Hourly_RTV_best.ncd
+    data: http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/2km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_2km_Resolution_Hourly_RTV_best.ncd
+    time_range: [2021-03-01T00, 2021-06-30T00]
+    lat_range: [36, 42]
+    lon_range: [-76.6, -70]
+    gapfill_steps:
+      - path: pyplume.gapfilling.LowResOversample
+        args:
+          references:
+            # - http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/2km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_2km_Resolution_Hourly_RTV_best.ncd
+            - http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/6km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_6km_Resolution_Hourly_RTV_best.ncd
+    boundary_condition: freeslip
+    allow_time_extrapolation: True
+parcels_config:
+  particle_type: pyplume.kernels.ThreddsParticle
+  kernels:
+    - AdvectionRK4
+    - pyplume.kernels.AgeParticle
+    - pyplume.kernels.RandomWalk5cm
+    - pyplume.kernels.DeleteAfter3Days
+    - pyplume.kernels.DeleteStatusOutOfBounds
+  time_range: [START, END]
+  repeat_dt: 7200
+  repetitions: -1
+  instances_per_spawn: 1
+  spawn_points:
+    - [40.39, -75.5]
+  simulation_dt: 1200
+  snapshot_interval: 7200
+postprocess_config: {}
+plotting_config:
+  plots:
+    - type: pyplume.resultplots.ParticlePlot
+      label: particleplots
+      coastline: true
+      draw_currents: true
+      particle_color: lifetime
+      domain:
+        S: 36
+        N: 42
+        W: -76.6
+        E: -70

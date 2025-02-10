@@ -594,8 +594,8 @@ class DataLoader:
             self.full_dataset = dataset
         elif isinstance(dataset, (str, Path)):
             logger.info(f"Loading dataset from {dataset}. If this is a URL and taking an exceedingly long time, check the status of the server.")
-            dataset = Path(dataset)
-            if dataset.is_dir():
+            if Path(dataset).is_dir():
+                dataset = Path(dataset)
                 allncspaths = list(sorted(dataset.glob("*.nc")))
                 print(f"Loading all netCDF files from {dataset}")
                 self.full_dataset = xr.concat(tqdm([self.load_method(ncpath) for ncpath in allncspaths]), dim="time")

@@ -3,6 +3,7 @@ from typing import Tuple
 
 import numpy as np
 from parcels.tools.statuscodes import FieldOutOfBoundError, TimeExtrapolationError
+from tqdm import tqdm
 import xarray as xr
 
 from pyplume import get_logger
@@ -22,7 +23,7 @@ class GapfillStep(ABC):
         pass
 
 
-def get_interped(i, target, ref, invalid_where):
+def get_interped(i, target, ref: SurfaceGrid, invalid_where):
     """
     Args:
         i (int): index on invalid_where
@@ -131,7 +132,7 @@ class LowResOversample(GapfillStep):
             arr_u = np.full(num_invalid_new, np.nan)
             arr_v = np.full(num_invalid_new, np.nan)
             logger.info(f"Attempting to interpolate {num_invalid_new} points...")
-            for i in range(num_invalid_new):
+            for i in tqdm(range(num_invalid_new)):
                 try:
                     c_u, c_v = get_interped(i, target, ref, invalid_pos_new)
                 except (FieldOutOfBoundError, TimeExtrapolationError):

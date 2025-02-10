@@ -1,0 +1,15 @@
+test_data:
+  url: http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/6km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_6km_Resolution_Hourly_RTV_best.ncd
+  time_range: [2020-01-01T00:00, 2020-02-01T00:00]
+  lat_range: [38.0, 41.6]
+  lon_range: [-74.02, -69.90]
+  inclusive: true
+  filesplit: 24
+  u_key: null
+  v_key: null
+  time_key: null
+  lat_key: null
+  lon_key: null
+  depth_key: null
+  drop_vars: null
+  folder: data/stuff/

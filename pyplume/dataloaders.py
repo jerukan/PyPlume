@@ -672,7 +672,7 @@ class DataLoader:
         logger.info(f"Generated mask for {self}")
         return mask
 
-    def save(self, path: Union[str, Path], filesplit: int=0):
+    def save(self, path: Union[str, Path], filesplit: int=0, overwrite=True):
         """
         Args:
             filesplit (int): If greater than 0, will split the dataset into multiple netCDF files
@@ -691,6 +691,10 @@ class DataLoader:
                 nfiles += 1
             print(f"Saving {nfiles} files with {filesplit} timestamps each")
             for i in tqdm(range(nfiles)):
+                savepath = path / f"datasetchunk_{str(i).zfill(4)}.nc"
+                if not overwrite and savepath.exists():
+                    logger.info(f"Skipping chunk {i} since overwrite=False and {savepath} exists")
+                    continue
                 start = i * filesplit
                 end = (i + 1) * filesplit
                 if end > ntimes:
@@ -698,12 +702,14 @@ class DataLoader:
                 sub_ds = self.dataset.isel(time=slice(start, end))
                 sub_ds.load()
                 sub_ds = replace_inf_with_nan(sub_ds)
-                savepath = path / f"datasetchunk_{str(i).zfill(4)}.nc"
                 sub_ds.to_netcdf(savepath)
                 logger.info(f"Saved chunk {i} to {savepath}")
                 sub_ds.close()
         else:
-            result = self.dataset.to_netcdf(path)
+            if not overwrite and path.exists():
+                logger.info(f"Skipping save for {self} since overwrite=False and {path} exists")
+            else:
+                replace_inf_with_nan(self.dataset.load()).to_netcdf(path)
         logger.info(f"Finished save for {self}")
 
     def save_mask(self, path, num_samples=None):

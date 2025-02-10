@@ -32,16 +32,17 @@ def downloadnc(config_path):
         savedir.mkdir(exist_ok=True, parents=True)
         url = reginfo.pop("url")
         filesplit = reginfo.pop("filesplit", 0)
+        overwrite = reginfo.pop("overwrite", True)
         reginfo["load_into_memory"] = False
         with dataloaders.DataLoader(url, **reginfo) as dl:
             megabytes = dl.dataset.nbytes / 1e6
             print(f"Downloading {regname} ({megabytes:.2f} MB)...")
             if filesplit > 0:
                 savepath = savedir / f"{regname}"
-                dl.save(savepath, filesplit=filesplit)
+                dl.save(savepath, filesplit=filesplit, overwrite=overwrite)
             else:
                 savepath = savedir / f"{regname}.nc"
-                dl.save(savepath, filesplit=0)
+                dl.save(savepath, filesplit=0, overwrite=overwrite)
             print(f"Saved to {savepath}")
 
 

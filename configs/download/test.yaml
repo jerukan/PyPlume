@@ -5,6 +5,8 @@ test_data_2km:
   lon_range: [-76, -74]
   inclusive: true
   filesplit: 72
+  overwrite: false
+  folder: data/stuff/
   u_key: null
   v_key: null
   time_key: null
@@ -12,7 +14,6 @@ test_data_2km:
   lon_key: null
   depth_key: null
   drop_vars: null
-  folder: data/stuff/
 test_data_6km:
   url: http://hfrnet-tds.ucsd.edu/thredds/dodsC/HFR/USEGC/6km/hourly/RTV/HFRADAR_US_East_and_Gulf_Coast_6km_Resolution_Hourly_RTV_best.ncd
   time_range: [2021-03-01T00, 2021-03-30T00]
@@ -20,6 +21,8 @@ test_data_6km:
   lon_range: [-76, -74]
   inclusive: true
   filesplit: 72
+  overwrite: false
+  folder: data/stuff/
   u_key: null
   v_key: null
   time_key: null
@@ -27,4 +30,3 @@ test_data_6km:
   lon_key: null
   depth_key: null
   drop_vars: null
-  folder: data/stuff/

@@ -14,6 +14,9 @@ import sys
 
 
 log_dir = Path("logs/")
+logging_format = logging.Formatter(
+    "%(asctime)s,%(msecs)d %(name)s | %(levelname)s | %(message)s"
+)
 
 
 def get_logger(name):
@@ -24,12 +27,11 @@ def get_logger(name):
         if not log_dir.is_dir():
             log_dir.mkdir(parents=True)
         handler = logging.FileHandler(log_dir / "plumelogs.log")
-        handler.setFormatter(
-            logging.Formatter(
-                "%(asctime)s,%(msecs)d %(name)s | %(levelname)s | %(message)s"
-            )
-        )
+        handler.setFormatter(logging_format)
         logger.addHandler(handler)
+        stdouthandler = logging.StreamHandler(sys.stdout)
+        stdouthandler.setFormatter(logging_format)
+        logger.addHandler(stdouthandler)
     return logger
 
 

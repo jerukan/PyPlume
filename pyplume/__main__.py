@@ -28,20 +28,20 @@ def downloadnc(config_path):
     with open(config_path) as f:
         config = yaml.safe_load(f)
     for regname, reginfo in config.items():
-        savedir = Path(reginfo["folder"])
+        savedir = Path(reginfo.pop("folder"))
         savedir.mkdir(exist_ok=True, parents=True)
-        url = reginfo["url"]
-        infoargs = {
-            "time_range": reginfo["time_range"],
-            "lat_range": reginfo["lat_range"],
-            "lon_range": reginfo["lon_range"],
-            "inclusive": reginfo["inclusive"]
-        }
-        with dataloaders.DataLoader(url, **infoargs) as dl:
+        url = reginfo.pop("url")
+        filesplit = reginfo.pop("filesplit", 0)
+        reginfo["load_into_memory"] = False
+        with dataloaders.DataLoader(url, **reginfo) as dl:
             megabytes = dl.dataset.nbytes / 1e6
             print(f"Downloading {regname} ({megabytes:.2f} MB)...")
-            savepath = savedir / f"{regname}.nc"
-            dl.save(savepath)
+            if filesplit > 0:
+                savepath = savedir / f"{regname}"
+                dl.save(savepath, filesplit=filesplit)
+            else:
+                savepath = savedir / f"{regname}.nc"
+                dl.save(savepath, filesplit=0)
             print(f"Saved to {savepath}")
 
 

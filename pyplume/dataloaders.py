@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import sys
+from typing import Union
 import warnings
 
 import numpy as np
@@ -8,6 +9,7 @@ import pandas as pd
 from parcels import FieldSet, Field, VectorField
 from parcels.tools.converters import GeographicPolar, Geographic
 import scipy.spatial
+from tqdm import tqdm
 import xarray as xr
 
 from pyplume import get_logger
@@ -592,7 +594,13 @@ class DataLoader:
             self.full_dataset = dataset
         elif isinstance(dataset, (str, Path)):
             logger.info(f"Loading dataset from {dataset}. If this is a URL and taking an exceedingly long time, check the status of the server.")
-            self.full_dataset = self.load_method(dataset)
+            if Path(dataset).is_dir():
+                dataset = Path(dataset)
+                allncspaths = list(sorted(dataset.glob("*.nc")))
+                print(f"Loading all netCDF files from {dataset}")
+                self.full_dataset = xr.concat(tqdm([self.load_method(ncpath) for ncpath in allncspaths]), dim="time")
+            else:
+                self.full_dataset = self.load_method(dataset)
         else:
             raise TypeError("data is not a valid type")
         logger.info(f"Dataset found: {self.full_dataset}")
@@ -627,7 +635,8 @@ class DataLoader:
         if load_into_memory:
             self.dataset.load()
             logger.info(f"Dataset finally loaded into memory")
-        self.dataset = replace_inf_with_nan(self.dataset)
+        # this kills performance and doesn't work with dask
+        # self.dataset = replace_inf_with_nan(self.dataset)
 
     def __repr__(self):
         return repr(self.dataset)
@@ -663,11 +672,39 @@ class DataLoader:
         logger.info(f"Generated mask for {self}")
         return mask
 
-    def save(self, path):
+    def save(self, path: Union[str, Path], filesplit: int=0):
+        """
+        Args:
+            filesplit (int): If greater than 0, will split the dataset into multiple netCDF files
+                with `filesplit` number of timestamps in each file.
+        """
         logger.info(f"{self.dataset.nbytes / 1024 / 1024} megabytes to save for {self}")
-        result = self.dataset.to_netcdf(path)
+        path = Path(path)
+        if filesplit > 0:
+            if path.exists() and path.is_file():
+                raise FileExistsError(f"Path {path} is an existing file and not a directory")
+            path.mkdir(exist_ok=True, parents=True)
+            ntimes = self.dataset["time"].shape[0]
+            rem = ntimes % filesplit
+            nfiles = ntimes // filesplit
+            if rem > 0:
+                nfiles += 1
+            print(f"Saving {nfiles} files with {filesplit} timestamps each")
+            for i in tqdm(range(nfiles)):
+                start = i * filesplit
+                end = (i + 1) * filesplit
+                if end > ntimes:
+                    end = ntimes
+                sub_ds = self.dataset.isel(time=slice(start, end))
+                sub_ds.load()
+                sub_ds = replace_inf_with_nan(sub_ds)
+                savepath = path / f"datasetchunk_{str(i).zfill(4)}.nc"
+                sub_ds.to_netcdf(savepath)
+                logger.info(f"Saved chunk {i} to {savepath}")
+                sub_ds.close()
+        else:
+            result = self.dataset.to_netcdf(path)
         logger.info(f"Finished save for {self}")
-        return result
 
     def save_mask(self, path, num_samples=None):
         mask = self.get_mask(num_samples=num_samples)
